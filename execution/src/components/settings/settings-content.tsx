@@ -523,15 +523,15 @@ export function SettingsContent({
                   </td>
                   {isAdmin && (
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-7 w-7 p-0 text-neutral-500 hover:text-neutral-800"
+                          className="h-7 px-2 text-xs gap-1"
                           onClick={() => openEditSheet(user)}
-                          title="Edit user"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-3 w-3" />
+                          Edit
                         </Button>
                         {user.isActive ? (
                           <Button

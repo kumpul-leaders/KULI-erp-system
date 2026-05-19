@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# Raw business data — contains client PII, do not commit
+Data/
+
+# Temp files
+.tmp/
+
+# Google OAuth (if ever added)
+credentials.json
+token.json

@@ -1,0 +1,15 @@
+Client Management Database Structure.
+Each column must be treated as follow:
+1. Client Name - the name of the client - string
+2. Customer code - Unique code for the client - Generated abbreviation of 4 letters from the client name. (e.g for PT. Astra International Tbk -> ASTI)
+3. Industry - the industry of the clien - dropdown (Retail FMCG, Internet & Technology, Fashion & Beauty, Finance, Health & Medical, E-Commerce, Service, FnB Horeca, Government, Automotive, Property, SAAS)
+4. Org size - the size of the organization - dropdown (1-10, 11-50, 51-200, 201-1000, 1000+)
+5. Contact - PIC of the client - string (for now)
+6. Position of the Contact - Title of the Contact
+7. Email of the Contact - email of the Contact
+8. Phone of the Contact - phone number of the Contact
+9. Sales - Sales Rep for the Account - Dropdown users with role account/ busdev
+10. Cumulative Annual Value - the cumulative annual value of the contract
+11. Client Status - If client has done minimum 1 project with us or still leads to follow up - dropdown (active, inactive, lead)
+12. AE Name - the account executive name - dropdown for users with role account/ busdev
+13. Notes - additional notes about the client

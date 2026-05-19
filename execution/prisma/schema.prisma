@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  admin
+  account
+  operation
+  hr
+  finance
+}
+
+enum EngagementType {
+  retainer
+  project
+  both
+}
+
+enum HealthStatus {
+  healthy
+  at_risk
+  churned
+}
+
+enum ClientStatus {
+  active
+  inactive
+  lead
+}
+
+enum UpsellStatus {
+  identified
+  pitched
+  won
+  lost
+}
+
+enum PipelineStage {
+  leads
+  pipeline
+  negotiation
+  closed_won
+  lost_deal
+  invoiced
+  contract_renewal
+  no_response
+}
+
+enum ProjectType {
+  one_time
+  retainer
+}
+
+enum ProductLine {
+  stracomm
+  smm
+  creative_strategy
+  media_buying
+  ads_management
+  production
+  others
+}
+
+enum DocumentType {
+  quotation
+  quotation_signed
+  contract
+  other
+}
+
+enum TargetType {
+  monthly
+  quarterly
+}
+
+// ─────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(account)
+  division  String?
+  isActive  Boolean  @default(true) @map("is_active")
+  isVp      Boolean  @default(false) @map("is_vp")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clientsManaged       Client[]
+  leadsAssigned        Lead[]
+  documentsUploaded    PipelineDocument[]
+  stageChangesActioned LeadStageHistory[]
+  fieldChangesActioned LeadFieldHistory[]
+
+  @@map("users")
+}
+
+model Client {
+  id             String         @id @default(uuid())
+  name           String
+  industry       String?
+  engagementType EngagementType @map("engagement_type")
+  contractStart  DateTime?      @map("contract_start") @db.Date
+  contractEnd    DateTime?      @map("contract_end") @db.Date
+  monthlyValue   Decimal?       @map("monthly_value") @db.Decimal(15, 2)
+  annualValue    Decimal?       @map("annual_value") @db.Decimal(15, 2)
+  healthStatus   HealthStatus   @default(healthy) @map("health_status")
+  clientStatus   ClientStatus?  @map("client_status")
+  primaryAe      String?        @map("primary_ae")
+  orgSize        String?        @map("org_size")
+  customerCode   String?        @unique @map("customer_code")
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  ae                  User?               @relation(fields: [primaryAe], references: [id])
+  contacts            Contact[]
+  upsellOpportunities UpsellOpportunity[]
+  leads               Lead[]
+
+  @@map("clients")
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  clientId  String   @map("client_id")
+  name      String
+  role      String?
+  email     String?
+  phone     String?
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("contacts")
+}
+
+model UpsellOpportunity {
+  id             String       @id @default(uuid())
+  clientId       String       @map("client_id")
+  service        String
+  status         UpsellStatus @default(identified)
+  estimatedValue Decimal?     @map("estimated_value") @db.Decimal(15, 2)
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("upsell_opportunities")
+}
+
+model Lead {
+  id                 String        @id @default(uuid())
+  clientId           String        @map("client_id")
+  productLine        ProductLine   @map("product_line")
+  description        String?
+  projectType        ProjectType   @map("project_type")
+  stage              PipelineStage @default(leads)
+  salesId            String?       @map("sales_id")
+  projectedRevenue   Decimal?      @map("projected_revenue") @db.Decimal(15, 2)
+  billingPlan        String?       @map("billing_plan")
+  quarter            String?
+  actualRevenue      Decimal?      @map("actual_revenue") @db.Decimal(15, 2)
+  lossDealReason     String?       @map("loss_deal_reason")
+  invoiceRequestedAt DateTime?     @map("invoice_requested_at")
+  notes              String?
+  createdAt          DateTime      @default(now()) @map("created_at")
+  closedAt           DateTime?     @map("closed_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  client        Client             @relation(fields: [clientId], references: [id])
+  sales         User?              @relation(fields: [salesId], references: [id])
+  documents     PipelineDocument[]
+  stageHistory  LeadStageHistory[]
+  fieldHistory  LeadFieldHistory[]
+
+  @@map("leads")
+}
+
+model LeadStageHistory {
+  id        String        @id @default(uuid())
+  leadId    String        @map("lead_id")
+  fromStage PipelineStage @map("from_stage")
+  toStage   PipelineStage @map("to_stage")
+  changedBy String        @map("changed_by")
+  changedAt DateTime      @default(now()) @map("changed_at")
+
+  lead    Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  changer User @relation(fields: [changedBy], references: [id])
+
+  @@map("lead_stage_history")
+}
+
+model LeadFieldHistory {
+  id        String   @id @default(uuid())
+  leadId    String   @map("lead_id")
+  field     String
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  changedBy String   @map("changed_by")
+  changedAt DateTime @default(now()) @map("changed_at")
+
+  lead    Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  changer User @relation(fields: [changedBy], references: [id])
+
+  @@map("lead_field_history")
+}
+
+model PipelineDocument {
+  id         String       @id @default(uuid())
+  leadId     String       @map("lead_id")
+  type       DocumentType
+  fileUrl    String       @map("file_url")
+  fileName   String?      @map("file_name")
+  uploadedAt DateTime     @default(now()) @map("uploaded_at")
+  uploadedBy String       @map("uploaded_by")
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  lead     Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@map("pipeline_documents")
+}
+
+model Target {
+  id              String     @id @default(uuid())
+  periodMonth     Int        @map("period_month")
+  periodYear      Int        @map("period_year")
+  revenueTarget   Decimal    @map("revenue_target") @db.Decimal(15, 2)
+  newClientTarget Int        @default(0) @map("new_client_target")
+  type            TargetType @default(monthly)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  @@unique([periodMonth, periodYear, type])
+  @@map("targets")
+}

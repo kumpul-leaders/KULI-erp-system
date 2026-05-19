@@ -1,0 +1,132 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Loader2, AlertCircle } from "lucide-react"
+import type { Metadata } from "next"
+
+// Note: metadata cannot be exported from a "use client" file.
+// Title is set in root layout template. For SEO, wrap in a Server Component if needed.
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (authError) {
+      setError(authError.message)
+      setLoading(false)
+      return
+    }
+
+    router.push("/dashboard")
+    router.refresh()
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
+      <div className="w-full max-w-sm">
+        {/* Brand */}
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-800">
+            vosFoyer
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500">ERP System — Internal Tool</p>
+        </div>
+
+        {/* Card */}
+        <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-modal">
+          <h2 className="mb-6 text-lg font-semibold text-neutral-800">
+            Sign in to your account
+          </h2>
+
+          {/* Error banner */}
+          {error && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-50 border border-danger-500/20 px-3 py-2.5 text-sm text-danger-700">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 text-danger-500" />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label
+                htmlFor="email"
+                className="mb-1.5 block text-sm font-medium text-neutral-700"
+              >
+                Email address
+                <span className="ml-0.5 text-danger-500" aria-hidden>*</span>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@vosfoyerid.com"
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <Label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-medium text-neutral-700"
+              >
+                Password
+                <span className="ml-0.5 text-danger-500" aria-hidden>*</span>
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={loading}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                "Sign in"
+              )}
+            </Button>
+          </form>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-neutral-400">
+          Internal tool — access by invitation only.
+        </p>
+      </div>
+    </div>
+  )
+}

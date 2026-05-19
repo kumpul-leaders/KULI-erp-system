@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { cn, formatIDR, daysUntil, contractUrgency } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
 import {
   Sheet,
   SheetContent,
@@ -113,111 +114,181 @@ function LeadDrillTable({
   leads: SerializedLead[]
   showActual: boolean
 }) {
-  if (leads.length === 0)
-    return (
-      <p className="text-sm text-neutral-400 py-4 text-center">
-        Tidak ada data.
-      </p>
-    )
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<{ col: "clientName" | "revenue" | "stage"; dir: "asc" | "desc" }>({ col: "revenue", dir: "desc" })
+
+  const filtered = leads
+    .filter((l) => l.clientName.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const dir = sort.dir === "asc" ? 1 : -1
+      if (sort.col === "clientName") return a.clientName.localeCompare(b.clientName) * dir
+      if (sort.col === "stage") return (a.stage).localeCompare(b.stage) * dir
+      const aRev = showActual ? (a.actualRevenue ?? 0) : (a.projectedRevenue ?? 0)
+      const bRev = showActual ? (b.actualRevenue ?? 0) : (b.projectedRevenue ?? 0)
+      return (aRev - bRev) * dir
+    })
+
+  function toggleSort(col: typeof sort.col) {
+    setSort((prev) => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "desc" })
+  }
+
+  function sortIndicator(col: typeof sort.col) {
+    if (sort.col !== col) return null
+    return sort.dir === "asc" ? " ↑" : " ↓"
+  }
+
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-neutral-200">
-          <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
-            Client
-          </th>
-          <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
-            Stage
-          </th>
-          <th className="text-right text-xs font-medium text-neutral-400 pb-2 pr-3">
-            {showActual ? "Actual Revenue" : "Projected Revenue"}
-          </th>
-          <th className="text-left text-xs font-medium text-neutral-400 pb-2">
-            Quarter
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {leads.map((lead) => (
-          <tr key={lead.id} className="border-b border-neutral-100 last:border-0">
-            <td className="py-2.5 pr-3 font-medium text-neutral-800">
-              <Link
-                href={`/pipeline/${lead.id}`}
-                className="hover:text-accent-600 hover:underline"
+    <>
+      <Input
+        placeholder="Cari client..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mb-3 h-8 text-sm"
+      />
+      {filtered.length === 0 ? (
+        <p className="text-sm text-neutral-400 py-4 text-center">Tidak ada data.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-200">
+              <th
+                className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
+                onClick={() => toggleSort("clientName")}
               >
-                {lead.clientName}
-              </Link>
-            </td>
-            <td className="py-2.5 pr-3">
-              <span className="text-xs text-neutral-500">
-                {STAGE_LABELS[lead.stage] ?? lead.stage}
-              </span>
-            </td>
-            <td className="py-2.5 pr-3 text-right tabular-nums text-neutral-700">
-              {formatIDR(showActual ? lead.actualRevenue : lead.projectedRevenue)}
-            </td>
-            <td className="py-2.5 text-xs text-neutral-400">
-              {lead.quarter ?? "—"}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+                Client{sortIndicator("clientName")}
+              </th>
+              <th
+                className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
+                onClick={() => toggleSort("stage")}
+              >
+                Stage{sortIndicator("stage")}
+              </th>
+              <th
+                className="text-right text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
+                onClick={() => toggleSort("revenue")}
+              >
+                {showActual ? "Actual Revenue" : "Projected Revenue"}{sortIndicator("revenue")}
+              </th>
+              <th className="text-left text-xs font-medium text-neutral-400 pb-2">
+                Quarter
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((lead) => (
+              <tr key={lead.id} className="border-b border-neutral-100 last:border-0">
+                <td className="py-2.5 pr-3 font-medium text-neutral-800">
+                  <Link
+                    href={`/pipeline/${lead.id}`}
+                    className="hover:text-accent-600 hover:underline"
+                  >
+                    {lead.clientName}
+                  </Link>
+                </td>
+                <td className="py-2.5 pr-3">
+                  <span className="text-xs text-neutral-500">
+                    {STAGE_LABELS[lead.stage] ?? lead.stage}
+                  </span>
+                </td>
+                <td className="py-2.5 pr-3 text-right tabular-nums text-neutral-700">
+                  {formatIDR(showActual ? lead.actualRevenue : lead.projectedRevenue)}
+                </td>
+                <td className="py-2.5 text-xs text-neutral-400">
+                  {lead.quarter ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
   )
 }
 
 function ClientDrillTable({ clients }: { clients: SerializedClient[] }) {
-  if (clients.length === 0)
-    return (
-      <p className="text-sm text-neutral-400 py-4 text-center">
-        Tidak ada data.
-      </p>
-    )
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<{ col: "name" | "annualValue"; dir: "asc" | "desc" }>({ col: "name", dir: "asc" })
+
+  const filtered = clients
+    .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const dir = sort.dir === "asc" ? 1 : -1
+      if (sort.col === "name") return a.name.localeCompare(b.name) * dir
+      return ((a.annualValue ?? 0) - (b.annualValue ?? 0)) * dir
+    })
+
+  function toggleSort(col: typeof sort.col) {
+    setSort((prev) => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" })
+  }
+
+  function sortIndicator(col: typeof sort.col) {
+    if (sort.col !== col) return null
+    return sort.dir === "asc" ? " ↑" : " ↓"
+  }
+
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-neutral-200">
-          <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
-            Client
-          </th>
-          <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
-            Industry
-          </th>
-          <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
-            Busdev/AE
-          </th>
-          <th className="text-right text-xs font-medium text-neutral-400 pb-2">
-            Annual Value
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {clients.map((client) => (
-          <tr
-            key={client.id}
-            className="border-b border-neutral-100 last:border-0"
-          >
-            <td className="py-2.5 pr-3 font-medium text-neutral-800">
-              <Link
-                href={`/clients/${client.id}`}
-                className="hover:text-accent-600 hover:underline"
+    <>
+      <Input
+        placeholder="Cari client..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mb-3 h-8 text-sm"
+      />
+      {filtered.length === 0 ? (
+        <p className="text-sm text-neutral-400 py-4 text-center">Tidak ada data.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-200">
+              <th
+                className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
+                onClick={() => toggleSort("name")}
               >
-                {client.name}
-              </Link>
-            </td>
-            <td className="py-2.5 pr-3 text-xs text-neutral-500">
-              {client.industry ?? "—"}
-            </td>
-            <td className="py-2.5 pr-3 text-xs text-neutral-500">
-              {client.aeName ?? "—"}
-            </td>
-            <td className="py-2.5 text-right tabular-nums text-neutral-700">
-              {formatIDR(client.annualValue)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+                Client{sortIndicator("name")}
+              </th>
+              <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
+                Industry
+              </th>
+              <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
+                Busdev/AE
+              </th>
+              <th
+                className="text-right text-xs font-medium text-neutral-400 pb-2 cursor-pointer hover:text-neutral-600 select-none"
+                onClick={() => toggleSort("annualValue")}
+              >
+                Annual Value{sortIndicator("annualValue")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((client) => (
+              <tr
+                key={client.id}
+                className="border-b border-neutral-100 last:border-0"
+              >
+                <td className="py-2.5 pr-3 font-medium text-neutral-800">
+                  <Link
+                    href={`/clients/${client.id}`}
+                    className="hover:text-accent-600 hover:underline"
+                  >
+                    {client.name}
+                  </Link>
+                </td>
+                <td className="py-2.5 pr-3 text-xs text-neutral-500">
+                  {client.industry ?? "—"}
+                </td>
+                <td className="py-2.5 pr-3 text-xs text-neutral-500">
+                  {client.aeName ?? "—"}
+                </td>
+                <td className="py-2.5 text-right tabular-nums text-neutral-700">
+                  {formatIDR(client.annualValue)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
   )
 }
 
@@ -225,15 +296,26 @@ function ClientDrillTable({ clients }: { clients: SerializedClient[] }) {
 // Props
 // ---------------------------------------------------------------------------
 
+function TrendBadge({ current, prev }: { current: number; prev: number }) {
+  const pct = prev > 0 ? Math.round(((current - prev) / prev) * 100) : 0
+  const up = pct >= 0
+  return (
+    <span className={`text-xs font-medium ${up ? "text-emerald-600" : "text-danger-600"}`}>
+      {up ? "↑" : "↓"} {Math.abs(pct)}% vs bulan lalu
+    </span>
+  )
+}
+
 interface DashboardContentProps {
   revenueMTD: number
+  revenueMTDPrevMonth: number
   revenueInPipeline: number
   healthyCount: number
   newLeadsCount: number
   revenueTarget: number
   progressPct: number
   currentMonthLabel: string
-  expiringContracts: { id: string; name: string; contractEnd: string | null }[]
+  expiringContracts: { id: string; name: string; contractEnd: string | null; monthlyValue: number | null; annualValue: number | null }[]
   atRiskCount: number
   churnedCount: number
   recentActivity: {
@@ -259,6 +341,7 @@ interface DashboardContentProps {
 
 export function DashboardContent({
   revenueMTD,
+  revenueMTDPrevMonth,
   revenueInPipeline,
   healthyCount,
   newLeadsCount,
@@ -316,6 +399,9 @@ export function DashboardContent({
             <p className="text-3xl font-bold tabular-nums text-neutral-800 mb-1">
               {formatIDR(revenueMTD)}
             </p>
+            {revenueMTDPrevMonth > 0 && (
+              <TrendBadge current={revenueMTD} prev={revenueMTDPrevMonth} />
+            )}
             <p className="text-xs text-neutral-400">{currentMonthLabel}</p>
           </button>
 
@@ -496,6 +582,15 @@ export function DashboardContent({
                           }
                         )}
                       </p>
+                      {(client.monthlyValue || client.annualValue) && (
+                        <p className="text-xs text-neutral-500 mt-0.5 tabular-nums">
+                          {client.monthlyValue
+                            ? `${formatIDR(client.monthlyValue)}/mo`
+                            : client.annualValue
+                              ? `${formatIDR(client.annualValue)}/yr`
+                              : null}
+                        </p>
+                      )}
                     </Link>
                   )
                 })

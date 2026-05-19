@@ -42,7 +42,7 @@ interface FormState {
   contractEnd: string
   monthlyValue: string
   annualValue: string
-  healthStatus: HealthStatus
+  healthStatus: HealthStatus | ""
   clientStatus: ClientStatus
   primaryAe: string
 }
@@ -73,7 +73,7 @@ const initialForm: FormState = {
   contractEnd: "",
   monthlyValue: "",
   annualValue: "",
-  healthStatus: "healthy",
+  healthStatus: "",
   clientStatus: "lead",
   primaryAe: "",
 }
@@ -124,7 +124,7 @@ export function AddClientSheet({
           contractEnd: form.contractEnd || null,
           monthlyValue: form.monthlyValue ? Number(form.monthlyValue) : null,
           annualValue: form.annualValue ? Number(form.annualValue) : null,
-          healthStatus: form.healthStatus,
+          healthStatus: form.healthStatus || null,
           clientStatus: form.clientStatus,
           primaryAe: form.primaryAe || null,
         }),
@@ -311,13 +311,14 @@ export function AddClientSheet({
           <div className="space-y-1.5">
             <Label>Health Status</Label>
             <Select
-              value={form.healthStatus}
-              onValueChange={(v) => handleField("healthStatus", v as HealthStatus)}
+              value={form.healthStatus || "none"}
+              onValueChange={(v) => handleField("healthStatus", v === "none" ? "" : v as HealthStatus)}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Not set" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">Not set</SelectItem>
                 <SelectItem value="healthy">Healthy</SelectItem>
                 <SelectItem value="at_risk">At Risk</SelectItem>
                 <SelectItem value="churned">Churned</SelectItem>

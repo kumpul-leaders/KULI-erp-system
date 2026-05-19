@@ -11,7 +11,9 @@ import { UpsellsCard } from "@/components/clients/upsells-card"
 import { NotesCard } from "@/components/clients/notes-card"
 import { AeCard } from "@/components/clients/ae-card"
 import { ClientDetailActions } from "@/components/clients/client-detail-actions"
+import { EditStatusButton } from "@/components/clients/edit-status-button"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 import { formatIDR, daysUntil, contractUrgency } from "@/lib/utils"
 // ── Metadata ─────────────────────────────────────────────────────────────────
 
@@ -43,7 +45,7 @@ async function fetchClient(id: string) {
 
 async function fetchAeOptions() {
   return prisma.user.findMany({
-    where: { isActive: true },
+    where: { isActive: true, role: { in: ["account", "admin"] } },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   })
@@ -77,6 +79,14 @@ interface ClientDetailPageProps {
 
 export default async function ClientDetailPage({ params }: ClientDetailPageProps) {
   const { id } = await params
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const dbUser = user ? await prisma.user.findUnique({
+    where: { email: user.email! },
+    select: { role: true },
+  }) : null
+  const userRole = dbUser?.role ?? null
 
   const [client, aeOptions] = await Promise.all([fetchClient(id), fetchAeOptions()])
 
@@ -159,6 +169,13 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
               <Badge variant="outline" className="text-neutral-600">
                 {client.industry}
               </Badge>
+            )}
+            {userRole === "admin" && (
+              <EditStatusButton
+                clientId={client.id}
+                currentHealthStatus={client.healthStatus}
+                currentClientStatus={client.clientStatus ?? "lead"}
+              />
             )}
           </div>
         </div>

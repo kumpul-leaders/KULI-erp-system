@@ -41,7 +41,7 @@ export interface SerializedLead {
 
 // ── KanbanField type — exported for use in loader and kanban ────────────────
 
-export type KanbanField = "code" | "productLine" | "revenue" | "ae" | "gateWarning"
+export type KanbanField = "code" | "productLine" | "revenue" | "ae" | "gateWarning" | "billingPlan"
 
 interface PipelineCardProps {
   lead: SerializedLead
@@ -161,6 +161,13 @@ export function PipelineCard({
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Billing Plan — conditional */}
+      {visibleFields.has("billingPlan") && lead.billingPlan && (
+        <div className="flex items-center gap-1 mb-2">
+          <span className="text-xs text-neutral-500 font-mono">{lead.billingPlan}</span>
         </div>
       )}
 

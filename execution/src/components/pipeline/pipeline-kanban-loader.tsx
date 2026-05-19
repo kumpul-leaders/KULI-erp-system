@@ -69,6 +69,7 @@ const KANBAN_FIELD_OPTIONS: Array<{ value: KanbanField; label: string }> = [
   { value: "revenue", label: "Revenue & Quarter" },
   { value: "ae", label: "Busdev/AE" },
   { value: "gateWarning", label: "Gate Warnings" },
+  { value: "billingPlan", label: "Billing Plan" },
 ]
 
 // ── Kanban sort options ───────────────────────────────────────────────────────
@@ -91,7 +92,11 @@ function getLeadValue(lead: SerializedLead, key: string): unknown {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function PipelineKanbanLoader() {
+interface PipelineKanbanLoaderProps {
+  filterParam?: string
+}
+
+export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -103,7 +108,17 @@ export function PipelineKanbanLoader() {
   // View + filter state
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list")
   const [search, setSearch] = useState("")
-  const [conditions, setConditions] = useState<FilterCondition[]>([])
+
+  const initialConditions = useMemo(() => {
+    if (!filterParam) return []
+    try {
+      return JSON.parse(atob(filterParam)) as FilterCondition[]
+    } catch {
+      return []
+    }
+  }, [filterParam])
+
+  const [conditions, setConditions] = useState<FilterCondition[]>(initialConditions)
   const [matchMode, setMatchMode] = useState<MatchMode>("all")
 
   // Kanban field visibility — default matches original card layout
@@ -153,6 +168,17 @@ export function PipelineKanbanLoader() {
       cancelled = true
     }
   }, [])
+
+  // Sync filter conditions to URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (conditions.length > 0) {
+      params.set("filter", btoa(JSON.stringify(conditions)))
+    } else {
+      params.delete("filter")
+    }
+    router.replace(`/pipeline?${params.toString()}`, { scroll: false })
+  }, [conditions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function refetchLeads() {
     try {

@@ -40,9 +40,13 @@ export default async function DashboardPage() {
 
   const currentBillingPlan = toBillingPlan(now.getFullYear(), now.getMonth() + 1)
 
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+
   const [
     wonLeads,
     pipelineLeads,
+    prevMonthWon,
     healthyCount,
     newLeadsCount,
     currentTarget,
@@ -69,6 +73,14 @@ export default async function DashboardPage() {
         stage: { in: ["leads", "pipeline", "negotiation"] },
       },
       _sum: { projectedRevenue: true },
+    }),
+    prisma.lead.aggregate({
+      where: {
+        stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
+        closedAt: { gte: prevMonthStart, lte: prevMonthEnd },
+        actualRevenue: { not: null },
+      },
+      _sum: { actualRevenue: true },
     }),
     prisma.client.count({
       where: { healthStatus: "healthy" },
@@ -196,6 +208,7 @@ export default async function DashboardPage() {
   ])
 
   const revenueMTD = Number(wonLeads._sum.actualRevenue ?? 0)
+  const revenueMTDPrevMonth = Number(prevMonthWon._sum.actualRevenue ?? 0)
   const revenueInPipeline = Number(pipelineLeads._sum.projectedRevenue ?? 0)
   const revenueTarget = Number(currentTarget?.revenueTarget ?? 0)
   const progressPct =
@@ -277,6 +290,7 @@ export default async function DashboardPage() {
       <Topbar title="Dashboard" />
       <DashboardContent
         revenueMTD={revenueMTD}
+        revenueMTDPrevMonth={revenueMTDPrevMonth}
         revenueInPipeline={revenueInPipeline}
         healthyCount={healthyCount}
         newLeadsCount={newLeadsCount}
@@ -287,6 +301,8 @@ export default async function DashboardPage() {
           id: c.id,
           name: c.name,
           contractEnd: c.contractEnd?.toISOString() ?? null,
+          monthlyValue: c.monthlyValue !== null ? Number(c.monthlyValue) : null,
+          annualValue: c.annualValue !== null ? Number(c.annualValue) : null,
         }))}
         atRiskCount={atRiskCount}
         churnedCount={churnedCount}

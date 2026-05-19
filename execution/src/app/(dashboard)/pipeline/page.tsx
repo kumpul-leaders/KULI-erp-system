@@ -48,14 +48,19 @@ function KanbanSkeleton() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function PipelinePage() {
+interface PipelinePageProps {
+  searchParams: Promise<{ view?: string; filter?: string }>
+}
+
+export default async function PipelinePage({ searchParams }: PipelinePageProps) {
+  const params = await searchParams
   return (
     <>
       <Topbar title="Pipeline" />
       <main className="flex-1 overflow-hidden px-8 py-6 flex flex-col">
         {/* Suspense required: PipelineKanbanLoader uses useSearchParams() */}
         <Suspense fallback={<KanbanSkeleton />}>
-          <PipelineKanbanLoader />
+          <PipelineKanbanLoader filterParam={params.filter} />
         </Suspense>
       </main>
     </>

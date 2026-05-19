@@ -114,6 +114,15 @@ function KanbanColumn({
         </span>
       </div>
 
+      {/* Closed Won info note */}
+      {column.id === "closed_won" && (
+        <div className="mx-2 mt-1 mb-0 rounded-md bg-info-50 border border-info-200 px-2.5 py-1.5">
+          <p className="text-xs text-info-700">
+            Gunakan tombol <span className="font-semibold">&quot;Request Invoice&quot;</span> di detail lead untuk advance ke Invoiced.
+          </p>
+        </div>
+      )}
+
       {/* Cards */}
       <SortableContext items={leadIds} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col gap-2 p-2 min-h-16">

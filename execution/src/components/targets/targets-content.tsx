@@ -2,7 +2,19 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import type { SerializedTarget, AeOption } from "@/app/(dashboard)/targets/page"
 
 // ---------------------------------------------------------------------------
@@ -701,12 +713,30 @@ export function TargetsContent({
                             >
                               Edit
                             </button>
-                            <button
-                              onClick={() => handleDeleteTarget(t.id)}
-                              className="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                            >
-                              Delete
-                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-danger-600 hover:bg-danger-50">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Hapus Target?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Target ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-danger-600 hover:bg-danger-700 text-white"
+                                    onClick={() => void handleDeleteTarget(t.id)}
+                                  >
+                                    Hapus
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </td>
                       </tr>

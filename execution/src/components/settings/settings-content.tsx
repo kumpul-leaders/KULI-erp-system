@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Pencil, UserPlus } from "lucide-react"
+import { Loader2, Pencil, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -139,6 +139,9 @@ export function SettingsContent({
   const [deactivateDialog, setDeactivateDialog] = useState<DeactivateDialogState>({ open: false })
   const [deactivateReplacementId, setDeactivateReplacementId] = useState<string>("")
   const [isDeactivating, setIsDeactivating] = useState(false)
+
+  // Activate/Deactivate loading state
+  const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
 
   // Bulk Reassign section state
   const [bulkFromId, setBulkFromId] = useState<string>("")
@@ -359,6 +362,7 @@ export function SettingsContent({
   }
 
   async function handleActivate(userId: string) {
+    setLoadingUserId(userId)
     try {
       const res = await fetch(`/api/users/${userId}`, {
         method: "PATCH",
@@ -376,6 +380,8 @@ export function SettingsContent({
       }
     } catch {
       toast.error("Network error. Could not activate user.")
+    } finally {
+      setLoadingUserId(null)
     }
   }
 
@@ -531,9 +537,14 @@ export function SettingsContent({
                             variant="ghost"
                             size="sm"
                             className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-success-50"
-                            onClick={() => handleActivate(user.id)}
+                            onClick={() => void handleActivate(user.id)}
+                            disabled={loadingUserId === user.id}
                           >
-                            Activate
+                            {loadingUserId === user.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              "Activate"
+                            )}
                           </Button>
                         )}
                       </div>

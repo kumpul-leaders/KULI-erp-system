@@ -19,8 +19,14 @@ export type SerializedTarget = {
   revenueTarget: number
   newClientTarget: number
   type: "monthly" | "quarterly"
+  salesId: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type AeOption = {
+  id: string
+  name: string
 }
 
 // ---------------------------------------------------------------------------
@@ -35,7 +41,14 @@ function toBillingPlan(year: number, month: number): string {
 // Server component
 // ---------------------------------------------------------------------------
 
-export default async function TargetsPage() {
+export default async function TargetsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aeId?: string }>
+}) {
+  const { aeId } = await searchParams
+  const selectedAeId = aeId ?? null
+
   const now = new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
@@ -50,7 +63,35 @@ export default async function TargetsPage() {
   // Current month billing plan
   const currentBillingPlan = toBillingPlan(currentYear, currentMonth)
 
+  // Target filter: when AE selected, show that AE's targets only.
+  // Company view: salesId = null (company-wide).
+  const targetWhereClause = selectedAeId
+    ? { salesId: selectedAeId }
+    : { salesId: null }
+
+  // Unique constraint name changed — use findFirst for null-safe lookup
+  const findCurrentMonthTarget = () =>
+    prisma.target.findFirst({
+      where: {
+        periodMonth: currentMonth,
+        periodYear: currentYear,
+        type: "monthly" as $Enums.TargetType,
+        salesId: selectedAeId ?? null,
+      },
+    })
+
+  const findCurrentQuarterTarget = () =>
+    prisma.target.findFirst({
+      where: {
+        periodMonth: currentQuarter,
+        periodYear: currentYear,
+        type: "quarterly" as $Enums.TargetType,
+        salesId: selectedAeId ?? null,
+      },
+    })
+
   const [
+    aeOptions,
     allTargets,
     currentMonthTarget,
     currentQuarterTarget,
@@ -59,66 +100,66 @@ export default async function TargetsPage() {
     quarterlyRevenueAgg,
     quarterlyNewClientLeads,
   ] = await Promise.all([
-    // 1. All targets sorted most recent first
+    // 0. Active AEs for the selector (account + admin roles)
+    prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: { in: ["account", "admin"] },
+      },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+
+    // 1. All targets for selected view (AE or company-wide)
     prisma.target.findMany({
+      where: targetWhereClause,
       orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
     }),
 
     // 2. Current month target
-    prisma.target.findUnique({
-      where: {
-        periodMonth_periodYear_type: {
-          periodMonth: currentMonth,
-          periodYear: currentYear,
-          type: "monthly",
-        },
-      },
-    }),
+    findCurrentMonthTarget(),
 
     // 3. Current quarter target
-    prisma.target.findUnique({
-      where: {
-        periodMonth_periodYear_type: {
-          periodMonth: currentQuarter,
-          periodYear: currentYear,
-          type: "quarterly",
-        },
-      },
-    }),
+    findCurrentQuarterTarget(),
 
     // 4. Monthly actual revenue (won leads with billing plan = current month)
+    // Note: actualRevenue is company-wide regardless of AE selection
     prisma.lead.aggregate({
       where: {
         stage: { in: ["closed_won", "invoiced"] },
         billingPlan: currentBillingPlan,
+        ...(selectedAeId ? { salesId: selectedAeId } : {}),
       },
       _sum: { actualRevenue: true },
     }),
 
-    // 5. Monthly actual new clients (distinct clientIds, won leads with billing plan = current month)
+    // 5. Monthly actual new clients
     prisma.lead.findMany({
       where: {
         stage: { in: ["closed_won", "invoiced"] },
         billingPlan: currentBillingPlan,
+        ...(selectedAeId ? { salesId: selectedAeId } : {}),
       },
       select: { clientId: true },
       distinct: ["clientId"],
     }),
 
-    // 6. Quarterly actual revenue (won leads with billing plan in current quarter months)
+    // 6. Quarterly actual revenue
     prisma.lead.aggregate({
       where: {
         stage: { in: ["closed_won", "invoiced"] },
         billingPlan: { in: qBillingPlans },
+        ...(selectedAeId ? { salesId: selectedAeId } : {}),
       },
       _sum: { actualRevenue: true },
     }),
 
-    // 7. Quarterly actual new clients (distinct clientIds, won leads in current quarter months)
+    // 7. Quarterly actual new clients
     prisma.lead.findMany({
       where: {
         stage: { in: ["closed_won", "invoiced"] },
         billingPlan: { in: qBillingPlans },
+        ...(selectedAeId ? { salesId: selectedAeId } : {}),
       },
       select: { clientId: true },
       distinct: ["clientId"],
@@ -136,6 +177,7 @@ export default async function TargetsPage() {
     revenueTarget: { toNumber?: () => number } | null
     newClientTarget: number
     type: $Enums.TargetType
+    salesId: string | null
     createdAt: Date
     updatedAt: Date
   }): SerializedTarget {
@@ -146,6 +188,7 @@ export default async function TargetsPage() {
       revenueTarget: t.revenueTarget ? Number(t.revenueTarget) : 0,
       newClientTarget: t.newClientTarget,
       type: t.type,
+      salesId: t.salesId,
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),
     }
@@ -181,6 +224,8 @@ export default async function TargetsPage() {
         currentMonth={currentMonth}
         currentYear={currentYear}
         currentQuarter={currentQuarter}
+        aeOptions={aeOptions}
+        selectedAeId={selectedAeId}
       />
     </>
   )

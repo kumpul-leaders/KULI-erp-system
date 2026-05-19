@@ -245,7 +245,7 @@ export function ClientsTable({
         { value: "project",  label: "Project" },
         { value: "both",     label: "Both" },
       ] },
-    { key: "primaryAe",      label: "Account Executive", type: "enum",
+    { key: "primaryAe",      label: "Busdev/AE", type: "enum",
       options: aeOptions.map((a) => ({ value: a.id, label: a.name })) },
     { key: "monthlyValue",   label: "Monthly Value",     type: "numeric" },
     { key: "annualValue",    label: "Annual Value",      type: "numeric" },

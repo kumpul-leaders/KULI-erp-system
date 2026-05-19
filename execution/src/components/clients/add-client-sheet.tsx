@@ -325,9 +325,9 @@ export function AddClientSheet({
             </Select>
           </div>
 
-          {/* Primary AE */}
+          {/* Primary Busdev/AE */}
           <div className="space-y-1.5">
-            <Label>Primary AE</Label>
+            <Label>Primary Busdev/AE</Label>
             <Select
               value={form.primaryAe || "none"}
               onValueChange={(v) => handleField("primaryAe", v === "none" ? "" : v)}

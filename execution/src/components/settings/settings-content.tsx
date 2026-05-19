@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Pencil, UserPlus } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +21,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog"
 import type { Role } from "@/types"
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -38,6 +50,8 @@ export type SerializedUser = {
 interface SettingsContentProps {
   users: SerializedUser[]
   isAdmin: boolean
+  leadCountMap: Record<string, number>
+  clientCountMap: Record<string, number>
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -92,9 +106,21 @@ const EMPTY_FORM: UserForm = {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// ── Deactivate dialog state ──────────────────────────────────────────────────
+
+type DeactivateDialogState =
+  | { open: false }
+  | { open: true; userId: string; userName: string; leads: number; clients: number }
+
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function SettingsContent({ users: initialUsers, isAdmin }: SettingsContentProps) {
+export function SettingsContent({
+  users: initialUsers,
+  isAdmin,
+  leadCountMap,
+  clientCountMap,
+}: SettingsContentProps) {
+  const router = useRouter()
   const [users, setUsers] = useState<SerializedUser[]>(initialUsers)
 
   // Sheet state
@@ -107,10 +133,27 @@ export function SettingsContent({ users: initialUsers, isAdmin }: SettingsConten
   const [editForm, setEditForm] = useState<UserForm>(EMPTY_FORM)
   const [addError, setAddError] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
-  const [toggleError, setToggleError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // ── Handlers ────────────────────────────────────────────────────────────
+  // Smart Deactivate Dialog state
+  const [deactivateDialog, setDeactivateDialog] = useState<DeactivateDialogState>({ open: false })
+  const [deactivateReplacementId, setDeactivateReplacementId] = useState<string>("")
+  const [isDeactivating, setIsDeactivating] = useState(false)
+
+  // Bulk Reassign section state
+  const [bulkFromId, setBulkFromId] = useState<string>("")
+  const [bulkToId, setBulkToId] = useState<string>("")
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+  const [isBulkReassigning, setIsBulkReassigning] = useState(false)
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  // Active users excluding a specific userId (for "To" dropdowns)
+  function activeUsersExcluding(excludeId: string) {
+    return users.filter((u) => u.isActive && u.id !== excludeId)
+  }
+
+  // ── Handlers: User CRUD ──────────────────────────────────────────────────
 
   function openEditSheet(user: SerializedUser) {
     setEditingUser(user)
@@ -224,25 +267,98 @@ export function SettingsContent({ users: initialUsers, isAdmin }: SettingsConten
     }
   }
 
-  async function handleDeactivate(userId: string) {
-    setToggleError(null)
+  // ── Handlers: Smart Deactivate ───────────────────────────────────────────
+
+  function openDeactivateDialog(user: SerializedUser) {
+    const leads = leadCountMap[user.id] ?? 0
+    const clients = clientCountMap[user.id] ?? 0
+
+    if (leads === 0 && clients === 0) {
+      // No owned records — deactivate immediately with simple confirm dialog
+      setDeactivateDialog({ open: true, userId: user.id, userName: user.name, leads: 0, clients: 0 })
+      setDeactivateReplacementId("")
+    } else {
+      // Has owned records — open smart dialog with reassign option
+      setDeactivateDialog({ open: true, userId: user.id, userName: user.name, leads, clients })
+      setDeactivateReplacementId("")
+    }
+  }
+
+  async function executeDeactivate(userId: string) {
+    const res = await fetch(`/api/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: false }),
+    })
+    if (!res.ok) {
+      const data = (await res.json()) as { error?: string }
+      throw new Error(data.error ?? "Failed to deactivate user.")
+    }
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, isActive: false } : u))
+    )
+  }
+
+  async function handleDeactivateWithReassign() {
+    if (!deactivateDialog.open) return
+    const { userId, userName, leads, clients } = deactivateDialog
+
+    if (!deactivateReplacementId) {
+      toast.error("Pilih pengganti terlebih dahulu.")
+      return
+    }
+
+    setIsDeactivating(true)
     try {
-      const res = await fetch(`/api/users/${userId}`, { method: "DELETE" })
-      if (res.ok) {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, isActive: false } : u))
-        )
-      } else {
-        const data = (await res.json()) as { error?: string }
-        setToggleError(data.error ?? "Failed to deactivate user.")
+      // Step 1: bulk reassign
+      const reassignRes = await fetch("/api/leads/bulk-reassign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromUserId: userId, toUserId: deactivateReplacementId }),
+      })
+      if (!reassignRes.ok) {
+        const data = (await reassignRes.json()) as { error?: string }
+        toast.error(data.error ?? "Gagal memindah leads/clients.")
+        return
       }
-    } catch {
-      setToggleError("Network error. Could not deactivate user.")
+
+      // Step 2: deactivate
+      await executeDeactivate(userId)
+
+      const replacementName = users.find((u) => u.id === deactivateReplacementId)?.name ?? "pengganti"
+      const parts: string[] = []
+      if (leads > 0) parts.push(`${leads} lead${leads > 1 ? "s" : ""}`)
+      if (clients > 0) parts.push(`${clients} client${clients > 1 ? "s" : ""}`)
+      toast.success(
+        `${parts.join(" dan ")} dipindah ke ${replacementName}. ${userName} dinonaktifkan.`
+      )
+
+      setDeactivateDialog({ open: false })
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan.")
+    } finally {
+      setIsDeactivating(false)
+    }
+  }
+
+  async function handleDeactivateWithoutReassign() {
+    if (!deactivateDialog.open) return
+    const { userId, userName } = deactivateDialog
+
+    setIsDeactivating(true)
+    try {
+      await executeDeactivate(userId)
+      toast.success(`${userName} dinonaktifkan.`)
+      setDeactivateDialog({ open: false })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan.")
+    } finally {
+      setIsDeactivating(false)
     }
   }
 
   async function handleActivate(userId: string) {
-    setToggleError(null)
     try {
       const res = await fetch(`/api/users/${userId}`, {
         method: "PATCH",
@@ -253,14 +369,66 @@ export function SettingsContent({ users: initialUsers, isAdmin }: SettingsConten
         setUsers((prev) =>
           prev.map((u) => (u.id === userId ? { ...u, isActive: true } : u))
         )
+        toast.success("User diaktifkan.")
       } else {
         const data = (await res.json()) as { error?: string }
-        setToggleError(data.error ?? "Failed to activate user.")
+        toast.error(data.error ?? "Failed to activate user.")
       }
     } catch {
-      setToggleError("Network error. Could not activate user.")
+      toast.error("Network error. Could not activate user.")
     }
   }
+
+  // ── Handlers: Bulk Reassign ──────────────────────────────────────────────
+
+  async function handleBulkReassign() {
+    if (!bulkFromId || !bulkToId) return
+    setIsBulkReassigning(true)
+    try {
+      const res = await fetch("/api/leads/bulk-reassign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromUserId: bulkFromId, toUserId: bulkToId }),
+      })
+      const data = (await res.json()) as {
+        leadsReassigned?: number
+        clientsReassigned?: number
+        error?: string
+      }
+      if (!res.ok) {
+        toast.error(data.error ?? "Gagal memindah leads/clients.")
+        return
+      }
+
+      const fromName = users.find((u) => u.id === bulkFromId)?.name ?? "sumber"
+      const toName = users.find((u) => u.id === bulkToId)?.name ?? "tujuan"
+      const parts: string[] = []
+      if ((data.leadsReassigned ?? 0) > 0) parts.push(`${data.leadsReassigned} leads`)
+      if ((data.clientsReassigned ?? 0) > 0) parts.push(`${data.clientsReassigned} clients`)
+
+      if (parts.length === 0) {
+        toast.success(`Tidak ada leads/clients milik ${fromName} yang perlu dipindah.`)
+      } else {
+        toast.success(`${parts.join(" dan ")} dipindah dari ${fromName} ke ${toName}.`)
+      }
+
+      setBulkFromId("")
+      setBulkToId("")
+      setBulkConfirmOpen(false)
+      router.refresh()
+    } catch {
+      toast.error("Network error. Coba lagi.")
+    } finally {
+      setIsBulkReassigning(false)
+    }
+  }
+
+  // ── Derived values for Bulk Reassign preview ─────────────────────────────
+
+  const bulkLeadCount = bulkFromId ? (leadCountMap[bulkFromId] ?? 0) : 0
+  const bulkClientCount = bulkFromId ? (clientCountMap[bulkFromId] ?? 0) : 0
+  const bulkFromName = users.find((u) => u.id === bulkFromId)?.name ?? ""
+  const bulkToName = users.find((u) => u.id === bulkToId)?.name ?? ""
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -268,9 +436,6 @@ export function SettingsContent({ users: initialUsers, isAdmin }: SettingsConten
     <div className="max-w-2xl space-y-6">
       {/* ── Card 1: Team Members ─────────────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-        {toggleError && (
-          <p className="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{toggleError}</p>
-        )}
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-neutral-800">Team Members</h3>
           {isAdmin && (
@@ -357,7 +522,7 @@ export function SettingsContent({ users: initialUsers, isAdmin }: SettingsConten
                             variant="ghost"
                             size="sm"
                             className="h-7 px-2 text-xs text-danger-600 hover:text-danger-700 hover:bg-danger-50"
-                            onClick={() => handleDeactivate(user.id)}
+                            onClick={() => openDeactivateDialog(user)}
                           >
                             Deactivate
                           </Button>
@@ -381,7 +546,91 @@ export function SettingsContent({ users: initialUsers, isAdmin }: SettingsConten
         </div>
       </div>
 
-      {/* ── Card 2: Pipeline Reference ───────────────────────────────────── */}
+      {/* ── Card 2: Bulk Reassign Leads ──────────────────────────────────── */}
+      {isAdmin && (
+        <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <h3 className="text-sm font-semibold text-neutral-800 mb-1">Reassign Leads</h3>
+          <p className="text-xs text-neutral-500 mb-5">
+            Pindahkan semua leads dan clients dari satu Busdev/AE ke Busdev/AE lain.
+            Berguna untuk AE yang resign atau tidak aktif.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* From — all users including inactive */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-neutral-500">Dari</Label>
+              <Select
+                value={bulkFromId}
+                onValueChange={(v) => {
+                  setBulkFromId(v)
+                  // Reset To if it matches the new From
+                  if (bulkToId === v) setBulkToId("")
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Pilih sumber..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...users]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                        {!u.isActive && (
+                          <span className="ml-1.5 text-neutral-400">(Nonaktif)</span>
+                        )}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* To — active users only, excluding fromId */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-neutral-500">Ke</Label>
+              <Select
+                value={bulkToId}
+                onValueChange={setBulkToId}
+                disabled={!bulkFromId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Pilih tujuan..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeUsersExcluding(bulkFromId).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Reactive preview */}
+          {bulkFromId && bulkToId && (
+            <p className="text-xs text-neutral-600 bg-neutral-50 border border-neutral-200 rounded px-3 py-2 mb-4">
+              <span className="font-medium">{bulkLeadCount} lead{bulkLeadCount !== 1 ? "s" : ""}</span>
+              {" "}dan{" "}
+              <span className="font-medium">{bulkClientCount} client{bulkClientCount !== 1 ? "s" : ""}</span>
+              {" "}akan dipindah dari{" "}
+              <span className="font-medium">{bulkFromName}</span>
+              {" "}ke{" "}
+              <span className="font-medium">{bulkToName}</span>.
+            </p>
+          )}
+
+          <Button
+            size="sm"
+            disabled={!bulkFromId || !bulkToId || isBulkReassigning}
+            onClick={() => setBulkConfirmOpen(true)}
+          >
+            Reassign Semua
+          </Button>
+        </div>
+      )}
+
+      {/* ── Card 3: Pipeline Reference ───────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
         <h3 className="text-sm font-semibold text-neutral-800 mb-4">Pipeline Reference</h3>
 
@@ -467,6 +716,140 @@ export function SettingsContent({ users: initialUsers, isAdmin }: SettingsConten
           </form>
         </SheetContent>
       </Sheet>
+
+      {/* ── Smart Deactivate Dialog ──────────────────────────────────────── */}
+      <AlertDialog open={deactivateDialog.open} onOpenChange={(open) => {
+        if (!open) setDeactivateDialog({ open: false })
+      }}>
+        <AlertDialogContent>
+          {deactivateDialog.open && (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {deactivateDialog.leads > 0 || deactivateDialog.clients > 0
+                    ? "Reassign sebelum nonaktifkan?"
+                    : `Nonaktifkan ${deactivateDialog.userName}?`}
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3">
+                    {deactivateDialog.leads > 0 || deactivateDialog.clients > 0 ? (
+                      <>
+                        <p>
+                          <span className="font-medium text-neutral-800">
+                            {deactivateDialog.userName}
+                          </span>{" "}
+                          masih punya{" "}
+                          {deactivateDialog.leads > 0 && (
+                            <span className="font-semibold text-neutral-800">
+                              {deactivateDialog.leads} lead{deactivateDialog.leads > 1 ? "s" : ""}
+                            </span>
+                          )}
+                          {deactivateDialog.leads > 0 && deactivateDialog.clients > 0 && " dan "}
+                          {deactivateDialog.clients > 0 && (
+                            <span className="font-semibold text-neutral-800">
+                              {deactivateDialog.clients} client{deactivateDialog.clients > 1 ? "s" : ""}
+                            </span>
+                          )}
+                          . Pilih Busdev/AE pengganti, atau nonaktifkan tanpa reassign.
+                        </p>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-neutral-600">Reassign ke:</Label>
+                          <Select
+                            value={deactivateReplacementId}
+                            onValueChange={setDeactivateReplacementId}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Pilih pengganti..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activeUsersExcluding(deactivateDialog.userId).map((u) => (
+                                <SelectItem key={u.id} value={u.id}>
+                                  {u.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    ) : (
+                      <p>
+                        Yakin nonaktifkan{" "}
+                        <span className="font-medium text-neutral-800">
+                          {deactivateDialog.userName}
+                        </span>
+                        ? User tidak akan bisa login.
+                      </p>
+                    )}
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+
+              <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                {/* Cancel */}
+                <AlertDialogCancel
+                  disabled={isDeactivating}
+                  className="sm:mr-auto"
+                >
+                  Batal
+                </AlertDialogCancel>
+
+                {/* Nonaktifkan Tanpa Reassign (always shown) */}
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); void handleDeactivateWithoutReassign() }}
+                  disabled={isDeactivating}
+                  className="bg-transparent border border-neutral-200 text-neutral-700 hover:bg-neutral-50 shadow-none"
+                >
+                  {deactivateDialog.leads > 0 || deactivateDialog.clients > 0
+                    ? "Nonaktifkan Tanpa Reassign"
+                    : "Nonaktifkan"}
+                </AlertDialogAction>
+
+                {/* Nonaktifkan & Reassign (only when user has leads/clients) */}
+                {(deactivateDialog.leads > 0 || deactivateDialog.clients > 0) && (
+                  <AlertDialogAction
+                    onClick={(e) => { e.preventDefault(); void handleDeactivateWithReassign() }}
+                    disabled={isDeactivating || !deactivateReplacementId}
+                  >
+                    {isDeactivating ? "Memproses..." : "Nonaktifkan & Reassign"}
+                  </AlertDialogAction>
+                )}
+              </AlertDialogFooter>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Bulk Reassign Confirm Dialog ─────────────────────────────────── */}
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Reassign</AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkLeadCount + bulkClientCount === 0
+                ? `Tidak ada leads atau clients milik ${bulkFromName}. Lanjutkan?`
+                : `Pindahkan ${bulkLeadCount} lead${bulkLeadCount !== 1 ? "s" : ""} dan ${bulkClientCount} client${bulkClientCount !== 1 ? "s" : ""} dari ${bulkFromName} ke ${bulkToName}?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isBulkReassigning}
+              onClick={() => setBulkConfirmOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              disabled={isBulkReassigning}
+              onClick={() => void handleBulkReassign()}
+            >
+              {isBulkReassigning ? "Memproses..." : "Ya, Reassign"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

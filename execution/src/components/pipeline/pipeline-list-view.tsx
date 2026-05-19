@@ -288,7 +288,7 @@ export function PipelineListView({
               className="min-w-[130px]"
             />
             <SortableColHeader
-              label="AE"
+              label="Busdev/AE"
               col="sales.name"
               currentSort={sortCol}
               currentDir={sortDir}

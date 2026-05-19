@@ -2,22 +2,30 @@
 
 | Project | Last Session | Status | Notes |
 |---------|-------------|--------|-------|
-| VF ERP System | 2026-05-19 | In Progress | Pipeline UX: Billing Plan column + Lead Detail fixes |
+| VF ERP System | 2026-05-19 | Completed (Phase 1–3) | Live: https://execution-phi.vercel.app. Roadmap tracker: `directives/VF-ERP-Improvement-Roadmap.md` |
 
 ---
 
 ## Outstanding
 
-- [ ] Push ke GitHub → Vercel deploy
-- [x] **Phase 2C: Analytics** — win rate per AE + industry, revenue trend chart (Recharts)
-- [x] **Phase 2D: Targets** — set monthly/quarterly target, view actual vs target
-- [x] **Phase 2E: Settings** — user management CRUD (admin only)
-- [ ] **Phase 3: clientStatus integration** — derive active/inactive/lead dari Lead data
-- [ ] Veri QC seluruh Phase 1–2 setelah semua pages done
+_Tidak ada. Phase 1–3 selesai dan live di Vercel._
 
 ---
 
 ## Session Log
+
+### 2026-05-19 — Phase 3 clientStatus + Veri QC + GitHub push
+Phase 3 selesai (clientStatus derive dari Lead data). Veri QC CONDITIONAL PASS → CRITICAL fix: targets API missing admin gate (PATCH/DELETE/POST). Phase 3 fixes: comment + backfill script. GitHub push: 136 files, commit 12f32d9.
+- `src/lib/client-status.ts` — baru: `computeClientStatus` + `syncClientStatus`
+- `src/app/api/clients/sync-status/route.ts` — baru: admin-only backfill endpoint
+- `scripts/backfill-client-status.mjs` — baru: one-shot backfill script (26 active, 265 lead)
+- `src/app/api/leads/[id]/stage/route.ts` — +syncClientStatus after transaction
+- `src/app/api/leads/[id]/invoice/route.ts` — +syncClientStatus after transaction
+- `src/app/api/leads/[id]/route.ts` — +syncClientStatus when stage in body
+- `src/app/api/targets/route.ts` — POST upgraded requireAuth → requireAdmin (CRITICAL fix)
+- `src/app/api/targets/[id]/route.ts` — PATCH + DELETE upgraded to requireAdmin (CRITICAL fix)
+
+---
 
 ### 2026-05-19 — Pipeline UX: Billing Plan column + Lead Detail fixes
 Tambah kolom Billing Plan di List View + Kanban, fix Prisma client out-of-sync, restore Description inline edit, pencil button jadi always-visible.

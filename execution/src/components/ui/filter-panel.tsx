@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Filter, Plus, X } from "lucide-react"
+import { Filter, Plus, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +34,8 @@ export type Operator =
   | "lte"
   | "is_empty"
   | "is_not_empty"
+  | "in"
+  | "not_in"
 
 export type MatchMode = "all" | "any"
 
@@ -48,7 +50,7 @@ export interface FilterCondition {
   id: string
   field: string
   operator: Operator
-  value: string
+  value: string | string[]
 }
 
 // ── Operator definitions ──────────────────────────────────────────────────────
@@ -64,13 +66,18 @@ const OPERATOR_LABELS: Record<Operator, string> = {
   lte: "≤",
   is_empty: "is empty",
   is_not_empty: "is not empty",
+  in: "is any of",
+  not_in: "is none of",
 }
 
 const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
   text: ["is", "is_not", "contains", "not_contains", "is_empty", "is_not_empty"],
-  enum: ["is", "is_not", "is_empty", "is_not_empty"],
+  enum: ["is", "is_not", "in", "not_in", "is_empty", "is_not_empty"],
   numeric: ["is", "is_not", "gt", "gte", "lt", "lte", "is_empty", "is_not_empty"],
 }
+
+// Operators that use multi-select value (string[])
+const MULTI_VALUE_OPERATORS: Operator[] = ["in", "not_in"]
 
 // ── Pure helper ───────────────────────────────────────────────────────────────
 
@@ -89,9 +96,15 @@ export function applyConditions<T extends Record<string, unknown>>(
     const fieldVal = get(record, cond.field)
     const { operator, value } = cond
 
+    const noValueOps: Operator[] = ["is_empty", "is_not_empty"]
+
     // Incomplete condition — no value entered yet, don't filter
-    if (operator !== "is_empty" && operator !== "is_not_empty" && value.trim() === "") {
-      return true
+    if (!noValueOps.includes(operator)) {
+      if (Array.isArray(value)) {
+        if (value.length === 0) return true
+      } else {
+        if (value.trim() === "") return true
+      }
     }
 
     if (operator === "is_empty") {
@@ -102,43 +115,52 @@ export function applyConditions<T extends Record<string, unknown>>(
       return fieldVal !== null && fieldVal !== undefined && fieldVal !== ""
     }
 
+    if (operator === "in") {
+      if (!Array.isArray(value) || value.length === 0) return true
+      return value.includes(String(fieldVal ?? ""))
+    }
+
+    if (operator === "not_in") {
+      if (!Array.isArray(value) || value.length === 0) return true
+      return !value.includes(String(fieldVal ?? ""))
+    }
+
+    // From here value is string
+    const strValue = Array.isArray(value) ? value[0] ?? "" : value
+
     if (operator === "contains") {
       return String(fieldVal ?? "")
         .toLowerCase()
-        .includes(value.toLowerCase())
+        .includes(strValue.toLowerCase())
     }
 
     if (operator === "not_contains") {
       return !String(fieldVal ?? "")
         .toLowerCase()
-        .includes(value.toLowerCase())
+        .includes(strValue.toLowerCase())
     }
 
     if (operator === "is") {
       const fieldNum = Number(fieldVal)
-      const condNum = parseFloat(value)
+      const condNum = parseFloat(strValue)
       if (!isNaN(fieldNum) && !isNaN(condNum) && typeof fieldVal === "number") {
         return fieldNum === condNum
       }
-      return (
-        String(fieldVal ?? "").toLowerCase() === value.toLowerCase()
-      )
+      return String(fieldVal ?? "").toLowerCase() === strValue.toLowerCase()
     }
 
     if (operator === "is_not") {
       const fieldNum = Number(fieldVal)
-      const condNum = parseFloat(value)
+      const condNum = parseFloat(strValue)
       if (!isNaN(fieldNum) && !isNaN(condNum) && typeof fieldVal === "number") {
         return fieldNum !== condNum
       }
-      return (
-        String(fieldVal ?? "").toLowerCase() !== value.toLowerCase()
-      )
+      return String(fieldVal ?? "").toLowerCase() !== strValue.toLowerCase()
     }
 
     // Numeric comparisons
     const numVal = Number(fieldVal)
-    const numCond = parseFloat(value)
+    const numCond = parseFloat(strValue)
     if (isNaN(numVal) || isNaN(numCond)) return false
 
     if (operator === "gt") return numVal > numCond
@@ -169,6 +191,7 @@ function FilterRow({ condition, fields, onChange, onRemove }: FilterRowProps) {
   const availableOperators = OPERATORS_BY_TYPE[currentField.type]
   const noValueNeeded =
     condition.operator === "is_empty" || condition.operator === "is_not_empty"
+  const isMultiValue = MULTI_VALUE_OPERATORS.includes(condition.operator)
 
   function handleFieldChange(fieldKey: string) {
     const newField = fields.find((f) => f.key === fieldKey) ?? fields[0]
@@ -177,12 +200,31 @@ function FilterRow({ condition, fields, onChange, onRemove }: FilterRowProps) {
   }
 
   function handleOperatorChange(op: string) {
-    onChange({ ...condition, operator: op as Operator, value: "" })
+    const newOp = op as Operator
+    // Reset value to appropriate empty type
+    const resetValue = MULTI_VALUE_OPERATORS.includes(newOp) ? [] : ""
+    onChange({ ...condition, operator: newOp, value: resetValue })
   }
 
   function handleValueChange(value: string) {
     onChange({ ...condition, value })
   }
+
+  function handleMultiValueToggle(optionValue: string) {
+    const current = Array.isArray(condition.value) ? condition.value : []
+    const next = current.includes(optionValue)
+      ? current.filter((v) => v !== optionValue)
+      : [...current, optionValue]
+    onChange({ ...condition, value: next })
+  }
+
+  // Derived: single string value for non-multi operators
+  const strValue = Array.isArray(condition.value)
+    ? ""
+    : condition.value
+
+  // Derived: array value for multi operators
+  const arrValue = Array.isArray(condition.value) ? condition.value : []
 
   return (
     <div className="flex items-center gap-2 px-4 py-2">
@@ -220,10 +262,72 @@ function FilterRow({ condition, fields, onChange, onRemove }: FilterRowProps) {
           <span className="text-xs text-neutral-400 italic">
             no value needed
           </span>
+        ) : isMultiValue && currentField.options ? (
+          // Multi-select: checkbox list inside a popover-style container
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "flex h-8 w-full items-center justify-between rounded-md border border-neutral-200 bg-white px-3 text-sm shadow-sm transition-colors hover:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-accent-500",
+                  arrValue.length === 0 && "text-neutral-400"
+                )}
+              >
+                {arrValue.length === 0
+                  ? "Select values..."
+                  : arrValue.length === 1
+                    ? (currentField.options.find((o) => o.value === arrValue[0])?.label ?? arrValue[0])
+                    : `${arrValue.length} selected`}
+                <ChevronDown className="h-3.5 w-3.5 text-neutral-400 shrink-0 ml-1" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-48 p-1.5">
+              {currentField.options.map((opt) => {
+                const checked = arrValue.includes(opt.value)
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handleMultiValueToggle(opt.value)}
+                    className="flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm hover:bg-neutral-100 transition-colors text-left"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                        checked
+                          ? "border-accent-600 bg-accent-600 text-white"
+                          : "border-neutral-300 bg-white"
+                      )}
+                      aria-hidden
+                    >
+                      {checked && (
+                        <svg
+                          width="10"
+                          height="8"
+                          viewBox="0 0 10 8"
+                          fill="none"
+                          className="block"
+                        >
+                          <path
+                            d="M1 4l2.5 2.5L9 1"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </span>
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </PopoverContent>
+          </Popover>
         ) : currentField.type === "enum" &&
           (condition.operator === "is" || condition.operator === "is_not") &&
           currentField.options ? (
-          <Select value={condition.value} onValueChange={handleValueChange}>
+          <Select value={strValue} onValueChange={handleValueChange}>
             <SelectTrigger className="h-8 text-sm w-full">
               <SelectValue placeholder="Select value..." />
             </SelectTrigger>
@@ -239,7 +343,7 @@ function FilterRow({ condition, fields, onChange, onRemove }: FilterRowProps) {
           <Input
             type="number"
             className="h-8 text-sm"
-            value={condition.value}
+            value={strValue}
             onChange={(e) => handleValueChange(e.target.value)}
             placeholder="Enter number..."
           />
@@ -247,7 +351,7 @@ function FilterRow({ condition, fields, onChange, onRemove }: FilterRowProps) {
           <Input
             type="text"
             className="h-8 text-sm"
-            value={condition.value}
+            value={strValue}
             onChange={(e) => handleValueChange(e.target.value)}
             placeholder="Enter value..."
           />

@@ -67,7 +67,7 @@ const KANBAN_FIELD_OPTIONS: Array<{ value: KanbanField; label: string }> = [
   { value: "code", label: "Customer Code" },
   { value: "productLine", label: "Product Line" },
   { value: "revenue", label: "Revenue & Quarter" },
-  { value: "ae", label: "Account Executive" },
+  { value: "ae", label: "Busdev/AE" },
   { value: "gateWarning", label: "Gate Warnings" },
 ]
 
@@ -182,7 +182,7 @@ export function PipelineKanbanLoader() {
     { key: "productLine",      label: "Product Line",      type: "enum", options: PRODUCT_LINE_OPTIONS },
     { key: "projectType",      label: "Project Type",      type: "enum",
       options: [{ value: "one_time", label: "One Time" }, { value: "retainer", label: "Retainer" }] },
-    { key: "salesId",          label: "Account Executive", type: "enum",
+    { key: "salesId",          label: "Busdev/AE", type: "enum",
       options: salesOptions.map((s) => ({ value: s.id, label: s.name })) },
     { key: "projectedRevenue", label: "Projected Revenue", type: "numeric" },
     { key: "actualRevenue",    label: "Actual Revenue",    type: "numeric" },

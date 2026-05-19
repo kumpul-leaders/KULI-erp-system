@@ -184,7 +184,7 @@ function ClientDrillTable({ clients }: { clients: SerializedClient[] }) {
             Industry
           </th>
           <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
-            AE
+            Busdev/AE
           </th>
           <th className="text-right text-xs font-medium text-neutral-400 pb-2">
             Annual Value

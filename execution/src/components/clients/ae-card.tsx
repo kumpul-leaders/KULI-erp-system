@@ -59,7 +59,7 @@ export function AeCard({ clientId, ae, aeOptions }: AeCardProps) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-neutral-800">AE Assigned</h2>
+        <h2 className="font-semibold text-neutral-800">Busdev/AE Assigned</h2>
         {!editing ? (
           <Button
             size="icon"

@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
 import { Topbar } from "@/components/layout/topbar"
-import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { AnalyticsContent } from "@/components/analytics/analytics-content"
 import { $Enums } from "@prisma/client"
@@ -18,6 +16,7 @@ export type WinRateByAE = {
   aeName: string
   total: number
   won: number
+  lost: number
   winRate: number
   revenue: number
 }
@@ -46,6 +45,11 @@ export type ClientRetention = {
   rate: number
 }
 
+export type AEUser = {
+  id: string
+  name: string
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -54,6 +58,10 @@ const WON_STAGES: $Enums.PipelineStage[] = [
   $Enums.PipelineStage.closed_won,
   $Enums.PipelineStage.invoiced,
   $Enums.PipelineStage.contract_renewal,
+]
+
+const LOST_STAGES: $Enums.PipelineStage[] = [
+  $Enums.PipelineStage.lost_deal,
 ]
 
 const FUNNEL_ORDER: Array<{ key: string; label: string }> = [
@@ -73,19 +81,116 @@ const SHORT_MONTHS = [
 ]
 
 // ---------------------------------------------------------------------------
-// Server component
+// Date helpers
+// ---------------------------------------------------------------------------
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
+}
+
+function endOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+}
+
+/**
+ * Given raw searchParams from Next.js, resolve the date range window.
+ * Returns { from, to } as Date | undefined. undefined means no filter.
+ */
+function resolveDateRange(
+  fromParam: string | undefined,
+  toParam: string | undefined,
+): { from: Date | undefined; to: Date | undefined } {
+  if (!fromParam && !toParam) return { from: undefined, to: undefined }
+
+  const from = fromParam ? new Date(fromParam) : undefined
+  const to = toParam ? new Date(toParam) : undefined
+
+  // Validate dates
+  if (from && isNaN(from.getTime())) return { from: undefined, to: undefined }
+  if (to && isNaN(to.getTime())) return { from: undefined, to: undefined }
+
+  return {
+    from: from ? startOfDay(from) : undefined,
+    to: to ? endOfDay(to) : undefined,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Billing plan helper (for revenue trend)
 // ---------------------------------------------------------------------------
 
 function toBillingPlan(year: number, month: number): string {
   return `${String(year).slice(2)}-${String(month).padStart(2, "0")}`
 }
 
-export default async function AnalyticsPage() {
+// ---------------------------------------------------------------------------
+// Server component
+// ---------------------------------------------------------------------------
+
+interface AnalyticsPageProps {
+  searchParams: Promise<{
+    from?: string
+    to?: string
+    aeIds?: string
+  }>
+}
+
+export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
+  const params = await searchParams
+  const { from, to } = resolveDateRange(params.from, params.to)
+
+  // Parse AE filter — comma-separated user IDs
+  const aeIds: string[] =
+    params.aeIds && params.aeIds.trim().length > 0
+      ? params.aeIds.split(",").map((s) => s.trim()).filter(Boolean)
+      : []
+
   const now = new Date()
+
+  // ---------------------------------------------------------------------------
+  // Date range where clauses
+  // Closed-stage leads: filter on closedAt when present; fallback to createdAt
+  // Funnel/all leads: filter on createdAt
+  // ---------------------------------------------------------------------------
+
+  const closedDateFilter =
+    from || to
+      ? {
+          OR: [
+            {
+              closedAt: {
+                ...(from ? { gte: from } : {}),
+                ...(to ? { lte: to } : {}),
+              },
+            },
+            {
+              closedAt: null,
+              createdAt: {
+                ...(from ? { gte: from } : {}),
+                ...(to ? { lte: to } : {}),
+              },
+            },
+          ],
+        }
+      : {}
+
+  const createdDateFilter =
+    from || to
+      ? {
+          createdAt: {
+            ...(from ? { gte: from } : {}),
+            ...(to ? { lte: to } : {}),
+          },
+        }
+      : {}
+
+  // AE filter clause
+  const aeFilter = aeIds.length > 0 ? { salesId: { in: aeIds } } : {}
 
   const [
     allLeadsByAE,
     wonLeadsByAE,
+    lostLeadsByAE,
     aeRevenueByAE,
     leadsForIndustry,
     revenueLeads,
@@ -93,49 +198,76 @@ export default async function AnalyticsPage() {
     renewedCount,
     totalClientCount,
     aeUsers,
+    allAEUsers,
   ] = await Promise.all([
-    // 1a. All leads per AE (has salesId)
+    // 1a. All leads per AE (has salesId) — funnel filter = createdAt
     prisma.lead.groupBy({
       by: ["salesId"],
-      where: { salesId: { not: null } },
+      where: {
+        salesId: { not: null },
+        ...aeFilter,
+        ...createdDateFilter,
+      },
       _count: { _all: true },
     }),
 
-    // 1b. Won leads per AE
+    // 1b. Won leads per AE — filter on closedAt
     prisma.lead.groupBy({
       by: ["salesId"],
       where: {
         salesId: { not: null },
         stage: { in: WON_STAGES },
+        ...aeFilter,
+        ...closedDateFilter,
       },
       _count: { _all: true },
     }),
 
-    // 6. Revenue per AE (won only)
+    // 1c. Lost leads per AE — filter on closedAt
+    prisma.lead.groupBy({
+      by: ["salesId"],
+      where: {
+        salesId: { not: null },
+        stage: { in: LOST_STAGES },
+        ...aeFilter,
+        ...closedDateFilter,
+      },
+      _count: { _all: true },
+    }),
+
+    // 6. Revenue per AE (won only) — filter on closedAt
     prisma.lead.groupBy({
       by: ["salesId"],
       where: {
         salesId: { not: null },
         stage: { in: WON_STAGES },
         actualRevenue: { not: null },
+        ...aeFilter,
+        ...closedDateFilter,
       },
       _sum: { actualRevenue: true },
     }),
 
-    // 2. All leads with client industry
+    // 2. All leads with client industry — createdAt filter
     prisma.lead.findMany({
+      where: {
+        ...aeFilter,
+        ...createdDateFilter,
+      },
       select: {
         stage: true,
         client: { select: { industry: true } },
       },
     }),
 
-    // 3. Won leads with revenue + billingPlan for trend (excludes contract_renewal)
+    // 3. Won leads with revenue + billingPlan for trend (excludes contract_renewal) — closedAt filter
     prisma.lead.findMany({
       where: {
         stage: { in: ["closed_won", "invoiced"] },
         actualRevenue: { not: null },
         billingPlan: { not: null },
+        ...aeFilter,
+        ...closedDateFilter,
       },
       select: {
         actualRevenue: true,
@@ -143,26 +275,44 @@ export default async function AnalyticsPage() {
       },
     }),
 
-    // 4. Funnel stage counts
+    // 4. Funnel stage counts — createdAt filter
     prisma.lead.groupBy({
       by: ["stage"],
+      where: {
+        ...aeFilter,
+        ...createdDateFilter,
+      },
       _count: { _all: true },
     }),
 
-    // 5a. Renewed client count (distinct clientIds with contract_renewal)
+    // 5a. Renewed client count (distinct clientIds with contract_renewal) — closedAt filter
     prisma.lead.findMany({
-      where: { stage: "contract_renewal" },
+      where: {
+        stage: "contract_renewal",
+        ...aeFilter,
+        ...closedDateFilter,
+      },
       select: { clientId: true },
       distinct: ["clientId"],
     }),
 
-    // 5b. Total client count
+    // 5b. Total client count (unfiltered — retention denominator is always total clients)
     prisma.client.count(),
 
-    // AE user names
+    // AE users for name resolution (account + admin can own leads)
     prisma.user.findMany({
-      where: { role: "account" },
+      where: { role: { in: ["account", "admin"] } },
       select: { id: true, name: true },
+    }),
+
+    // All active AE/account+admin users for filter dropdown
+    prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: { in: ["account", "admin"] },
+      },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     }),
   ])
 
@@ -189,6 +339,9 @@ export default async function AnalyticsPage() {
   const wonByAEMap = new Map(
     wonLeadsByAE.map((g) => [g.salesId, g._count._all])
   )
+  const lostByAEMap = new Map(
+    lostLeadsByAE.map((g) => [g.salesId, g._count._all])
+  )
   const revenueByAEMap = new Map(
     aeRevenueByAE.map((g) => [g.salesId, Number(g._sum.actualRevenue ?? 0)])
   )
@@ -198,12 +351,14 @@ export default async function AnalyticsPage() {
       const salesId = g.salesId as string
       const total = g._count._all
       const won = wonByAEMap.get(salesId) ?? 0
+      const lost = lostByAEMap.get(salesId) ?? 0
       const revenue = revenueByAEMap.get(salesId) ?? 0
       const winRate = total > 0 ? Math.round((won / total) * 100) : 0
       return {
         aeName: aeNameMap.get(salesId) ?? "Unknown",
         total,
         won,
+        lost,
         winRate,
         revenue,
       }
@@ -242,12 +397,12 @@ export default async function AnalyticsPage() {
     .slice(0, 8)
 
   // ---------------------------------------------------------------------------
-  // 3: Revenue Trend (12 months)
+  // 3: Revenue Trend (12 months rolling from now)
   // ---------------------------------------------------------------------------
 
   const revenueByMonth = new Map<string, number>()
 
-  // Build the 12-month billing plan → display key map and pre-populate so empty months render as 0
+  // Build the 12-month billing plan → display key map
   const billingPlanToKey = new Map<string, string>()
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -301,12 +456,7 @@ export default async function AnalyticsPage() {
 
   return (
     <>
-      <Topbar title="Analytics">
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
-      </Topbar>
+      <Topbar title="Analytics" />
       <AnalyticsContent
         winRateByAE={winRateByAE}
         winRateByIndustry={winRateByIndustry}
@@ -314,6 +464,10 @@ export default async function AnalyticsPage() {
         pipelineFunnel={pipelineFunnel}
         clientRetention={clientRetention}
         aePerformance={winRateByAE}
+        allAEUsers={allAEUsers}
+        activeFrom={params.from}
+        activeTo={params.to}
+        activeAeIds={params.aeIds}
       />
     </>
   )

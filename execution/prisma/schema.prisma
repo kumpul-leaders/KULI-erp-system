@@ -101,6 +101,7 @@ model User {
   documentsUploaded    PipelineDocument[]
   stageChangesActioned LeadStageHistory[]
   fieldChangesActioned LeadFieldHistory[]
+  targets              Target[]
 
   @@map("users")
 }
@@ -241,9 +242,16 @@ model Target {
   revenueTarget   Decimal    @map("revenue_target") @db.Decimal(15, 2)
   newClientTarget Int        @default(0) @map("new_client_target")
   type            TargetType @default(monthly)
+  salesId         String?    @map("sales_id")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
-  @@unique([periodMonth, periodYear, type])
+  sales           User?      @relation(fields: [salesId], references: [id])
+
+  // Note: PostgreSQL treats NULLs as distinct in unique indexes, so multiple
+  // company-wide (salesId = null) rows for the same period+type would NOT conflict
+  // at the DB level. The API layer enforces uniqueness for null-salesId rows via
+  // findFirst + upsert logic instead of relying on this constraint for that case.
+  @@unique([periodMonth, periodYear, type, salesId])
   @@map("targets")
 }

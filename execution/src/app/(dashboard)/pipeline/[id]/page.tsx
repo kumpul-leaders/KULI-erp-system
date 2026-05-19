@@ -6,6 +6,7 @@ import {
   LeadDetailActions,
 } from "@/components/pipeline/lead-detail-client"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 import type { ProductLine } from "@/types"
 
 // ── Product line label map ───────────────────────────────────────────────────
@@ -70,9 +71,24 @@ interface LeadDetailPageProps {
 export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const { id } = await params
 
-  const lead = await fetchLead(id)
+  const supabase = await createClient()
+  const {
+    data: { user: supabaseUser },
+  } = await supabase.auth.getUser()
+
+  const [lead, currentDbUser] = await Promise.all([
+    fetchLead(id),
+    supabaseUser?.email
+      ? prisma.user.findUnique({
+          where: { email: supabaseUser.email },
+          select: { role: true },
+        })
+      : null,
+  ])
 
   if (!lead) notFound()
+
+  const userRole = currentDbUser?.role === "admin" ? "admin" : "account"
 
   // Serialize: Date → ISO string, Decimal → number
   const serializedLead = {
@@ -134,7 +150,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   return (
     <>
       <Topbar title={lead.client.name}>
-        <LeadDetailActions leadId={lead.id} stage={lead.stage} />
+        <LeadDetailActions leadId={lead.id} stage={lead.stage} userRole={userRole} />
       </Topbar>
       <LeadDetailClient lead={serializedLead} />
     </>

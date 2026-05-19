@@ -4,7 +4,7 @@ import { useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Pencil, Check, X, ChevronDown, MoreHorizontal } from "lucide-react"
+import { Pencil, Check, X, ChevronDown, MoreHorizontal, Trash2, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -880,7 +880,7 @@ function AeCard({ sales }: AeCardProps) {
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-      <h2 className="font-semibold text-neutral-800 mb-3">Account Executive</h2>
+      <h2 className="font-semibold text-neutral-800 mb-3">Busdev/AE</h2>
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
           <span className="text-xs font-semibold text-accent-700">{initials}</span>
@@ -889,7 +889,7 @@ function AeCard({ sales }: AeCardProps) {
           <p className="text-sm font-medium text-neutral-800">
             {sales?.name ?? "Unassigned"}
           </p>
-          <p className="text-xs text-neutral-500">Account Executive</p>
+          <p className="text-xs text-neutral-500">Busdev/AE</p>
         </div>
       </div>
     </div>
@@ -1050,17 +1050,92 @@ export function LeadDetailClient({ lead }: LeadDetailClientProps) {
   )
 }
 
+// ── Delete Lead button (admin only) ──────────────────────────────────────────
+
+interface DeleteLeadButtonProps {
+  leadId: string
+}
+
+function DeleteLeadButton({ leadId }: DeleteLeadButtonProps) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to delete lead")
+      }
+      toast.success("Lead dihapus")
+      router.push("/pipeline")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+      setDeleting(false)
+      setOpen(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 gap-1.5 text-danger-600 hover:text-danger-700 hover:bg-danger-50"
+        onClick={() => setOpen(true)}
+        type="button"
+        aria-label="Delete lead"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+        Delete Lead
+      </Button>
+
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Lead ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-danger-600 hover:bg-danger-700 text-white"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Menghapus...
+                </span>
+              ) : (
+                "Hapus"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
 // ── Topbar actions (exported separately for use in server page) ───────────────
 
 export interface LeadDetailActionsProps {
   leadId: string
   stage: PipelineStage
+  userRole: "admin" | "account"
 }
 
-export function LeadDetailActions({ leadId, stage }: LeadDetailActionsProps) {
+export function LeadDetailActions({ leadId, stage, userRole }: LeadDetailActionsProps) {
   return (
     <>
       <StageActions leadId={leadId} stage={stage} />
+      {userRole === "admin" && <DeleteLeadButton leadId={leadId} />}
       <Button variant="ghost" size="icon" className="h-8 w-8" disabled aria-disabled>
         <MoreHorizontal className="h-4 w-4" />
         <span className="sr-only">More options</span>

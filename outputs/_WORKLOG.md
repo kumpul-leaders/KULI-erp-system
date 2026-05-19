@@ -2,17 +2,30 @@
 
 | Project | Last Session | Status | Notes |
 |---------|-------------|--------|-------|
-| VF ERP System | 2026-05-19 | Completed (Phase 1–3) | Live: https://execution-phi.vercel.app. Roadmap tracker: `directives/VF-ERP-Improvement-Roadmap.md` |
+| VF ERP System | 2026-05-19 | Sprint 1 Complete | Live: https://execution-phi.vercel.app. Roadmap: `directives/VF-ERP-Improvement-Roadmap.md`. Sprint 2 next. |
 
 ---
 
 ## Outstanding
 
-_Tidak ada. Phase 1–3 selesai dan live di Vercel._
+Sprint 2 (11 items): C1 health null default, C2 AE dropdown restriction, Dashboard expiring contracts value, KPI trend indicators, Pipeline URL filter persist, Settings toast/loading, Targets delete dialog, clientStatus manual override, + 3 lainnya.
 
 ---
 
 ## Session Log
+
+### 2026-05-19 — Sprint 1 (7 critical items) + Analytics fix
+Sprint 1 selesai. 23 files changed, commit 5c38078, pushed ke GitHub → Vercel auto-deploy.
+- G1: Rename "Account Executive" → "Busdev/AE" — 8 komponen (`pipeline-kanban-loader.tsx`, `clients-table.tsx`, `dashboard-content.tsx`, `ae-card.tsx`, `lead-detail-client.tsx`, `pipeline-list-view.tsx`, `add-client-sheet.tsx`, `edit-client-sheet.tsx`)
+- G2: Reassign resigned AE — `api/leads/bulk-reassign/route.ts` (baru), Smart Deactivate Dialog + Bulk Reassign section di `settings-content.tsx`, lead/client count queries di `settings/page.tsx`
+- P1: Delete lead — hard delete admin-only di `api/leads/[id]/route.ts`, `DeleteLeadButton` di `lead-detail-client.tsx`
+- P1: Filter operators extended — `filter-panel.tsx`: contains, not_contains, is_empty, is_not_empty, in, not_in (multi-select Popover)
+- A1+A2: Analytics date range + AE filter — preset bar + URL-driven di `analytics-content.tsx`, Prisma queries di `analytics/page.tsx`
+- A-Export: CSV export client-side Blob di `analytics-content.tsx`
+- T1: Target per AE — schema `salesId` nullable (prisma db push), 3 tabs di `targets-content.tsx`, AE selector di `targets/page.tsx`
+- Fix: `analytics/page.tsx` aeUsers query role: "account" → role: { in: ["account","admin"] }
+- Fix: `settings-content.tsx` AlertDialog footer → AlertDialogAction/AlertDialogCancel semantics
+- `directives/VF-ERP-Improvement-Roadmap.md` — dibuat + dipindah dari outputs; Sprint 1 semua ✅
 
 ### 2026-05-19 — Phase 3 clientStatus + Veri QC + GitHub push
 Phase 3 selesai (clientStatus derive dari Lead data). Veri QC CONDITIONAL PASS → CRITICAL fix: targets API missing admin gate (PATCH/DELETE/POST). Phase 3 fixes: comment + backfill script. GitHub push: 136 files, commit 12f32d9.

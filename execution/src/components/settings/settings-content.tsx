@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Pencil, UserPlus } from "lucide-react"
+import { Loader2, MoreHorizontal, Pencil, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +31,13 @@ import {
   AlertDialogCancel,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import type { Role } from "@/types"
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -56,11 +63,12 @@ interface SettingsContentProps {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ROLE_OPTIONS: Role[] = ["admin", "commercial_director", "account", "operation", "hr", "finance"]
+const ROLE_OPTIONS: Role[] = ["admin", "commercial_director", "account_manager", "account", "operation", "hr", "finance"]
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Super Admin",
   commercial_director: "Commercial Director",
+  account_manager: "Account Manager",
   account: "Busdev/AE",
   operation: "Operations",
   hr: "HR",
@@ -70,6 +78,7 @@ const ROLE_LABEL: Record<string, string> = {
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-purple-100 text-purple-700",
   commercial_director: "bg-indigo-100 text-indigo-700",
+  account_manager: "bg-violet-100 text-violet-700",
   account: "bg-blue-100 text-blue-700",
   operation: "bg-green-100 text-green-700",
   hr: "bg-orange-100 text-orange-700",
@@ -449,7 +458,7 @@ export function SettingsContent({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       {/* ── Card 1: Team Members ─────────────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
         <div className="flex items-center justify-between mb-4">
@@ -522,42 +531,41 @@ export function SettingsContent({
                     </span>
                   </td>
                   {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 text-xs gap-1"
-                          onClick={() => openEditSheet(user)}
-                        >
-                          <Pencil className="h-3 w-3" />
-                          Edit
-                        </Button>
-                        {user.isActive ? (
+                    <td className="px-4 py-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs text-danger-600 hover:text-danger-700 hover:bg-danger-50"
-                            onClick={() => openDeactivateDialog(user)}
+                            className="h-7 w-7 p-0 text-neutral-400 hover:text-neutral-700"
                           >
-                            Deactivate
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-success-50"
-                            onClick={() => void handleActivate(user.id)}
-                            disabled={loadingUserId === user.id}
-                          >
-                            {loadingUserId === user.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              "Activate"
-                            )}
-                          </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={() => openEditSheet(user)}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {user.isActive ? (
+                            <DropdownMenuItem
+                              className="text-danger-600 focus:text-danger-700"
+                              onClick={() => openDeactivateDialog(user)}
+                            >
+                              Deactivate
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="text-emerald-600 focus:text-emerald-700"
+                              onClick={() => void handleActivate(user.id)}
+                              disabled={loadingUserId === user.id}
+                            >
+                              {loadingUserId === user.id ? "Loading..." : "Activate"}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   )}
                 </tr>

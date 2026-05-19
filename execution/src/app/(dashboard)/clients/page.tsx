@@ -69,7 +69,7 @@ async function fetchClients(search: string, sort: string, dir: string) {
 
 async function fetchAeOptions() {
   const users = await prisma.user.findMany({
-    where: { isActive: true, role: { in: ["account", "admin"] } },
+    where: { isActive: true, role: { in: ["account", "admin", "account_manager"] } },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   })

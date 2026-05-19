@@ -319,9 +319,9 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     // 5b. Total client count (unfiltered — retention denominator is always total clients)
     prisma.client.count(),
 
-    // AE users for name resolution (account + admin + commercial_director can own leads)
+    // AE users for name resolution (account + admin + commercial_director + account_manager can own leads)
     prisma.user.findMany({
-      where: { role: { in: ["account", "admin", "commercial_director"] } },
+      where: { role: { in: ["account", "admin", "commercial_director", "account_manager"] } },
       select: { id: true, name: true },
     }),
 
@@ -329,7 +329,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     prisma.user.findMany({
       where: {
         isActive: true,
-        role: { in: ["account", "admin", "commercial_director"] },
+        role: { in: ["account", "admin", "commercial_director", "account_manager"] },
       },
       select: { id: true, name: true },
       orderBy: { name: "asc" },

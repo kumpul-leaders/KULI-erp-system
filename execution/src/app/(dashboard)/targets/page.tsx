@@ -112,11 +112,11 @@ export default async function TargetsPage({
     quarterlyRevenueAgg,
     quarterlyNewClientLeads,
   ] = await Promise.all([
-    // 0. Active AEs for the selector (account + admin roles)
+    // 0. Active AEs for the selector (account + admin + account_manager roles)
     prisma.user.findMany({
       where: {
         isActive: true,
-        role: { in: ["account", "admin"] },
+        role: { in: ["account", "admin", "account_manager"] },
       },
       select: { id: true, name: true },
       orderBy: { name: "asc" },

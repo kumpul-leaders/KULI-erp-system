@@ -45,7 +45,7 @@ async function fetchClient(id: string) {
 
 async function fetchAeOptions() {
   return prisma.user.findMany({
-    where: { isActive: true, role: { in: ["account", "admin"] } },
+    where: { isActive: true, role: { in: ["account", "admin", "account_manager"] } },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   })

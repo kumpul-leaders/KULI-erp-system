@@ -2,17 +2,30 @@
 
 | Project | Last Session | Status | Notes |
 |---------|-------------|--------|-------|
-| VF ERP System | 2026-05-19 | Sprint 1 Complete | Live: https://execution-phi.vercel.app. Roadmap: `directives/VF-ERP-Improvement-Roadmap.md`. Sprint 2 next. |
+| VF ERP System | 2026-05-19 | Sprint 2 Complete | Live: https://vf-erp.vercel.app. Roadmap: `directives/VF-ERP-Improvement-Roadmap.md`. Sprint 3 next. |
 
 ---
 
 ## Outstanding
 
-Sprint 2 (11 items): C1 health null default, C2 AE dropdown restriction, Dashboard expiring contracts value, KPI trend indicators, Pipeline URL filter persist, Settings toast/loading, Targets delete dialog, clientStatus manual override, + 3 lainnya.
+Sprint 3 (8 items): Analytics funnel conversion rates, Client Retention fix (2 metrics), Win Rate formula fix, Revenue Trend include contract_renewal, Clients multi-field search, contract urgency badge, Notes field di Add Client, Pipeline inline actual revenue edit.
 
 ---
 
 ## Session Log
+
+### 2026-05-19 — Sprint 2 (11 UX/flow items)
+Sprint 2 selesai. 12 files changed (1 baru: `edit-status-button.tsx`), commit e63c934, deployed ke vf-erp.vercel.app.
+- C1: `add-client-sheet.tsx` — healthStatus default null, "Not set" option
+- C2: `clients/page.tsx` + `clients/[id]/page.tsx` — aeOptions filter: role account/admin + isActive
+- P2: `pipeline-card.tsx` + `pipeline-kanban-loader.tsx` — billingPlan KanbanField option
+- Dashboard: `dashboard/page.tsx` — monthlyValue/annualValue di serialization; prev month revenue query
+- Dashboard: `dashboard-content.tsx` — expiry shows contract value; drill-down search+sort; TrendBadge ↑↓ % MTD
+- Pipeline: `pipeline-kanban.tsx` — info note di closed_won column
+- Pipeline: `pipeline/page.tsx` + `pipeline-kanban-loader.tsx` — filter persist via ?filter= base64 JSON
+- Settings: `settings-content.tsx` — loadingUserId state + Loader2 spinner + sonner toast
+- Targets: `targets-content.tsx` — AlertDialog delete confirmation
+- Clients: `clients/[id]/page.tsx` + `edit-status-button.tsx` (baru) — admin-only Edit Status Sheet
 
 ### 2026-05-19 — Sprint 1 (7 critical items) + Analytics fix
 Sprint 1 selesai. 23 files changed, commit 5c38078, pushed ke GitHub → Vercel auto-deploy.

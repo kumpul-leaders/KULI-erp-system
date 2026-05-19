@@ -1,6 +1,6 @@
 # VF ERP — Improvement Roadmap
 **Last Updated:** 2026-05-19
-**Status:** Sprint 1 Complete
+**Status:** Sprint 2 Complete
 **Live URL:** https://execution-phi.vercel.app
 
 ---
@@ -14,7 +14,7 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items. Scope: CRM + BizDe
 | Sprint | Items | Done | Status |
 |--------|-------|------|--------|
 | Sprint 1 — Critical | 7 | 7 | ✅ Complete |
-| Sprint 2 — UX/Flow | 11 | 0 | 🔲 Not Started |
+| Sprint 2 — UX/Flow | 11 | 11 | ✅ Complete |
 | Sprint 3 — Data Accuracy | 8 | 0 | 🔲 Not Started |
 | Sprint 4 — Nice-to-Have | 6 | 0 | 🔲 Not Started |
 
@@ -49,17 +49,17 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items. Scope: CRM + BizDe
 
 | # | Item | Area | Status | Notes |
 |---|------|------|--------|-------|
-| 2.1 | C1: Health status null default untuk new client | Clients | 🔲 | Ubah default dari "healthy" ke null di Add Client form. Files: `add-client-sheet.tsx`, `api/clients/route.ts` |
-| 2.2 | C2: Primary AE dropdown restricted ke role Busdev/AE (active only) | Clients | 🔲 | Files: `add-client-sheet.tsx`, `edit-client-sheet.tsx`, `api/clients/route.ts` |
-| 2.3 | P2: Billing Plan di Kanban Card Fields | Pipeline | 🔲 | Tambah billing_plan ke opsi Card Fields popover. File: `pipeline-card.tsx` |
-| 2.4 | Dashboard: Expiring contracts tampilkan nilai kontrak | Dashboard | 🔲 | Tambah monthlyValue/annualValue di expiry list. Files: `dashboard/page.tsx`, `dashboard-content.tsx` |
-| 2.5 | Dashboard: Drill-down sort + filter | Dashboard | 🔲 | Add sort header + search di Sheet drill-down. File: `dashboard-content.tsx` |
-| 2.6 | Dashboard: KPI trend indicator — ↑↓ % vs last month per KPI card | Dashboard | 🔲 | Files: `dashboard/page.tsx` (tambah query prev month), `dashboard-content.tsx` |
-| 2.7 | Pipeline: Visual cue closed_won → invoiced blocked | Pipeline | 🔲 | Subtle badge/tooltip di closed_won column: "Gunakan 'Request Invoice'". File: `pipeline-kanban.tsx` |
-| 2.8 | Pipeline: Filter persist di URL params | Pipeline | 🔲 | Encode active conditions ke URL params. Files: `pipeline/page.tsx`, `pipeline-kanban-loader.tsx` |
-| 2.9 | Settings: Loading state + toast untuk activate/deactivate | Settings | 🔲 | Button loading state + sonner toast sukses/gagal. File: `settings-content.tsx` |
-| 2.10 | Targets: Confirmation dialog sebelum delete | Targets | 🔲 | AlertDialog sebelum DELETE. File: `targets-content.tsx` |
-| 2.11 | clientStatus: Manual override admin — Edit Status button di client detail | Clients | 🔲 | Admin only. Files: `clients/[id]/page.tsx`, `api/clients/[id]/route.ts` |
+| 2.1 | C1: Health status null default untuk new client | Clients | ✅ | `initialForm.healthStatus = ""`, kirim null ke API, "Not set" option di Select |
+| 2.2 | C2: Primary AE dropdown restricted ke role Busdev/AE (active only) | Clients | ✅ | `clients/page.tsx` + `clients/[id]/page.tsx` query filter: `role: { in: ["account","admin"] }, isActive: true` |
+| 2.3 | P2: Billing Plan di Kanban Card Fields | Pipeline | ✅ | `billingPlan` added to KanbanField type + KANBAN_FIELD_OPTIONS + render block di card |
+| 2.4 | Dashboard: Expiring contracts tampilkan nilai kontrak | Dashboard | ✅ | monthlyValue/annualValue included in serialization + rendered di expiry list |
+| 2.5 | Dashboard: Drill-down sort + filter | Dashboard | ✅ | LeadDrillTable + ClientDrillTable: search input + clickable sort headers |
+| 2.6 | Dashboard: KPI trend indicator — ↑↓ % vs last month per KPI card | Dashboard | ✅ | Prev month revenue query + TrendBadge helper + display di Revenue Won MTD card |
+| 2.7 | Pipeline: Visual cue closed_won → invoiced blocked | Pipeline | ✅ | Info note di closed_won column: "Gunakan Request Invoice untuk advance" |
+| 2.8 | Pipeline: Filter persist di URL params | Pipeline | ✅ | base64 JSON encode/decode via ?filter= param, synced via useEffect |
+| 2.9 | Settings: Loading state + toast activate/deactivate | Settings | ✅ | loadingUserId state + Loader2 spinner + sonner toast sukses/gagal |
+| 2.10 | Targets: Confirmation dialog sebelum delete | Targets | ✅ | AlertDialog dengan AlertDialogAction/Cancel |
+| 2.11 | clientStatus: Manual override admin | Clients | ✅ | EditStatusButton component baru (Sheet: healthStatus + clientStatus), admin-only di client detail |
 
 ---
 

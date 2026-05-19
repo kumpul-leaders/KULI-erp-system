@@ -1,20 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuthenticated, requireCanCreateLeads, requireAdmin } from "@/lib/require-role"
 import { syncClientStatus } from "@/lib/client-status"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
-
-// ── Auth helper ─────────────────────────────────────────────────────────────
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
 
 // ── Validation helpers ──────────────────────────────────────────────────────
 
@@ -96,7 +84,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAuth()
+  const user = await requireAuthenticated()
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -136,17 +124,26 @@ export async function GET(
 }
 
 // ── PATCH /api/leads/[id] ───────────────────────────────────────────────────
+// Admin/Director/Account can edit. Account role: own leads only.
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAuth()
+  const user = await requireCanCreateLeads()
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params
+
+  // Ownership check for account role
+  if (user.role === "account") {
+    const lead = await prisma.lead.findUnique({ where: { id }, select: { salesId: true } })
+    if (!lead || lead.salesId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+  }
 
   let body: Record<string, unknown>
   try {
@@ -291,14 +288,15 @@ export async function PATCH(
 }
 
 // ── DELETE /api/leads/[id] ──────────────────────────────────────────────────
+// Admin only.
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAuth()
+  const user = await requireAdmin()
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params

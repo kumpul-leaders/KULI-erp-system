@@ -1,20 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireCanCreateLeads } from "@/lib/require-role"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import type { DocumentType } from "@/types"
-
-// ── Auth helper ─────────────────────────────────────────────────────────────
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
 
 // ── Validation ──────────────────────────────────────────────────────────────
 
@@ -43,15 +31,16 @@ function getStorageClient() {
 
 // ── POST /api/leads/[id]/documents ──────────────────────────────────────────
 // Upload a PDF to Supabase Storage and create a PipelineDocument record.
+// Admin/Director/Account can upload. Account: own leads only.
 // Body: FormData with { file: File, type: DocumentType }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authUser = await requireAuth()
+  const authUser = await requireCanCreateLeads()
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params
@@ -91,15 +80,9 @@ export async function POST(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    // Get the DB user record
-    const dbUser = await prisma.user.findUnique({
-      where: { email: authUser.email! },
-    })
-    if (!dbUser) {
-      return NextResponse.json(
-        { error: "User record not found" },
-        { status: 400 }
-      )
+    // Ownership check for account role
+    if (authUser.role === "account" && lead.salesId !== authUser.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     // Upload to Supabase Storage
@@ -138,7 +121,7 @@ export async function POST(
         type,
         fileUrl,
         fileName: file.name,
-        uploadedBy: dbUser.id,
+        uploadedBy: authUser.id,
       },
       include: {
         uploader: { select: { id: true, name: true } },

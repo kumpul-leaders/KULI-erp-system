@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Topbar } from "@/components/layout/topbar"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 import { AnalyticsContent } from "@/components/analytics/analytics-content"
 import { $Enums } from "@prisma/client"
 
@@ -145,6 +146,25 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       ? params.aeIds.split(",").map((s) => s.trim()).filter(Boolean)
       : []
 
+  // Fetch current user for role-based AE filter enforcement
+  const supabase = await createClient()
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser()
+
+  const currentDbUser = authUser?.email
+    ? await prisma.user.findUnique({
+        where: { email: authUser.email },
+        select: { id: true, role: true },
+      })
+    : null
+
+  // For account role, force filter to own AE ID regardless of URL params
+  const effectiveAeIds: string[] =
+    currentDbUser?.role === "account" && currentDbUser.id
+      ? [currentDbUser.id]
+      : aeIds
+
   const now = new Date()
 
   // ---------------------------------------------------------------------------
@@ -184,8 +204,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         }
       : {}
 
-  // AE filter clause
-  const aeFilter = aeIds.length > 0 ? { salesId: { in: aeIds } } : {}
+  // AE filter clause — uses effectiveAeIds (enforced for account role)
+  const aeFilter = effectiveAeIds.length > 0 ? { salesId: { in: effectiveAeIds } } : {}
 
   const [
     allLeadsByAE,
@@ -299,17 +319,17 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     // 5b. Total client count (unfiltered — retention denominator is always total clients)
     prisma.client.count(),
 
-    // AE users for name resolution (account + admin can own leads)
+    // AE users for name resolution (account + admin + commercial_director can own leads)
     prisma.user.findMany({
-      where: { role: { in: ["account", "admin"] } },
+      where: { role: { in: ["account", "admin", "commercial_director"] } },
       select: { id: true, name: true },
     }),
 
-    // All active AE/account+admin users for filter dropdown
+    // All active users who can own leads — for filter dropdown
     prisma.user.findMany({
       where: {
         isActive: true,
-        role: { in: ["account", "admin"] },
+        role: { in: ["account", "admin", "commercial_director"] },
       },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
@@ -468,6 +488,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         activeFrom={params.from}
         activeTo={params.to}
         activeAeIds={params.aeIds}
+        currentUserRole={currentDbUser?.role ?? null}
       />
     </>
   )

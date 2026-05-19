@@ -1,19 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuthenticated, requireCanCreateLeads } from "@/lib/require-role"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
-
-// ── Auth helper ─────────────────────────────────────────────────────────────
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
 
 // ── Validation helpers ──────────────────────────────────────────────────────
 
@@ -133,7 +121,7 @@ function serializeLead(lead: {
 // ── GET /api/leads ──────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
-  const user = await requireAuth()
+  const user = await requireAuthenticated()
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -188,11 +176,12 @@ export async function GET(request: NextRequest) {
 }
 
 // ── POST /api/leads ─────────────────────────────────────────────────────────
+// Admin, Commercial Director, or Account can create leads.
 
 export async function POST(request: NextRequest) {
-  const user = await requireAuth()
+  const user = await requireCanCreateLeads()
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   let body: Record<string, unknown>

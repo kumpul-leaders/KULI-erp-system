@@ -1,20 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireCanCreateLeads } from "@/lib/require-role"
 import { syncClientStatus } from "@/lib/client-status"
 import type { PipelineStage } from "@/types"
-
-// ── Auth helper ─────────────────────────────────────────────────────────────
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
 
 // ── Validation ──────────────────────────────────────────────────────────────
 
@@ -92,15 +80,16 @@ async function checkGate(params: GateCheckParams): Promise<{ allowed: boolean; r
 
 // ── POST /api/leads/[id]/stage ───────────────────────────────────────────────
 // Advances or changes the stage of a lead with gate validation.
+// Admin/Director/Account can move. Account role: own leads only.
 // Body: { toStage: PipelineStage, lossDealReason?: string }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authUser = await requireAuth()
+  const authUser = await requireCanCreateLeads()
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params
@@ -126,6 +115,11 @@ export async function POST(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
+    // Ownership check for account role
+    if (authUser.role === "account" && lead.salesId !== authUser.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     const fromStage = lead.stage
 
     if (fromStage === toStage) {
@@ -136,17 +130,6 @@ export async function POST(
     const gate = await checkGate({ fromStage, toStage, leadId: id, lossDealReason })
     if (!gate.allowed) {
       return NextResponse.json({ error: gate.reason }, { status: 422 })
-    }
-
-    // Get the DB user record for changedBy FK
-    const dbUser = await prisma.user.findUnique({
-      where: { email: authUser.email! },
-    })
-    if (!dbUser) {
-      return NextResponse.json(
-        { error: "User record not found — cannot record stage change" },
-        { status: 400 }
-      )
     }
 
     // Build lead update payload
@@ -176,7 +159,7 @@ export async function POST(
           leadId: id,
           fromStage,
           toStage,
-          changedBy: dbUser.id,
+          changedBy: authUser.id,
         },
       }),
     ])

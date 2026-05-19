@@ -1,17 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAdminOrDirector } from "@/lib/require-role"
 import type { UpsellStatus } from "@/types"
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
 
 const UPSELL_STATUSES: UpsellStatus[] = ["identified", "pitched", "won", "lost"]
 
@@ -20,14 +10,15 @@ function isUpsellStatus(v: unknown): v is UpsellStatus {
 }
 
 // ── PATCH /api/upsells/[upsellId] ──────────────────────────────────────────
+// Admin or Commercial Director only.
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ upsellId: string }> }
 ) {
-  const user = await requireAuth()
+  const user = await requireAdminOrDirector()
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { upsellId } = await params

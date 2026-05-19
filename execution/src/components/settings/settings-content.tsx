@@ -56,10 +56,20 @@ interface SettingsContentProps {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ROLE_OPTIONS: Role[] = ["admin", "account", "operation", "hr", "finance"]
+const ROLE_OPTIONS: Role[] = ["admin", "commercial_director", "account", "operation", "hr", "finance"]
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Super Admin",
+  commercial_director: "Commercial Director",
+  account: "Busdev/AE",
+  operation: "Operations",
+  hr: "HR",
+  finance: "Finance",
+}
 
 const ROLE_BADGE: Record<string, string> = {
   admin: "bg-purple-100 text-purple-700",
+  commercial_director: "bg-indigo-100 text-indigo-700",
   account: "bg-blue-100 text-blue-700",
   operation: "bg-green-100 text-green-700",
   hr: "bg-orange-100 text-orange-700",
@@ -490,11 +500,11 @@ export function SettingsContent({
                   <td className="px-4 py-3 text-neutral-600">{user.email}</td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         ROLE_BADGE[user.role] ?? "bg-neutral-100 text-neutral-600"
                       }`}
                     >
-                      {user.role}
+                      {ROLE_LABEL[user.role] ?? user.role}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -926,8 +936,8 @@ function UserFormFields({
           </SelectTrigger>
           <SelectContent>
             {ROLE_OPTIONS.map((r) => (
-              <SelectItem key={r} value={r} className="capitalize">
-                {r}
+              <SelectItem key={r} value={r}>
+                {ROLE_LABEL[r] ?? r}
               </SelectItem>
             ))}
           </SelectContent>

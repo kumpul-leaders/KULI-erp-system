@@ -1,31 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireCanCreateLeads } from "@/lib/require-role"
 import { syncClientStatus } from "@/lib/client-status"
-
-// ── Auth helper ─────────────────────────────────────────────────────────────
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
 
 // ── POST /api/leads/[id]/invoice ────────────────────────────────────────────
 // Request invoice: sets invoiceRequestedAt = now(), stage → invoiced.
+// Admin/Director/Account can request. Account role: own leads only.
 // Only allowed when stage === 'closed_won' AND invoiceRequestedAt is null.
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authUser = await requireAuth()
+  const authUser = await requireCanCreateLeads()
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params
@@ -34,6 +23,11 @@ export async function POST(
     const lead = await prisma.lead.findUnique({ where: { id } })
     if (!lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
+    }
+
+    // Ownership check for account role
+    if (authUser.role === "account" && lead.salesId !== authUser.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     if (lead.stage !== "closed_won") {
@@ -47,17 +41,6 @@ export async function POST(
       return NextResponse.json(
         { error: "Invoice has already been requested for this lead" },
         { status: 422 }
-      )
-    }
-
-    // Get the DB user record for changedBy FK
-    const dbUser = await prisma.user.findUnique({
-      where: { email: authUser.email! },
-    })
-    if (!dbUser) {
-      return NextResponse.json(
-        { error: "User record not found — cannot record stage change" },
-        { status: 400 }
       )
     }
 
@@ -83,7 +66,7 @@ export async function POST(
           leadId: id,
           fromStage: "closed_won",
           toStage: "invoiced",
-          changedBy: dbUser.id,
+          changedBy: authUser.id,
         },
       }),
     ])

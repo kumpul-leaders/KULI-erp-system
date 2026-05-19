@@ -44,6 +44,7 @@ interface AnalyticsContentProps {
   activeFrom?: string
   activeTo?: string
   activeAeIds?: string
+  currentUserRole?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -187,9 +188,10 @@ interface FilterBarProps {
   activeFrom?: string
   activeTo?: string
   activeAeIds?: string
+  currentUserRole?: string | null
 }
 
-function FilterBar({ allAEUsers, activeFrom, activeTo, activeAeIds }: FilterBarProps) {
+function FilterBar({ allAEUsers, activeFrom, activeTo, activeAeIds, currentUserRole }: FilterBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -327,8 +329,8 @@ function FilterBar({ allAEUsers, activeFrom, activeTo, activeAeIds }: FilterBarP
         </div>
       )}
 
-      {/* AE multi-select popover */}
-      {allAEUsers.length > 0 && (
+      {/* AE multi-select popover — hidden for account role (filter is forced to own ID) */}
+      {allAEUsers.length > 0 && currentUserRole !== "account" && (
         <Popover open={aeOpen} onOpenChange={setAeOpen}>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50 transition-colors shrink-0">
@@ -462,6 +464,7 @@ export function AnalyticsContent({
   activeFrom,
   activeTo,
   activeAeIds,
+  currentUserRole,
 }: AnalyticsContentProps) {
   const [winRateTab, setWinRateTab] = useState<"ae" | "industry">("ae")
 
@@ -484,6 +487,7 @@ export function AnalyticsContent({
         activeFrom={activeFrom}
         activeTo={activeTo}
         activeAeIds={activeAeIds}
+        currentUserRole={currentUserRole}
       />
 
       <main className="flex-1 overflow-y-auto px-8 py-4">

@@ -1,23 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
-
-// ── Auth helper ──────────────────────────────────────────────────────────────
-
-async function requireAdmin() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    select: { id: true, role: true },
-  })
-  if (!dbUser || dbUser.role !== "admin") return null
-  return dbUser
-}
+import { requireAdmin } from "@/lib/require-role"
 
 // ── POST /api/leads/bulk-reassign ────────────────────────────────────────────
 // Admin only. Atomically moves all leads and clients from one user to another.

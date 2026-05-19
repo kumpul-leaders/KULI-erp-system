@@ -1,17 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuthenticated, requireAdminOrDirector } from "@/lib/require-role"
 import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
 
 const ENGAGEMENT_TYPES: EngagementType[] = ["retainer", "project", "both"]
 const HEALTH_STATUSES: HealthStatus[] = ["healthy", "at_risk", "churned"]
@@ -35,7 +25,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAuth()
+  const user = await requireAuthenticated()
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -84,14 +74,15 @@ export async function GET(
 }
 
 // ── PATCH /api/clients/[id] ─────────────────────────────────────────────────
+// Admin or Commercial Director only.
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAuth()
+  const user = await requireAdminOrDirector()
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params
@@ -190,14 +181,15 @@ export async function PATCH(
 }
 
 // ── DELETE /api/clients/[id] ────────────────────────────────────────────────
+// Admin or Commercial Director only.
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAuth()
+  const user = await requireAdminOrDirector()
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { id } = await params

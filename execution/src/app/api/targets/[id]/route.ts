@@ -1,24 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAdminOrDirector } from "@/lib/require-role"
 import { $Enums } from "@prisma/client"
-
-// ── Auth helper ─────────────────────────────────────────────────────────────
-
-async function requireAdmin() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    select: { id: true, role: true },
-  })
-  if (!dbUser || dbUser.role !== "admin") return null
-  return dbUser
-}
 
 // ── Serializer ──────────────────────────────────────────────────────────────
 
@@ -53,7 +36,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAdmin()
+  const user = await requireAdminOrDirector()
   if (!user) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
@@ -113,7 +96,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAdmin()
+  const user = await requireAdminOrDirector()
   if (!user) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

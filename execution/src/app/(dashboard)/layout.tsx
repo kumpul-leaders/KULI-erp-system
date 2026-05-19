@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { prisma } from "@/lib/prisma"
 import { Sidebar } from "@/components/layout/sidebar"
-import type { SessionUser } from "@/types"
+import type { SessionUser, Role } from "@/types"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -21,14 +22,25 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  // Build a minimal session user from Supabase user_metadata.
-  // In a full implementation, this would be fetched from the users table via Prisma.
+  // Prisma DB is single source of truth for role.
+  // Supabase user_metadata is only used as fallback for name when no DB record exists.
+  const dbUser = user.email
+    ? await prisma.user.findUnique({
+        where: { email: user.email },
+        select: { id: true, name: true, role: true, isVp: true },
+      })
+    : null
+
   const sessionUser: SessionUser = {
     id: user.id,
     email: user.email ?? "",
-    name: (user.user_metadata?.name as string | undefined) ?? user.email ?? "User",
-    role: (user.user_metadata?.role as SessionUser["role"] | undefined) ?? "account",
-    isVp: Boolean(user.user_metadata?.is_vp),
+    name:
+      dbUser?.name ??
+      (user.user_metadata?.name as string | undefined) ??
+      user.email ??
+      "User",
+    role: (dbUser?.role as Role | undefined) ?? "account",
+    isVp: dbUser?.isVp ?? Boolean(user.user_metadata?.is_vp),
   }
 
   return (

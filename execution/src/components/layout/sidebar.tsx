@@ -63,13 +63,21 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.map((group) => {
+          // Filter items by role
+          const visibleItems = group.items.filter((item) => {
+            // Hide Targets for operation role
+            if (item.href === "/targets" && user.role === "operation") return false
+            return true
+          })
+          if (visibleItems.length === 0) return null
+          return (
           <div key={group.label} className="mb-2">
             <p className="mb-1 mt-4 px-4 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
               {group.label}
             </p>
             <ul className="space-y-0.5">
-              {group.items.map((item) => {
+              {visibleItems.map((item) => {
                 const active = isActive(item.href)
                 return (
                   <li key={item.href}>
@@ -95,7 +103,8 @@ export function Sidebar({ user }: SidebarProps) {
               })}
             </ul>
           </div>
-        ))}
+          )
+        })}
 
         {/* Admin-only nav item */}
         {user.role === "admin" && (
@@ -140,15 +149,27 @@ export function Sidebar({ user }: SidebarProps) {
             <p className="truncate text-sm font-medium text-neutral-700">
               {user.name}
             </p>
-            <p className="text-xs text-neutral-400 capitalize">{user.role}</p>
+            <p className="text-xs text-neutral-400">
+              {user.role === "commercial_director"
+                ? "Commercial Director"
+                : user.role === "admin"
+                ? "Super Admin"
+                : user.role === "account"
+                ? "Busdev/AE"
+                : user.role === "operation"
+                ? "Operations"
+                : user.role}
+            </p>
           </div>
-          <Link
-            href="/settings"
-            className="ml-auto text-neutral-400 hover:text-neutral-600"
-            aria-label="Settings"
-          >
-            <Settings className="h-4 w-4" />
-          </Link>
+          {user.role === "admin" && (
+            <Link
+              href="/settings"
+              className="ml-auto text-neutral-400 hover:text-neutral-600"
+              aria-label="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
+          )}
         </div>
       </div>
     </aside>

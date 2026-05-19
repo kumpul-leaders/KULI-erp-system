@@ -1,28 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/require-role"
 import type { Role } from "@/types"
-
-// ── Auth helper ──────────────────────────────────────────────────────────────
-
-async function requireAdmin() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    select: { id: true, role: true },
-  })
-  if (!dbUser || dbUser.role !== "admin") return null
-  return dbUser
-}
 
 // ── Validation helpers ───────────────────────────────────────────────────────
 
-const VALID_ROLES: Role[] = ["admin", "account", "operation", "hr", "finance"]
+const VALID_ROLES: Role[] = ["admin", "commercial_director", "account", "operation", "hr", "finance"]
 
 function isRole(v: unknown): v is Role {
   return typeof v === "string" && VALID_ROLES.includes(v as Role)

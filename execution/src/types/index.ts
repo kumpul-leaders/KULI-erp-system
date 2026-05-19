@@ -5,7 +5,7 @@
 
 // ── Enums ──────────────────────────────────────
 
-export type Role = "admin" | "account" | "operation" | "hr" | "finance"
+export type Role = "admin" | "commercial_director" | "account" | "operation" | "hr" | "finance"
 
 export type EngagementType = "retainer" | "project" | "both"
 

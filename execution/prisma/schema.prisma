@@ -12,6 +12,7 @@ datasource db {
 
 enum Role {
   admin
+  commercial_director
   account
   operation
   hr

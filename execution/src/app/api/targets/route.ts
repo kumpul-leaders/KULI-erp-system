@@ -1,34 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuthenticated, requireAdminOrDirector } from "@/lib/require-role"
 import { $Enums } from "@prisma/client"
-
-// ── Auth helpers ─────────────────────────────────────────────────────────────
-
-async function requireAuth() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  return user
-}
-
-async function requireAdmin() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    select: { id: true, role: true },
-  })
-  if (!dbUser || dbUser.role !== "admin") return null
-  return dbUser
-}
 
 // ── Validation helpers ──────────────────────────────────────────────────────
 
@@ -70,7 +43,7 @@ function serializeTarget(target: {
 //           if omitted, returns all targets
 
 export async function GET(request: NextRequest) {
-  const user = await requireAuth()
+  const user = await requireAuthenticated()
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -115,7 +88,7 @@ export async function GET(request: NextRequest) {
 //   salesId         string | null (optional, default null = company-wide)
 
 export async function POST(request: NextRequest) {
-  const user = await requireAdmin()
+  const user = await requireAdminOrDirector()
   if (!user) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

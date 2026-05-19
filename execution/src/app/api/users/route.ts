@@ -1,28 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuthenticated, requireAdmin } from "@/lib/require-role"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import type { Role } from "@/types"
-
-// ── Auth helpers ─────────────────────────────────────────────────────────────
-
-async function requireAdmin() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-  if (error || !user) return null
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email! },
-    select: { id: true, role: true },
-  })
-  if (!dbUser || dbUser.role !== "admin") return null
-  return dbUser
-}
 
 // ── Validation helpers ───────────────────────────────────────────────────────
 
-const VALID_ROLES: Role[] = ["admin", "account", "operation", "hr", "finance"]
+const VALID_ROLES: Role[] = ["admin", "commercial_director", "account", "operation", "hr", "finance"]
 
 function isRole(v: unknown): v is Role {
   return typeof v === "string" && VALID_ROLES.includes(v as Role)
@@ -34,13 +18,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // Returns active users — used for AE dropdown selects.
 
 export async function GET() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
+  const user = await requireAuthenticated()
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -59,7 +38,7 @@ export async function GET() {
 }
 
 // ── POST /api/users ──────────────────────────────────────────────────────────
-// Admin only. Creates a new user record.
+// Admin only. Creates a new user record + sends Supabase invite email.
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin()
@@ -107,6 +86,20 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: { name, email, role, division, isVp },
     })
+
+    // Send Supabase invite email — non-fatal if it fails
+    const adminClient = createAdminClient()
+    if (adminClient) {
+      const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://vf-erp.vercel.app"}/api/auth/callback?next=/dashboard`,
+      })
+      if (inviteError) {
+        console.error("[POST /api/users] Supabase invite failed:", inviteError.message)
+        // User is created in DB — admin can resend invite manually from Supabase dashboard
+      }
+    } else {
+      console.warn("[POST /api/users] SUPABASE_SERVICE_ROLE_KEY not set — invite not sent")
+    }
 
     return NextResponse.json(
       {

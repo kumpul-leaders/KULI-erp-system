@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Topbar } from "@/components/layout/topbar"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 import { TargetsContent } from "@/components/targets/targets-content"
 import { $Enums } from "@prisma/client"
 
@@ -48,6 +49,17 @@ export default async function TargetsPage({
 }) {
   const { aeId } = await searchParams
   const selectedAeId = aeId ?? null
+
+  // Resolve current user role for admin gate
+  const supabase = await createClient()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const dbUser = authUser
+    ? await prisma.user.findUnique({
+        where: { email: authUser.email! },
+        select: { role: true },
+      })
+    : null
+  const userRole = dbUser?.role ?? null
 
   const now = new Date()
   const currentMonth = now.getMonth() + 1
@@ -226,6 +238,7 @@ export default async function TargetsPage({
         currentQuarter={currentQuarter}
         aeOptions={aeOptions}
         selectedAeId={selectedAeId}
+        userRole={userRole}
       />
     </>
   )

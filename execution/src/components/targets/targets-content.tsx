@@ -32,6 +32,7 @@ interface TargetsContentProps {
   currentQuarter: number
   aeOptions: AeOption[]
   selectedAeId: string | null
+  userRole: string | null
 }
 
 // Input mode for the "Set Target" form
@@ -140,7 +141,9 @@ export function TargetsContent({
   currentQuarter,
   aeOptions,
   selectedAeId,
+  userRole,
 }: TargetsContentProps) {
+  const isAdmin = userRole === "admin"
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -333,9 +336,11 @@ export function TargetsContent({
         return
       }
 
-      // ── Setahun Penuh (12 monthly records, same value) ───────────────────
+      // ── Setahun Penuh (12 monthly records — annual total ÷ 12 per month) ──
       if (form.inputMode === "setahun-penuh") {
+        const revenuePerMonth = Math.round(revenueTarget / 12)
         const nc = isNaN(newClientTarget) ? 0 : newClientTarget
+        const ncPerMonth = Math.round(nc / 12)
         const results: SerializedTarget[] = []
         let failed = false
 
@@ -344,8 +349,8 @@ export function TargetsContent({
           const target = await upsertSingleTarget({
             periodMonth: month,
             periodYear,
-            revenueTarget,
-            newClientTarget: nc,
+            revenueTarget: revenuePerMonth,
+            newClientTarget: ncPerMonth,
             type: "monthly",
           })
           if (!target) {
@@ -490,8 +495,13 @@ export function TargetsContent({
         {/* ── Left column ─────────────────────────────────────────────────── */}
         <div className="space-y-6">
 
-          {/* Set Target card */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          {/* Set Target card — admin only */}
+          {!isAdmin && (
+            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+              <p className="text-sm text-neutral-400">Hanya admin yang dapat mengatur target.</p>
+            </div>
+          )}
+          {isAdmin && <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
             <h2 className="text-sm font-semibold text-neutral-800 mb-4">
               {form.editingId ? "Edit Target" : "Set Target"}
               {selectedAeId && (
@@ -519,7 +529,11 @@ export function TargetsContent({
             {/* Full-year confirmation note */}
             {form.inputMode === "setahun-penuh" && !form.editingId && (
               <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 mb-3">
-                Ini akan set target yang sama untuk {fullYearLabel}.
+                Masukkan total revenue setahun. Sistem akan bagi 12 dan set{" "}
+                {form.revenueTarget && !isNaN(parseFloat(form.revenueTarget))
+                  ? `${formatIDR(Math.round(parseFloat(form.revenueTarget) / 12))}/bulan`
+                  : "target per bulan"}{" "}
+                untuk {fullYearLabel}.
               </p>
             )}
 
@@ -588,7 +602,7 @@ export function TargetsContent({
                 <label className="block text-xs font-medium text-neutral-500 mb-1">
                   Revenue Target (IDR)
                   {form.inputMode === "setahun-penuh" && !form.editingId && (
-                    <span className="ml-1 font-normal text-neutral-400">— per bulan</span>
+                    <span className="ml-1 font-normal text-neutral-400">— total setahun (÷12 per bulan)</span>
                   )}
                 </label>
                 <input
@@ -607,7 +621,7 @@ export function TargetsContent({
                 <label className="block text-xs font-medium text-neutral-500 mb-1">
                   New Client Target
                   {form.inputMode === "setahun-penuh" && !form.editingId && (
-                    <span className="ml-1 font-normal text-neutral-400">— per bulan</span>
+                    <span className="ml-1 font-normal text-neutral-400">— total setahun (÷12 per bulan)</span>
                   )}
                 </label>
                 <input
@@ -658,7 +672,7 @@ export function TargetsContent({
                 )}
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* Target History table */}
           <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">

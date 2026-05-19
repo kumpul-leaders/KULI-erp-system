@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAdmin } from "@/lib/require-role"
+import { requireAdminOrDirectorOrDirector } from "@/lib/require-role"
 import type { Role } from "@/types"
 
 // ── Validation helpers ───────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await requireAdmin()
+  const admin = await requireAdminOrDirector()
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
@@ -124,7 +124,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await requireAdmin()
+  const admin = await requireAdminOrDirector()
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

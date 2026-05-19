@@ -62,7 +62,8 @@ export default async function SettingsPage() {
     }
   }
 
-  const isAdmin = currentDbUser?.role === "admin"
+  const canManageUsers =
+    currentDbUser?.role === "admin" || currentDbUser?.role === "commercial_director"
 
   return (
     <>
@@ -70,7 +71,7 @@ export default async function SettingsPage() {
       <main className="flex-1 overflow-y-auto px-8 py-6">
         <SettingsContent
           users={serializedUsers}
-          isAdmin={isAdmin}
+          isAdmin={canManageUsers}
           leadCountMap={leadCountMap}
           clientCountMap={clientCountMap}
         />

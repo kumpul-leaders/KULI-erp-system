@@ -106,8 +106,8 @@ export function Sidebar({ user }: SidebarProps) {
           )
         })}
 
-        {/* Admin-only nav item */}
-        {user.role === "admin" && (
+        {/* Admin + Commercial Director nav item */}
+        {(user.role === "admin" || user.role === "commercial_director") && (
           <div className="mb-2">
             <p className="mb-1 mt-4 px-4 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
               ADMIN
@@ -161,7 +161,7 @@ export function Sidebar({ user }: SidebarProps) {
                 : user.role}
             </p>
           </div>
-          {user.role === "admin" && (
+          {(user.role === "admin" || user.role === "commercial_director") && (
             <Link
               href="/settings"
               className="ml-auto text-neutral-400 hover:text-neutral-600"

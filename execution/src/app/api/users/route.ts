@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAuthenticated, requireAdmin } from "@/lib/require-role"
+import { requireAuthenticated, requireAdminOrDirectorOrDirector } from "@/lib/require-role"
 import { createAdminClient } from "@/lib/supabase/admin-client"
 import type { Role } from "@/types"
 
@@ -41,7 +41,7 @@ export async function GET() {
 // Admin only. Creates a new user record + sends Supabase invite email.
 
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin()
+  const admin = await requireAdminOrDirector()
   if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAuthenticated, requireAdminOrDirectorOrDirector } from "@/lib/require-role"
+import { requireAuthenticated, requireAdminOrDirector } from "@/lib/require-role"
 import { createAdminClient } from "@/lib/supabase/admin-client"
 import type { Role } from "@/types"
 

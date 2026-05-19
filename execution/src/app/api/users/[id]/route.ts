@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAdminOrDirectorOrDirector } from "@/lib/require-role"
+import { requireAdminOrDirector } from "@/lib/require-role"
 import type { Role } from "@/types"
 
 // ── Validation helpers ───────────────────────────────────────────────────────

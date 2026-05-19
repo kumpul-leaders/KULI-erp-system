@@ -50,18 +50,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // ── /settings → admin only ───────────────────────────────
-  if (user && pathname.startsWith("/settings")) {
-    // Fetch user role from Supabase user_metadata or a custom DB lookup.
-    // For Phase 1 we store role in user_metadata.role set during user creation.
-    const role = user.user_metadata?.role as string | undefined
-    if (role !== "admin") {
-      const url = request.nextUrl.clone()
-      url.pathname = "/dashboard"
-      return NextResponse.redirect(url)
-    }
-  }
-
   // ── Authenticated user visiting /login → redirect to /dashboard ──
   if (user && pathname === "/login") {
     const url = request.nextUrl.clone()

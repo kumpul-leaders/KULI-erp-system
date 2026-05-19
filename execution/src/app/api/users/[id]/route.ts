@@ -5,7 +5,7 @@ import type { Role } from "@/types"
 
 // ── Validation helpers ───────────────────────────────────────────────────────
 
-const VALID_ROLES: Role[] = ["admin", "commercial_director", "account", "operation", "hr", "finance"]
+const VALID_ROLES: Role[] = ["admin", "commercial_director", "account_manager", "account", "operation", "hr", "finance"]
 
 function isRole(v: unknown): v is Role {
   return typeof v === "string" && VALID_ROLES.includes(v as Role)

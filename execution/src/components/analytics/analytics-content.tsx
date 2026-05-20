@@ -24,11 +24,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import { Download, ChevronDown, Check } from "lucide-react"
+import { Download, ChevronDown, Check, Loader2 } from "lucide-react"
 import { formatIDR } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import type {
   WinRateByAE,
   WinRateByIndustry,
@@ -36,6 +42,7 @@ import type {
   FunnelStage,
   ClientRetention,
   AEUser,
+  OverallWinRate,
 } from "@/app/(dashboard)/analytics/page"
 
 // ---------------------------------------------------------------------------
@@ -43,6 +50,17 @@ import type {
 // ---------------------------------------------------------------------------
 
 type DatePreset = "all" | "last_week" | "last_month" | "last_3_months" | "custom"
+
+type ModalLead = {
+  id: string
+  client: { name: string }
+  productLine: string | null
+  stage: string
+  sales: { name: string } | null
+  projectedRevenue: number | null
+  actualRevenue: number | null
+  billingPlan: string | null
+}
 
 interface AnalyticsContentProps {
   winRateByAE: WinRateByAE[]
@@ -56,6 +74,8 @@ interface AnalyticsContentProps {
   activeTo?: string
   activeAeIds?: string
   currentUserRole?: string | null
+  overallWinRate: OverallWinRate
+  rtYear: number
 }
 
 // ---------------------------------------------------------------------------
@@ -425,16 +445,20 @@ interface RevenueTooltipProps {
 
 function RevenueTooltip({ active, payload, label }: RevenueTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
-  const current = payload.find((p) => p.dataKey === "revenue")
-  const py = payload.find((p) => p.dataKey === "revenuePY")
+  const won = payload.find((p) => p.dataKey === "won")
+  const active_ = payload.find((p) => p.dataKey === "active")
+  const potential = payload.find((p) => p.dataKey === "potential")
   return (
     <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{label}</p>
-      {current && (
-        <p className="text-neutral-500">Revenue: <span className="text-emerald-600 font-medium">{formatIDR(current.value)}</span></p>
+      {won && (
+        <p className="text-neutral-500">Won: <span className="text-emerald-600 font-medium">{formatIDR(won.value)}</span></p>
       )}
-      {py && (
-        <p className="text-neutral-500">Prior Year: <span className="text-neutral-500 font-medium">{formatIDR(py.value)}</span></p>
+      {active_ && (
+        <p className="text-neutral-500">Active Pipeline: <span className="text-blue-600 font-medium">{formatIDR(active_.value)}</span></p>
+      )}
+      {potential && (
+        <p className="text-neutral-500">Potential: <span className="text-neutral-500 font-medium">{formatIDR(potential.value)}</span></p>
       )}
     </div>
   )
@@ -492,10 +516,21 @@ export function AnalyticsContent({
   activeTo,
   activeAeIds,
   currentUserRole,
+  overallWinRate,
+  rtYear,
 }: AnalyticsContentProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [winRateTab, setWinRateTab] = useState<"ae" | "industry">("ae")
-  const [showYoY, setShowYoY] = useState(false)
+
+  const [funnelModal, setFunnelModal] = useState<{
+    open: boolean
+    stage: string
+    label: string
+    count: number
+  } | null>(null)
+  const [modalLeads, setModalLeads] = useState<ModalLead[]>([])
+  const [modalLoading, setModalLoading] = useState(false)
 
   const currentPreset = detectPreset(activeFrom, activeTo)
   const dateRangeLabel = buildDateRangeLabel(currentPreset, activeFrom, activeTo)
@@ -514,8 +549,29 @@ export function AnalyticsContent({
     router.push(buildPipelineUrl([{ field: "salesId", operator: "is", value: data.aeId }]))
   }
 
-  function handleFunnelClick(data: FunnelStage) {
-    router.push(buildPipelineUrl([{ field: "stage", operator: "is", value: data.stage }]))
+  async function handleFunnelClick(data: FunnelStage) {
+    setFunnelModal({ open: true, stage: data.stage, label: data.label, count: data.count })
+    setModalLoading(true)
+    setModalLeads([])
+    const p = new URLSearchParams({ stage: data.stage })
+    const selectedAeArr = activeAeIds
+      ? activeAeIds.split(",").map((s) => s.trim()).filter(Boolean)
+      : []
+    if (selectedAeArr.length === 1) p.set("salesId", selectedAeArr[0])
+    try {
+      const res = await fetch(`/api/leads?${p.toString()}`)
+      const json = await res.json() as { leads?: ModalLead[] }
+      setModalLeads(json.leads ?? [])
+    } catch {
+      setModalLeads([])
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  const WON_STAGES_MODAL = new Set(["closed_won", "invoiced", "contract_renewal"])
+  function getModalRevenue(lead: ModalLead): number | null {
+    return WON_STAGES_MODAL.has(lead.stage) ? lead.actualRevenue : lead.projectedRevenue
   }
 
   return (
@@ -651,69 +707,80 @@ export function AnalyticsContent({
           {/* Revenue Trend */}
           <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-neutral-500">Revenue Trend (12 Months)</h3>
-              <button
-                onClick={() => setShowYoY((v) => !v)}
-                className={[
-                  "text-xs px-2 py-1 rounded border transition-colors",
-                  showYoY
-                    ? "bg-neutral-800 text-white border-neutral-800"
-                    : "bg-white text-neutral-500 border-neutral-200 hover:bg-neutral-50",
-                ].join(" ")}
-              >
-                vs Prior Year
-              </button>
-            </div>
-            {revenueTrend.every((p) => p.revenue === 0) ? (
-              <EmptyState label="No revenue data" />
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart
-                  data={revenueTrend}
-                  margin={{ top: 4, right: 16, bottom: 0, left: 8 }}
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-neutral-500">Revenue Trend</h3>
+                <select
+                  value={rtYear}
+                  onChange={(e) => {
+                    const p = new URLSearchParams(searchParams.toString())
+                    p.set("rtYear", e.target.value)
+                    router.replace(`?${p.toString()}`)
+                  }}
+                  className="text-xs border border-neutral-200 rounded px-2 py-0.5 bg-white text-neutral-600 focus:outline-none"
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: 11, fill: "#9ca3af" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tickFormatter={formatRevenueTick}
-                    tick={{ fontSize: 11, fill: "#9ca3af" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={48}
-                  />
-                  <Tooltip content={<RevenueTooltip />} cursor={{ stroke: "#e5e7eb" }} />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#10B981"
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: "#10B981", strokeWidth: 0 }}
-                    activeDot={{ r: 5, fill: "#10B981", strokeWidth: 0 }}
-                  />
-                  {showYoY && (
-                    <Line
-                      type="monotone"
-                      dataKey="revenuePY"
-                      stroke="#9ca3af"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4"
-                      dot={{ r: 2, fill: "#9ca3af", strokeWidth: 0 }}
-                      activeDot={{ r: 4, fill: "#9ca3af", strokeWidth: 0 }}
-                    />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+                  {[2024, 2025, 2026, 2027].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-emerald-500 rounded" />Won</span>
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-blue-500 rounded" />Active Pipeline</span>
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-neutral-400 rounded border-dashed" style={{borderTop: '2px dashed #9CA3AF', background: 'transparent', height: 0}} />Potential</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart
+                data={revenueTrend}
+                margin={{ top: 4, right: 16, bottom: 0, left: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={formatRevenueTick}
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={48}
+                />
+                <Tooltip content={<RevenueTooltip />} cursor={{ stroke: "#e5e7eb" }} />
+                <Line
+                  type="monotone"
+                  dataKey="won"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "#10B981", strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: "#10B981", strokeWidth: 0 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="active"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "#3B82F6", strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: "#3B82F6", strokeWidth: 0 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="potential"
+                  stroke="#9CA3AF"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  dot={{ r: 2, fill: "#9CA3AF", strokeWidth: 0 }}
+                  activeDot={{ r: 4, fill: "#9CA3AF", strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Row 2: Pipeline Funnel + Client Retention + AE Performance */}
-        <div className="grid grid-cols-3 gap-6">
+        {/* Row 2: Pipeline Funnel + Client Retention + AE Performance + Overall Win/Loss Rate */}
+        <div className="grid grid-cols-4 gap-6">
 
           {/* Pipeline Funnel */}
           <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
@@ -840,8 +907,84 @@ export function AnalyticsContent({
               </div>
             )}
           </div>
+
+          {/* Overall Win/Loss Rate */}
+          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+            <h3 className="text-sm font-medium text-neutral-500 mb-3">Overall Win/Loss Rate</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-3xl font-bold text-neutral-900">{overallWinRate.winLossRate}%</p>
+                <p className="text-xs text-neutral-500 mt-1">Loss rate vs total pitched</p>
+              </div>
+              <div className="pt-2 border-t border-neutral-100 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <p className="text-neutral-500">Lost Deals</p>
+                  <p className="font-semibold text-danger-600">{overallWinRate.lost}</p>
+                </div>
+                <div>
+                  <p className="text-neutral-500">Total Pitched</p>
+                  <p className="font-semibold text-neutral-800">{overallWinRate.denominator}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
+
+      {/* Funnel Stage Drill-down Modal */}
+      <Dialog
+        open={funnelModal?.open ?? false}
+        onOpenChange={(open) => { if (!open) setFunnelModal(null) }}
+      >
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {funnelModal?.label} — {funnelModal?.count} projects
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {modalLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+              </div>
+            ) : modalLeads.length === 0 ? (
+              <p className="text-sm text-neutral-400 text-center py-12">No projects in this stage</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-neutral-200">
+                    <th className="pb-2 text-left font-medium text-neutral-400 pr-3">Company</th>
+                    <th className="pb-2 text-left font-medium text-neutral-400 pr-3">Product Line</th>
+                    <th className="pb-2 text-left font-medium text-neutral-400 pr-3">AE</th>
+                    <th className="pb-2 text-left font-medium text-neutral-400 pr-3">Billing Plan</th>
+                    <th className="pb-2 text-right font-medium text-neutral-400">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalLeads.map((lead) => {
+                    const rev = getModalRevenue(lead)
+                    return (
+                      <tr
+                        key={lead.id}
+                        className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50 cursor-pointer"
+                        onClick={() => window.open(`/pipeline/${lead.id}`, "_blank")}
+                      >
+                        <td className="py-2 pr-3 text-neutral-800 font-medium">{lead.client.name}</td>
+                        <td className="py-2 pr-3 text-neutral-600">{lead.productLine ?? "—"}</td>
+                        <td className="py-2 pr-3 text-neutral-600">{lead.sales?.name ?? "—"}</td>
+                        <td className="py-2 pr-3 text-neutral-600">{lead.billingPlan ?? "—"}</td>
+                        <td className="py-2 text-right text-neutral-800 font-medium tabular-nums">
+                          {rev != null ? formatIDR(rev) : "—"}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

@@ -316,7 +316,7 @@ function StageActions({ leadId, stage }: StageActionsProps) {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-danger-600 hover:bg-danger-700 text-white"
+              className="bg-danger-500 hover:bg-danger-700 text-white"
               onClick={() => void handleLostDealConfirm()}
               disabled={!lostDealReason.trim()}
             >
@@ -1103,7 +1103,7 @@ function DeleteLeadButton({ leadId }: DeleteLeadButtonProps) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-danger-600 hover:bg-danger-700 text-white"
+              className="bg-danger-500 hover:bg-danger-700 text-white"
               onClick={() => void handleDelete()}
               disabled={deleting}
             >

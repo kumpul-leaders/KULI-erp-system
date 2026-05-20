@@ -31,8 +31,12 @@ function buildOrderBy(
       return { annualValue: d }
     case "ae":
       return { ae: { name: d } }
+    case "cumulativeValue":
+    case "opportunityValue":
+      // Computed in-JS after merge; use name as DB-level fallback
+      return { name: "asc" }
     default:
-      return { createdAt: "desc" }
+      return { name: "asc" }
   }
 }
 
@@ -48,7 +52,9 @@ async function fetchClients(search: string, sort: string, dir: string) {
       }
     : {}
 
-  const orderBy = buildOrderBy(sort, dir)
+  // Computed sort columns are handled in-JS after merging; use name fallback for DB query
+  const dbSort = sort === "cumulativeValue" || sort === "opportunityValue" ? "name" : sort
+  const orderBy = buildOrderBy(dbSort, dir)
 
   const clients = await prisma.client.findMany({
     where,
@@ -59,18 +65,63 @@ async function fetchClients(search: string, sort: string, dir: string) {
     orderBy,
   })
 
+  const [cumulativeGroups, opportunityGroups] = await Promise.all([
+    // Cumulative Value: SUM(actualRevenue) from won leads per client
+    prisma.lead.groupBy({
+      by: ["clientId"],
+      where: {
+        clientId: { in: clients.map((c) => c.id) },
+        stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
+        actualRevenue: { not: null },
+      },
+      _sum: { actualRevenue: true },
+    }),
+    // Opportunity Value: SUM(projectedRevenue) from open leads per client
+    prisma.lead.groupBy({
+      by: ["clientId"],
+      where: {
+        clientId: { in: clients.map((c) => c.id) },
+        stage: { in: ["leads", "pipeline", "negotiation"] },
+        projectedRevenue: { not: null },
+      },
+      _sum: { projectedRevenue: true },
+    }),
+  ])
+
+  const cumulativeMap = new Map(
+    cumulativeGroups.map((g) => [g.clientId, Number(g._sum.actualRevenue ?? 0)])
+  )
+  const opportunityMap = new Map(
+    opportunityGroups.map((g) => [g.clientId, Number(g._sum.projectedRevenue ?? 0)])
+  )
+
+  let serialized = clients.map((c) => ({
+    ...c,
+    monthlyValue: c.monthlyValue ? Number(c.monthlyValue) : null,
+    annualValue: c.annualValue ? Number(c.annualValue) : null,
+    contractStart: c.contractStart?.toISOString() ?? null,
+    contractEnd: c.contractEnd?.toISOString() ?? null,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+    _contactCount: c.contacts.length,
+    cumulativeValue: cumulativeMap.get(c.id) ?? 0,
+    opportunityValue: opportunityMap.get(c.id) ?? 0,
+  }))
+
+  // In-JS sort for computed columns
+  if (sort === "cumulativeValue") {
+    serialized = serialized.sort((a, b) =>
+      dir === "asc" ? a.cumulativeValue - b.cumulativeValue : b.cumulativeValue - a.cumulativeValue
+    )
+  } else if (sort === "opportunityValue") {
+    serialized = serialized.sort((a, b) =>
+      dir === "asc" ? a.opportunityValue - b.opportunityValue : b.opportunityValue - a.opportunityValue
+    )
+  }
+
   return {
-    clients: clients.map((c) => ({
-      ...c,
-      monthlyValue: c.monthlyValue ? Number(c.monthlyValue) : null,
-      annualValue: c.annualValue ? Number(c.annualValue) : null,
-      contractStart: c.contractStart?.toISOString() ?? null,
-      contractEnd: c.contractEnd?.toISOString() ?? null,
-      createdAt: c.createdAt.toISOString(),
-      updatedAt: c.updatedAt.toISOString(),
-      _contactCount: c.contacts.length,
-    })),
-    total: clients.length,
+    clients: serialized,
+    total: serialized.length,
   }
 }
 
@@ -158,8 +209,8 @@ interface ClientsPageProps {
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const params = await searchParams
   const search = params.search ?? ""
-  const sort = params.sort ?? ""
-  const dir = params.dir ?? ""
+  const sort = params.sort ?? "name"
+  const dir = params.dir ?? "asc"
 
   return (
     <>

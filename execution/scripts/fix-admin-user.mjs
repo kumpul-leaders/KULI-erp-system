@@ -19,7 +19,7 @@ const adapter = new PrismaPg({ connectionString })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  const email = "william.sudhana@gmail.com"
+  const email = process.argv[2] ?? "william.sudhana@gmail.com"
   const existing = await prisma.user.findUnique({ where: { email } })
 
   if (existing) {

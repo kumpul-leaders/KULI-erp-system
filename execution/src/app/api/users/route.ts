@@ -76,31 +76,56 @@ export async function POST(request: NextRequest) {
       : null
   const isVp = body.isVp === true
 
-  // Email uniqueness check
+  // Email uniqueness check — block only if active
   const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) {
+  if (existing?.isActive) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 })
+  }
+
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://vf-erp.vercel.app"}/api/auth/callback?next=/dashboard`
+
+  const sendInvite = async () => {
+    const adminClient = createAdminClient()
+    if (!adminClient) {
+      console.warn("[POST /api/users] SUPABASE_SERVICE_ROLE_KEY not set — invite not sent")
+      return
+    }
+    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, { redirectTo })
+    if (inviteError) {
+      console.error("[POST /api/users] Supabase invite failed:", inviteError.message)
+    }
+  }
+
+  // Reactivate soft-deleted user
+  if (existing && !existing.isActive) {
+    try {
+      const user = await prisma.user.update({
+        where: { email },
+        data: { name, role, division, isVp, isActive: true },
+      })
+      await sendInvite()
+      return NextResponse.json(
+        {
+          user: {
+            ...user,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+          },
+          reactivated: true,
+        },
+        { status: 200 }
+      )
+    } catch (err) {
+      console.error("[POST /api/users] reactivate failed:", err)
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
   }
 
   try {
     const user = await prisma.user.create({
       data: { name, email, role, division, isVp },
     })
-
-    // Send Supabase invite email — non-fatal if it fails
-    const adminClient = createAdminClient()
-    if (adminClient) {
-      const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://vf-erp.vercel.app"}/api/auth/callback?next=/dashboard`,
-      })
-      if (inviteError) {
-        console.error("[POST /api/users] Supabase invite failed:", inviteError.message)
-        // User is created in DB — admin can resend invite manually from Supabase dashboard
-      }
-    } else {
-      console.warn("[POST /api/users] SUPABASE_SERVICE_ROLE_KEY not set — invite not sent")
-    }
-
+    await sendInvite()
     return NextResponse.json(
       {
         user: {

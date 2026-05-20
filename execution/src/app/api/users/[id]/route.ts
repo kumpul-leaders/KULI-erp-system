@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import type { Role } from "@/types"
 
 // ── Validation helpers ───────────────────────────────────────────────────────
@@ -118,7 +119,8 @@ export async function PATCH(
 }
 
 // ── DELETE /api/users/[id] ───────────────────────────────────────────────────
-// Admin only. Soft-deactivates user (sets isActive = false). No hard delete.
+// Admin only. Hard-deletes an inactive user from DB + Supabase Auth.
+// Blocked if user is still active or owns any leads/clients.
 
 export async function DELETE(
   _request: NextRequest,
@@ -132,10 +134,45 @@ export async function DELETE(
   const { id } = await params
 
   try {
-    await prisma.user.update({
+    const user = await prisma.user.findUnique({
       where: { id },
-      data: { isActive: false },
+      select: { id: true, email: true, isActive: true },
     })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    if (user.isActive) {
+      return NextResponse.json(
+        { error: "Nonaktifkan user terlebih dahulu sebelum menghapus." },
+        { status: 400 }
+      )
+    }
+
+    const [leadCount, clientCount] = await Promise.all([
+      prisma.lead.count({ where: { salesId: id } }),
+      prisma.client.count({ where: { primaryAe: id } }),
+    ])
+
+    if (leadCount > 0 || clientCount > 0) {
+      return NextResponse.json(
+        { error: `User masih memiliki ${leadCount} lead dan ${clientCount} client. Reassign dulu sebelum menghapus.` },
+        { status: 400 }
+      )
+    }
+
+    await prisma.user.delete({ where: { id } })
+
+    // Remove from Supabase Auth — non-fatal
+    const adminClient = createAdminClient()
+    if (adminClient) {
+      const { data: supaUsers } = await adminClient.auth.admin.listUsers()
+      const supaUser = supaUsers?.users?.find((u) => u.email === user.email)
+      if (supaUser) {
+        await adminClient.auth.admin.deleteUser(supaUser.id)
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {

@@ -31,9 +31,10 @@ export type WinRateByIndustry = {
 }
 
 export type RevenueTrendPoint = {
-  month: string    // e.g. "Jan 25"
-  revenue: number  // current year
-  revenuePY: number // prior year (default 0)
+  month: string      // "Jan 26", "Feb 26", etc.
+  won: number        // SUM actualRevenue: stage IN [closed_won, invoiced]
+  active: number     // SUM projectedRevenue: stage IN [pipeline, negotiation, contract_renewal]
+  potential: number  // SUM projectedRevenue: stage = leads
 }
 
 export type FunnelStage = {
@@ -48,6 +49,12 @@ export type ClientRetention = {
   upsellWon: number
   total: number
   rate: number
+}
+
+export type OverallWinRate = {
+  lost: number
+  denominator: number
+  winLossRate: number
 }
 
 export type AEUser = {
@@ -78,11 +85,6 @@ const FUNNEL_ORDER: Array<{ key: string; label: string }> = [
   { key: "contract_renewal", label: "Contract Renewal" },
   { key: "lost_deal", label: "Lost Deal" },
   { key: "no_response", label: "No Response" },
-]
-
-const SHORT_MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ]
 
 // ---------------------------------------------------------------------------
@@ -121,14 +123,6 @@ function resolveDateRange(
 }
 
 // ---------------------------------------------------------------------------
-// Billing plan helper (for revenue trend)
-// ---------------------------------------------------------------------------
-
-function toBillingPlan(year: number, month: number): string {
-  return `${String(year).slice(2)}-${String(month).padStart(2, "0")}`
-}
-
-// ---------------------------------------------------------------------------
 // Server component
 // ---------------------------------------------------------------------------
 
@@ -137,11 +131,21 @@ interface AnalyticsPageProps {
     from?: string
     to?: string
     aeIds?: string
+    rtYear?: string
   }>
 }
 
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
   const params = await searchParams
+  const rtYear = Number(params.rtYear ?? 2026)
+
+  const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+  const rtYearSuffix = String(rtYear).slice(2)
+  const RT_MONTHS = Array.from({ length: 12 }, (_, i) => ({
+    bp: `${rtYearSuffix}-${String(i + 1).padStart(2, "0")}`,
+    label: `${MONTH_ABBR[i]} ${rtYearSuffix}`,
+  }))
+
   const { from, to } = resolveDateRange(params.from, params.to)
 
   // Parse AE filter — comma-separated user IDs
@@ -168,8 +172,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     currentDbUser?.role === "account" && currentDbUser.id
       ? [currentDbUser.id]
       : aeIds
-
-  const now = new Date()
 
   // ---------------------------------------------------------------------------
   // Date range where clauses
@@ -208,31 +210,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         }
       : {}
 
-  // Prior-year equivalent of closedDateFilter — same window shifted -12 months
-  const fromPY = from ? new Date(from.getFullYear() - 1, from.getMonth(), from.getDate()) : undefined
-  const toPY = to ? new Date(to.getFullYear() - 1, to.getMonth(), to.getDate(), 23, 59, 59, 999) : undefined
-
-  const closedDateFilterPY =
-    fromPY || toPY
-      ? {
-          OR: [
-            {
-              closedAt: {
-                ...(fromPY ? { gte: fromPY } : {}),
-                ...(toPY ? { lte: toPY } : {}),
-              },
-            },
-            {
-              closedAt: null,
-              createdAt: {
-                ...(fromPY ? { gte: fromPY } : {}),
-                ...(toPY ? { lte: toPY } : {}),
-              },
-            },
-          ],
-        }
-      : {}
-
   // AE filter clause — uses effectiveAeIds (enforced for account role)
   const aeFilter = effectiveAeIds.length > 0 ? { salesId: { in: effectiveAeIds } } : {}
 
@@ -242,14 +219,14 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     lostLeadsByAE,
     aeRevenueByAE,
     leadsForIndustry,
-    revenueLeads,
-    revenueLeadsPY,
+    revenueTrendLeads,
     funnelGroups,
     renewedCount,
     totalClientCount,
     aeUsers,
     allAEUsers,
     upsellWonCount,
+    overallStageGroups,
   ] = await Promise.all([
     // 1a. All leads per AE (has salesId) — funnel filter = createdAt
     prisma.lead.groupBy({
@@ -311,31 +288,22 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
     }),
 
-    // 3. Won leads with revenue + billingPlan for trend — closedAt filter
+    // 3. Revenue trend leads — all stages with any revenue value, dynamic year window
     prisma.lead.findMany({
       where: {
-        stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
-        actualRevenue: { not: null },
-        billingPlan: { not: null },
+        billingPlan: { in: RT_MONTHS.map((m) => m.bp) },
+        OR: [
+          { actualRevenue: { not: null } },
+          { projectedRevenue: { not: null } },
+        ],
         ...aeFilter,
-        ...closedDateFilter,
       },
       select: {
-        actualRevenue: true,
+        stage: true,
         billingPlan: true,
+        actualRevenue: true,
+        projectedRevenue: true,
       },
-    }),
-
-    // 3b. Prior year revenue leads — closedDateFilter shifted -12 months
-    prisma.lead.findMany({
-      where: {
-        stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
-        actualRevenue: { not: null },
-        billingPlan: { not: null },
-        ...aeFilter,
-        ...closedDateFilterPY,
-      },
-      select: { actualRevenue: true, billingPlan: true },
     }),
 
     // 4. Funnel stage counts — createdAt filter
@@ -387,6 +355,16 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
       select: { clientId: true },
       distinct: ["clientId"],
+    }),
+
+    // Overall win rate — stage counts for all pitched leads
+    prisma.lead.groupBy({
+      by: ["stage"],
+      where: {
+        ...aeFilter,
+        ...closedDateFilter,
+      },
+      _count: { _all: true },
     }),
   ])
 
@@ -473,55 +451,49 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     .slice(0, 8)
 
   // ---------------------------------------------------------------------------
-  // 3: Revenue Trend (12 months rolling from now)
+  // Revenue Trend (Sprint 7.1) — Fixed Jan–Dec 2026, 3 stage-group lines
   // ---------------------------------------------------------------------------
 
-  const revenueByMonth = new Map<string, number>()
+  const WON_STAGES_TREND = new Set(["closed_won", "invoiced"])
+  const ACTIVE_STAGES_TREND = new Set(["pipeline", "negotiation", "contract_renewal"])
+  const POTENTIAL_STAGES_TREND = new Set(["leads"])
 
-  // Build the 12-month billing plan → display key map
-  const billingPlanToKey = new Map<string, string>()
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const bp = toBillingPlan(d.getFullYear(), d.getMonth() + 1)
-    const key = `${SHORT_MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
-    billingPlanToKey.set(bp, key)
-    revenueByMonth.set(key, 0)
+  const wonByMonth = new Map<string, number>()
+  const activeByMonth = new Map<string, number>()
+  const potentialByMonth = new Map<string, number>()
+  for (const { label } of RT_MONTHS) {
+    wonByMonth.set(label, 0)
+    activeByMonth.set(label, 0)
+    potentialByMonth.set(label, 0)
   }
 
-  for (const lead of revenueLeads) {
+  const bp2026LabelMap = new Map(RT_MONTHS.map(({ bp, label }) => [bp, label]))
+
+  for (const lead of revenueTrendLeads) {
     if (!lead.billingPlan) continue
-    const key = billingPlanToKey.get(lead.billingPlan)
-    if (key) {
-      revenueByMonth.set(key, (revenueByMonth.get(key) ?? 0) + Number(lead.actualRevenue))
+    const label = bp2026LabelMap.get(lead.billingPlan)
+    if (!label) continue
+    const stage = lead.stage as string
+    if (WON_STAGES_TREND.has(stage)) {
+      const rev = lead.actualRevenue !== null
+        ? Number(lead.actualRevenue)
+        : lead.projectedRevenue !== null
+          ? Number(lead.projectedRevenue)
+          : 0
+      if (rev > 0) wonByMonth.set(label, (wonByMonth.get(label) ?? 0) + rev)
+    } else if (ACTIVE_STAGES_TREND.has(stage) && lead.projectedRevenue !== null) {
+      activeByMonth.set(label, (activeByMonth.get(label) ?? 0) + Number(lead.projectedRevenue))
+    } else if (POTENTIAL_STAGES_TREND.has(stage) && lead.projectedRevenue !== null) {
+      potentialByMonth.set(label, (potentialByMonth.get(label) ?? 0) + Number(lead.projectedRevenue))
     }
   }
 
-  // Build prior year billing plan → current year display key map
-  const billingPlanToKeyPY = new Map<string, string>()
-  for (let i = 11; i >= 0; i--) {
-    const dPY = new Date(now.getFullYear() - 1, now.getMonth() - i, 1)
-    const bpPY = toBillingPlan(dPY.getFullYear(), dPY.getMonth() + 1)
-    const dCurrent = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const keyCurrent = `${SHORT_MONTHS[dCurrent.getMonth()]} ${String(dCurrent.getFullYear()).slice(2)}`
-    billingPlanToKeyPY.set(bpPY, keyCurrent)
-  }
-
-  // Build revenueByMonthPY with same month slots (default 0)
-  const revenueByMonthPY = new Map<string, number>()
-  for (const key of revenueByMonth.keys()) {
-    revenueByMonthPY.set(key, 0)
-  }
-  for (const lead of revenueLeadsPY) {
-    if (!lead.billingPlan) continue
-    const key = billingPlanToKeyPY.get(lead.billingPlan)
-    if (key && revenueByMonthPY.has(key)) {
-      revenueByMonthPY.set(key, (revenueByMonthPY.get(key) ?? 0) + Number(lead.actualRevenue))
-    }
-  }
-
-  const revenueTrend: RevenueTrendPoint[] = Array.from(
-    revenueByMonth.entries()
-  ).map(([month, revenue]) => ({ month, revenue, revenuePY: revenueByMonthPY.get(month) ?? 0 }))
+  const revenueTrend: RevenueTrendPoint[] = RT_MONTHS.map(({ label }) => ({
+    month: label,
+    won: wonByMonth.get(label) ?? 0,
+    active: activeByMonth.get(label) ?? 0,
+    potential: potentialByMonth.get(label) ?? 0,
+  }))
 
   // ---------------------------------------------------------------------------
   // 4: Pipeline Funnel
@@ -564,6 +536,26 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     rate: retentionRate,
   }
 
+  // ---------------------------------------------------------------------------
+  // Overall Win Rate (Sprint 5.1)
+  // Denominator: lost_deal + pipeline + negotiation + closed_won + invoiced + contract_renewal
+  // Exclude: leads (pre-pitch), no_response
+  // ---------------------------------------------------------------------------
+  const overallStageCountMap = new Map(
+    overallStageGroups.map((g) => [g.stage as string, g._count._all])
+  )
+  const PITCHED_STAGES = ["pipeline", "negotiation", "closed_won", "invoiced", "contract_renewal", "lost_deal"]
+  const overallDenominator = PITCHED_STAGES.reduce(
+    (sum, s) => sum + (overallStageCountMap.get(s) ?? 0),
+    0
+  )
+  const overallLost = overallStageCountMap.get("lost_deal") ?? 0
+  const overallWinRate: OverallWinRate = {
+    lost: overallLost,
+    denominator: overallDenominator,
+    winLossRate: overallDenominator > 0 ? Math.round((overallLost / overallDenominator) * 100) : 0,
+  }
+
   return (
     <>
       <Topbar title="Analytics" />
@@ -579,6 +571,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         activeTo={params.to}
         activeAeIds={params.aeIds}
         currentUserRole={currentDbUser?.role ?? null}
+        overallWinRate={overallWinRate}
+        rtYear={rtYear}
       />
     </>
   )

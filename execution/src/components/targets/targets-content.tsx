@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Trash2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Lock, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -15,438 +15,230 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import type { SerializedTarget, AeOption } from "@/app/(dashboard)/targets/page"
+import type { QuarterData, AeOption } from "@/app/(dashboard)/targets/page"
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface TargetsContentProps {
-  allTargets: SerializedTarget[]
-  currentMonthTarget: SerializedTarget | null
-  currentQuarterTarget: SerializedTarget | null
-  monthlyActual: { revenue: number; newClients: number }
-  quarterlyActual: { revenue: number; newClients: number }
-  currentMonth: number
-  currentYear: number
-  currentQuarter: number
+  quarters: QuarterData[]
+  annualTarget: number
+  annualActual: number
+  year: number
   aeOptions: AeOption[]
   selectedAeId: string | null
   userRole: string | null
 }
 
-// Input mode for the "Set Target" form
-type InputMode = "per-bulan" | "per-kuartal" | "setahun-penuh"
-type ViewMode = "monthly" | "quarterly"
-
-interface TargetFormState {
-  inputMode: InputMode
-  periodMonth: string   // month 1-12 (per-bulan) or quarter 1-4 (per-kuartal)
-  periodYear: string
+interface EditForm {
+  quarter: string
+  year: string
   revenueTarget: string
   newClientTarget: string
   editingId: string | null
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const MONTH_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-]
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-function formatPeriod(t: SerializedTarget): string {
-  if (t.type === "quarterly") return `Q${t.periodMonth} ${t.periodYear}`
-  return `${MONTH_SHORT[t.periodMonth - 1]} ${t.periodYear}`
+const QUARTER_MONTHS: Record<number, string> = {
+  1: "Jan–Mar", 2: "Apr–Jun", 3: "Jul–Sep", 4: "Oct–Dec",
 }
 
-function progressPct(actual: number, target: number): number {
+function formatIDR(n: number): string {
+  if (n === 0) return "Rp 0"
+  if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(0)}M`
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n)
+}
+
+function pct(actual: number, target: number): number {
   if (target <= 0) return 0
   return Math.round((actual / target) * 100)
 }
 
-function progressColor(pct: number): string {
-  if (pct >= 100) return "bg-emerald-500"
-  if (pct >= 75) return "bg-blue-500"
-  if (pct >= 50) return "bg-amber-500"
-  return "bg-red-400"
+function gapColor(gap: number): string {
+  return gap >= 0 ? "text-emerald-600" : "text-danger-600"
 }
 
-function formatIDR(n: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n)
-}
-
-const currentYearStr = new Date().getFullYear().toString()
-
-const INITIAL_FORM: TargetFormState = {
-  inputMode: "per-bulan",
-  periodMonth: "1",
-  periodYear: currentYearStr,
+const INITIAL_FORM: EditForm = {
+  quarter: "1",
+  year: "2026",
   revenueTarget: "",
   newClientTarget: "0",
   editingId: null,
 }
 
-// ---------------------------------------------------------------------------
-// Sub-component: Progress bar
-// ---------------------------------------------------------------------------
+// ── Annual KPI Card ───────────────────────────────────────────────────────────
 
-function ProgressBar({ actual, target, label }: { actual: number; target: number; label: string }) {
-  const pct = progressPct(actual, target)
-  const color = progressColor(pct)
-
+function KpiCard({ label, value, sub, color }: {
+  label: string
+  value: string
+  sub?: string
+  color?: string
+}) {
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-1.5 text-sm">
-        <span className="font-medium text-neutral-700">{label}</span>
-        {label === "Revenue" ? (
-          <span className="text-neutral-500">
-            {formatIDR(actual)} / {formatIDR(target)} ({pct}%)
-          </span>
-        ) : (
-          <span className="text-neutral-500">
-            {actual} / {target} clients ({pct}%)
-          </span>
-        )}
-      </div>
-      <div className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${color}`}
-          style={{ width: `${Math.min(pct, 100)}%` }}
-        />
-      </div>
+    <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-card">
+      <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">{label}</p>
+      <p className={`text-xl font-bold tabular-nums ${color ?? "text-neutral-900"}`}>{value}</p>
+      {sub && <p className="text-xs text-neutral-400 mt-0.5">{sub}</p>}
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ── Progress Bar ──────────────────────────────────────────────────────────────
+
+function ProgressBar({ value, max }: { value: number; max: number }) {
+  const p = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0
+  const color = p >= 100 ? "bg-emerald-500" : p >= 75 ? "bg-blue-500" : p >= 50 ? "bg-amber-500" : "bg-red-400"
+  return (
+    <div className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden mt-1">
+      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${p}%` }} />
+    </div>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export function TargetsContent({
-  allTargets: initialTargets,
-  currentMonthTarget,
-  currentQuarterTarget,
-  monthlyActual,
-  quarterlyActual,
-  currentMonth,
-  currentYear,
-  currentQuarter,
+  quarters,
+  annualTarget,
+  annualActual,
+  year,
   aeOptions,
   selectedAeId,
   userRole,
 }: TargetsContentProps) {
-  const isAdmin = userRole === "admin"
+  const isAdmin = userRole === "admin" || userRole === "commercial_director"
   const router = useRouter()
   const [, startTransition] = useTransition()
 
-  const [viewMode, setViewMode] = useState<ViewMode>("monthly")
-  const [targets, setTargets] = useState<SerializedTarget[]>(initialTargets)
-  const [form, setForm] = useState<TargetFormState>(INITIAL_FORM)
+  const [form, setForm] = useState<EditForm>(INITIAL_FORM)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  // Full-year mode: track progress per month (0-11)
-  const [fullYearProgress, setFullYearProgress] = useState<string | null>(null)
+  const [expandedQ, setExpandedQ] = useState<number | null>(null)
+  const [localQuarters, setLocalQuarters] = useState<QuarterData[]>(quarters)
 
-  // Current period data derived from local state
-  const localMonthTarget = targets.find(
-    (t) => t.type === "monthly" && t.periodMonth === currentMonth && t.periodYear === currentYear
-  ) ?? currentMonthTarget
-  const localQuarterTarget = targets.find(
-    (t) => t.type === "quarterly" && t.periodMonth === currentQuarter && t.periodYear === currentYear
-  ) ?? currentQuarterTarget
-
-  const activePeriodTarget = viewMode === "monthly" ? localMonthTarget : localQuarterTarget
-  const activeActual = viewMode === "monthly" ? monthlyActual : quarterlyActual
-
-  const activePeriodLabel =
-    viewMode === "monthly"
-      ? `${MONTH_SHORT[currentMonth - 1]} ${currentYear}`
-      : `Q${currentQuarter} ${currentYear}`
-
-  // AE label for display
   const selectedAeName = selectedAeId
     ? (aeOptions.find((a) => a.id === selectedAeId)?.name ?? "AE")
     : "Company"
 
-  // ── AE selector handler ───────────────────────────────────────────────────
+  const localAnnualTarget = localQuarters.reduce((sum, q) => sum + q.revenueTarget, 0)
+  const annualGap = annualActual - localAnnualTarget
+  const annualPct = pct(annualActual, localAnnualTarget)
 
+  // AE selector
   function handleAeChange(aeId: string) {
     const url = new URL(window.location.href)
-    if (aeId === "") {
-      url.searchParams.delete("aeId")
-    } else {
-      url.searchParams.set("aeId", aeId)
-    }
-    startTransition(() => {
-      router.replace(url.pathname + url.search)
-    })
+    if (aeId === "") url.searchParams.delete("aeId")
+    else url.searchParams.set("aeId", aeId)
+    startTransition(() => router.replace(url.pathname + url.search))
   }
 
-  // ── Edit / Cancel / Delete handlers ──────────────────────────────────────
-
-  function handleEditTarget(t: SerializedTarget) {
-    // Map DB type back to inputMode — editing always uses per-bulan or per-kuartal
-    const inputMode: InputMode = t.type === "quarterly" ? "per-kuartal" : "per-bulan"
+  // Edit existing target
+  function handleEdit(q: QuarterData) {
+    if (!q.targetId) return
     setForm({
-      inputMode,
-      periodMonth: String(t.periodMonth),
-      periodYear: String(t.periodYear),
-      revenueTarget: String(t.revenueTarget),
-      newClientTarget: String(t.newClientTarget),
-      editingId: t.id,
+      quarter: String(q.quarter),
+      year: String(year),
+      revenueTarget: String(q.revenueTarget),
+      newClientTarget: String(q.newClientTarget),
+      editingId: q.targetId,
     })
     setSaveError(null)
-    setFullYearProgress(null)
   }
 
-  function handleCancelEdit() {
+  function handleCancel() {
     setForm(INITIAL_FORM)
     setSaveError(null)
-    setFullYearProgress(null)
   }
 
-  async function handleDeleteTarget(id: string) {
+  // Delete target
+  async function handleDelete(q: QuarterData) {
+    if (!q.targetId) return
     try {
-      const res = await fetch(`/api/targets/${id}`, { method: "DELETE" })
-      if (!res.ok && res.status !== 204) {
-        console.error("[DELETE /api/targets]", res.status)
-        return
-      }
-      setTargets((prev) => prev.filter((t) => t.id !== id))
-      if (form.editingId === id) setForm(INITIAL_FORM)
+      const res = await fetch(`/api/targets/${q.targetId}`, { method: "DELETE" })
+      if (!res.ok && res.status !== 204) return
+      setLocalQuarters((prev) => prev.map((lq) =>
+        lq.quarter === q.quarter
+          ? { ...lq, targetId: null, revenueTarget: 0, newClientTarget: 0 }
+          : lq
+      ))
+      if (form.editingId === q.targetId) setForm(INITIAL_FORM)
     } catch (err) {
       console.error("[DELETE /api/targets]", err)
     }
   }
 
-  // ── Single-record upsert (per-bulan / per-kuartal / edit) ─────────────────
-
-  async function upsertSingleTarget(payload: {
-    periodMonth: number
-    periodYear: number
-    revenueTarget: number
-    newClientTarget: number
-    type: "monthly" | "quarterly"
-    salesId?: string | null
-  }): Promise<SerializedTarget | null> {
-    const res = await fetch("/api/targets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, salesId: selectedAeId }),
-    })
-    if (!res.ok) {
-      const data = (await res.json()) as { error?: string }
-      setSaveError(data.error ?? "Failed to save target.")
-      return null
-    }
-    const data = (await res.json()) as { target: SerializedTarget }
-    return data.target
-  }
-
-  // ── handleSave (all modes) ────────────────────────────────────────────────
-
+  // Save target
   async function handleSave() {
     setSaveError(null)
-    setFullYearProgress(null)
+    const qNum = parseInt(form.quarter, 10)
+    const yearNum = parseInt(form.year, 10)
+    const revenue = parseFloat(form.revenueTarget)
+    const nc = parseInt(form.newClientTarget, 10) || 0
 
-    const periodYear = parseInt(form.periodYear, 10)
-    const revenueTarget = parseFloat(form.revenueTarget)
-    const newClientTarget = parseInt(form.newClientTarget, 10)
-
-    if (isNaN(periodYear) || periodYear < 2020 || periodYear > 2100) {
-      setSaveError("Year is required and must be valid.")
-      return
-    }
-    if (isNaN(revenueTarget) || revenueTarget < 0) {
-      setSaveError("Revenue target must be a valid non-negative number.")
-      return
-    }
+    if (isNaN(qNum) || qNum < 1 || qNum > 4) { setSaveError("Pilih kuartal."); return }
+    if (isNaN(revenue) || revenue < 0) { setSaveError("Revenue target harus angka positif."); return }
 
     setSaving(true)
-
     try {
-      // ── Edit existing record ───────────────────────────────────────────────
       if (form.editingId) {
+        // PATCH existing
         const res = await fetch(`/api/targets/${form.editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ revenueTarget: revenue, newClientTarget: nc }),
+        })
+        if (!res.ok) {
+          const d = await res.json() as { error?: string }
+          setSaveError(d.error ?? "Gagal update target.")
+          return
+        }
+        setLocalQuarters((prev) => prev.map((lq) =>
+          lq.quarter === qNum
+            ? { ...lq, revenueTarget: revenue, newClientTarget: nc }
+            : lq
+        ))
+        setForm(INITIAL_FORM)
+      } else {
+        // POST new
+        const res = await fetch("/api/targets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            revenueTarget,
-            newClientTarget: isNaN(newClientTarget) ? 0 : newClientTarget,
+            periodMonth: qNum,
+            periodYear: yearNum,
+            revenueTarget: revenue,
+            newClientTarget: nc,
+            type: "quarterly",
+            salesId: selectedAeId,
           }),
         })
         if (!res.ok) {
-          const data = (await res.json()) as { error?: string }
-          setSaveError(data.error ?? "Failed to update target.")
+          const d = await res.json() as { error?: string }
+          setSaveError(d.error ?? "Gagal simpan target.")
           return
         }
-        const data = (await res.json()) as { target: SerializedTarget }
-        setTargets((prev) =>
-          prev.map((t) => (t.id === form.editingId ? data.target : t))
-        )
+        const data = await res.json() as { target: { id: string; revenueTarget: number; newClientTarget: number } }
+        setLocalQuarters((prev) => prev.map((lq) =>
+          lq.quarter === qNum
+            ? { ...lq, targetId: data.target.id, revenueTarget: data.target.revenueTarget, newClientTarget: data.target.newClientTarget }
+            : lq
+        ))
         setForm(INITIAL_FORM)
-        return
       }
-
-      // ── Per Bulan (single monthly record) ────────────────────────────────
-      if (form.inputMode === "per-bulan") {
-        const periodMonth = parseInt(form.periodMonth, 10)
-        if (isNaN(periodMonth) || periodMonth < 1 || periodMonth > 12) {
-          setSaveError("Month is required.")
-          return
-        }
-        const target = await upsertSingleTarget({
-          periodMonth,
-          periodYear,
-          revenueTarget,
-          newClientTarget: isNaN(newClientTarget) ? 0 : newClientTarget,
-          type: "monthly",
-        })
-        if (!target) return
-        mergeTarget(target)
-        setForm(INITIAL_FORM)
-        return
-      }
-
-      // ── Per Kuartal (single quarterly record) ────────────────────────────
-      if (form.inputMode === "per-kuartal") {
-        const periodMonth = parseInt(form.periodMonth, 10)
-        if (isNaN(periodMonth) || periodMonth < 1 || periodMonth > 4) {
-          setSaveError("Quarter is required.")
-          return
-        }
-        const target = await upsertSingleTarget({
-          periodMonth,
-          periodYear,
-          revenueTarget,
-          newClientTarget: isNaN(newClientTarget) ? 0 : newClientTarget,
-          type: "quarterly",
-        })
-        if (!target) return
-        mergeTarget(target)
-        setForm(INITIAL_FORM)
-        return
-      }
-
-      // ── Setahun Penuh (12 monthly records — annual total ÷ 12 per month) ──
-      if (form.inputMode === "setahun-penuh") {
-        const revenuePerMonth = Math.round(revenueTarget / 12)
-        const nc = isNaN(newClientTarget) ? 0 : newClientTarget
-        const ncPerMonth = Math.round(nc / 12)
-        const results: SerializedTarget[] = []
-        let failed = false
-
-        for (let month = 1; month <= 12; month++) {
-          setFullYearProgress(`Saving ${MONTH_SHORT[month - 1]} ${periodYear}...`)
-          const target = await upsertSingleTarget({
-            periodMonth: month,
-            periodYear,
-            revenueTarget: revenuePerMonth,
-            newClientTarget: ncPerMonth,
-            type: "monthly",
-          })
-          if (!target) {
-            failed = true
-            break
-          }
-          results.push(target)
-        }
-
-        setFullYearProgress(null)
-
-        if (!failed) {
-          setTargets((prev) => {
-            let updated = [...prev]
-            for (const t of results) {
-              const idx = updated.findIndex((x) => x.id === t.id)
-              if (idx !== -1) {
-                updated[idx] = t
-              } else {
-                updated = [t, ...updated]
-              }
-            }
-            return updated.sort((a, b) => {
-              if (b.periodYear !== a.periodYear) return b.periodYear - a.periodYear
-              return b.periodMonth - a.periodMonth
-            })
-          })
-          setForm(INITIAL_FORM)
-        }
-      }
-    } catch (err) {
-      console.error("[handleSave]", err)
-      setSaveError("Network error. Please try again.")
+    } catch {
+      setSaveError("Network error. Coba lagi.")
     } finally {
       setSaving(false)
     }
   }
 
-  // Merge a single target into local state (upsert by id or prepend)
-  function mergeTarget(t: SerializedTarget) {
-    setTargets((prev) => {
-      const idx = prev.findIndex((x) => x.id === t.id)
-      if (idx !== -1) {
-        const updated = [...prev]
-        updated[idx] = t
-        return updated
-      }
-      return [t, ...prev].sort((a, b) => {
-        if (b.periodYear !== a.periodYear) return b.periodYear - a.periodYear
-        return b.periodMonth - a.periodMonth
-      })
-    })
-  }
-
-  // ── Revenue blur formatting ───────────────────────────────────────────────
-
-  function handleRevenueBlur() {
-    const n = parseFloat(form.revenueTarget)
-    if (!isNaN(n)) {
-      setForm((f) => ({ ...f, revenueTarget: n.toFixed(0) }))
-    }
-  }
-
-  // ── Tab switch ────────────────────────────────────────────────────────────
-
-  function switchInputMode(mode: InputMode) {
-    if (form.editingId) return // locked during edit
-    setForm((f) => ({
-      ...f,
-      inputMode: mode,
-      periodMonth: "1",
-      editingId: null,
-    }))
-    setSaveError(null)
-    setFullYearProgress(null)
-  }
-
-  // ── Year range for full-year confirmation label ───────────────────────────
-  const fullYearLabel = `Jan–Des ${form.periodYear || currentYear}`
-
-  // ── Tab styling helper ────────────────────────────────────────────────────
-  function tabClass(mode: InputMode) {
-    const active = form.inputMode === mode
-    const base = "px-3 py-1.5 text-xs font-medium transition-colors border-b-2"
-    return active
-      ? `${base} border-neutral-900 text-neutral-900`
-      : `${base} border-transparent text-neutral-500 hover:text-neutral-700`
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <main className="flex-1 overflow-y-auto px-8 py-6">
-
-      {/* ── AE / Company selector ──────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-5">
+      {/* AE / Company selector */}
+      <div className="flex items-center gap-3 mb-6">
         <label className="text-xs font-medium text-neutral-500 shrink-0">View targets for:</label>
         <select
           value={selectedAeId ?? ""}
@@ -455,378 +247,321 @@ export function TargetsContent({
         >
           <option value="">Company (Company-wide)</option>
           {aeOptions.map((ae) => (
-            <option key={ae.id} value={ae.id}>
-              {ae.name}
-            </option>
+            <option key={ae.id} value={ae.id}>{ae.name}</option>
           ))}
         </select>
         {selectedAeId && (
-          <span className="text-xs text-neutral-400">
-            Showing targets for {selectedAeName}
-          </span>
+          <span className="text-xs text-neutral-400">Showing: {selectedAeName}</span>
         )}
       </div>
 
-      {/* ── View mode (Monthly / Quarterly progress view) ──────────────────── */}
-      <div className="flex items-center gap-2 mb-6">
-        <button
-          onClick={() => setViewMode("monthly")}
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            viewMode === "monthly"
-              ? "bg-neutral-900 text-white"
-              : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-          }`}
-        >
-          Monthly
-        </button>
-        <button
-          onClick={() => setViewMode("quarterly")}
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            viewMode === "quarterly"
-              ? "bg-neutral-900 text-white"
-              : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-          }`}
-        >
-          Quarterly
-        </button>
+      {/* Annual Overview */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <KpiCard
+          label="Annual Target"
+          value={formatIDR(localAnnualTarget)}
+          sub={`${year} — sum Q1–Q4`}
+        />
+        <KpiCard
+          label="Annual Actual (YTD)"
+          value={formatIDR(annualActual)}
+          sub="Won + Invoiced + Renewal"
+        />
+        <KpiCard
+          label="Gap"
+          value={`${annualGap >= 0 ? "+" : ""}${formatIDR(annualGap)}`}
+          sub="Actual − Target"
+          color={annualGap >= 0 ? "text-emerald-600" : "text-danger-600"}
+        />
+        <KpiCard
+          label="Achievement"
+          value={`${annualPct}%`}
+          sub={localAnnualTarget > 0 ? `${formatIDR(annualActual)} / ${formatIDR(localAnnualTarget)}` : "No target set"}
+          color={annualPct >= 100 ? "text-emerald-600" : annualPct >= 75 ? "text-blue-600" : "text-neutral-900"}
+        />
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* ── Left column ─────────────────────────────────────────────────── */}
-        <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-6">
+        {/* Left 2 cols: Quarterly Breakdown */}
+        <div className="col-span-2 space-y-3">
+          <h2 className="text-sm font-semibold text-neutral-800">Quarterly Breakdown {year}</h2>
+          {localQuarters.map((q) => {
+            const isExpanded = expandedQ === q.quarter
+            const gap = q.actual - q.revenueTarget
+            const monthlyTarget = q.revenueTarget > 0 ? q.revenueTarget / 3 : 0
 
-          {/* Set Target card — admin only */}
-          {!isAdmin && (
+            return (
+              <div key={q.quarter} className="rounded-lg border border-neutral-200 bg-white shadow-card overflow-hidden">
+                {/* Quarter header row */}
+                <div className="px-4 py-3 flex items-center gap-4">
+                  {/* Expand toggle */}
+                  <button
+                    onClick={() => setExpandedQ(isExpanded ? null : q.quarter)}
+                    className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                  >
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </button>
+
+                  {/* Quarter label */}
+                  <div className="w-24 shrink-0">
+                    <p className="font-semibold text-neutral-800 text-sm">Q{q.quarter} {year}</p>
+                    <p className="text-xs text-neutral-400">{QUARTER_MONTHS[q.quarter]}</p>
+                  </div>
+
+                  {/* Status badge */}
+                  <div className="w-20 shrink-0">
+                    {q.status === "closed" && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full font-medium">
+                        <Lock className="h-3 w-3" /> Closed
+                      </span>
+                    )}
+                    {q.status === "active" && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                        Active
+                      </span>
+                    )}
+                    {q.status === "future" && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-neutral-50 text-neutral-500 px-2 py-0.5 rounded-full font-medium">
+                        Future
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Primary number */}
+                  <div className="flex-1 min-w-0">
+                    {q.status === "closed" ? (
+                      <div>
+                        <p className="text-base font-bold tabular-nums text-neutral-900">{formatIDR(q.actual)}</p>
+                        <p className="text-xs text-neutral-400">
+                          Target: {q.revenueTarget > 0 ? formatIDR(q.revenueTarget) : "—"}
+                          {q.revenueTarget > 0 && (
+                            <span className={`ml-2 font-medium ${gapColor(gap)}`}>
+                              {gap >= 0 ? "+" : ""}{formatIDR(gap)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-base font-bold tabular-nums text-neutral-900">
+                          {q.revenueTarget > 0
+                            ? formatIDR(q.revenueTarget)
+                            : <span className="text-neutral-400 font-normal text-sm">No target set</span>
+                          }
+                        </p>
+                        {q.status === "active" && (
+                          <p className="text-xs text-neutral-400">
+                            YTD actual: {formatIDR(q.actual)}
+                            {q.revenueTarget > 0 && (
+                              <span className={`ml-2 font-medium ${gapColor(q.actual - q.revenueTarget)}`}>
+                                {q.actual - q.revenueTarget >= 0 ? "+" : ""}{formatIDR(q.actual - q.revenueTarget)}
+                              </span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {q.revenueTarget > 0 && (
+                      <ProgressBar value={q.actual} max={q.revenueTarget} />
+                    )}
+                  </div>
+
+                  {/* Actions — only for active/future */}
+                  {isAdmin && q.status !== "closed" && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleEdit(q)}
+                        disabled={!q.targetId}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      {q.targetId && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-danger-500 hover:text-danger-700 hover:bg-danger-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Hapus target Q{q.quarter} {year}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Ini akan menghapus target revenue {formatIDR(q.revenueTarget)} untuk Q{q.quarter} {year}. Tidak bisa diurungkan.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-danger-600 hover:bg-danger-700"
+                                onClick={() => void handleDelete(q)}
+                              >
+                                Hapus
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                      {!q.targetId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            setForm({ ...INITIAL_FORM, quarter: String(q.quarter) })
+                            setSaveError(null)
+                          }}
+                        >
+                          Set target
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Monthly breakdown (collapsible) */}
+                {isExpanded && (
+                  <div className="border-t border-neutral-100 bg-neutral-50 px-4 py-3 space-y-2">
+                    {q.months.map((m) => {
+                      const mActual = m.actual
+                      const mTarget = monthlyTarget
+                      const mPct = pct(mActual, mTarget)
+                      return (
+                        <div key={m.month} className="flex items-center gap-3">
+                          <span className="w-8 text-xs font-medium text-neutral-500 shrink-0">
+                            {MONTH_SHORT[m.month - 1]}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between text-xs mb-0.5">
+                              <span className="text-neutral-600">{formatIDR(mActual)}</span>
+                              <span className="text-neutral-400">
+                                {mTarget > 0 ? `/ ${formatIDR(mTarget)} (${mPct}%)` : "No target"}
+                              </span>
+                            </div>
+                            {mTarget > 0 && <ProgressBar value={mActual} max={mTarget} />}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Right col: Set Target form */}
+        <div className="space-y-4">
+          {!isAdmin ? (
             <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
               <p className="text-sm text-neutral-400">Hanya admin yang dapat mengatur target.</p>
             </div>
-          )}
-          {isAdmin && <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-            <h2 className="text-sm font-semibold text-neutral-800 mb-4">
-              {form.editingId ? "Edit Target" : "Set Target"}
-              {selectedAeId && (
-                <span className="ml-2 text-xs font-normal text-neutral-400">
-                  — {selectedAeName}
-                </span>
-              )}
-            </h2>
-
-            {/* 3-tab input mode selector */}
-            {!form.editingId && (
-              <div className="flex gap-0 border-b border-neutral-100 mb-4">
-                <button className={tabClass("per-bulan")} onClick={() => switchInputMode("per-bulan")}>
-                  Per Bulan
-                </button>
-                <button className={tabClass("per-kuartal")} onClick={() => switchInputMode("per-kuartal")}>
-                  Per Kuartal
-                </button>
-                <button className={tabClass("setahun-penuh")} onClick={() => switchInputMode("setahun-penuh")}>
-                  Setahun Penuh
-                </button>
-              </div>
-            )}
-
-            {/* Full-year confirmation note */}
-            {form.inputMode === "setahun-penuh" && !form.editingId && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 mb-3">
-                Masukkan total revenue setahun. Sistem akan bagi 12 dan set{" "}
-                {form.revenueTarget && !isNaN(parseFloat(form.revenueTarget))
-                  ? `${formatIDR(Math.round(parseFloat(form.revenueTarget) / 12))}/bulan`
-                  : "target per bulan"}{" "}
-                untuk {fullYearLabel}.
-              </p>
-            )}
-
-            <div className="space-y-3">
-              {/* Period selector row */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Per Bulan: month selector */}
-                {form.inputMode === "per-bulan" && (
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">Bulan</label>
-                    <select
-                      value={form.periodMonth}
-                      onChange={(e) => setForm((f) => ({ ...f, periodMonth: e.target.value }))}
-                      disabled={!!form.editingId}
-                      className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-400"
-                    >
-                      {MONTH_SHORT.map((m, i) => (
-                        <option key={m} value={String(i + 1)}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
+          ) : (
+            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+              <h2 className="text-sm font-semibold text-neutral-800 mb-4">
+                {form.editingId ? "Edit Target" : "Set Target Kuartal"}
+                {selectedAeId && (
+                  <span className="ml-2 text-xs font-normal text-neutral-400">— {selectedAeName}</span>
                 )}
+              </h2>
 
-                {/* Per Kuartal: quarter selector */}
-                {form.inputMode === "per-kuartal" && (
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">Kuartal</label>
-                    <select
-                      value={form.periodMonth}
-                      onChange={(e) => setForm((f) => ({ ...f, periodMonth: e.target.value }))}
-                      disabled={!!form.editingId}
-                      className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-400"
-                    >
-                      <option value="1">Q1 (Jan–Mar)</option>
-                      <option value="2">Q2 (Apr–Jun)</option>
-                      <option value="3">Q3 (Jul–Sep)</option>
-                      <option value="4">Q4 (Oct–Des)</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Setahun Penuh: no month selector, just year */}
-                {form.inputMode === "setahun-penuh" && (
-                  <div className="flex items-end">
-                    <p className="text-xs text-neutral-500 pb-2">Jan – Des (semua bulan)</p>
-                  </div>
-                )}
-
-                {/* Year selector — all modes */}
+              <div className="space-y-3">
+                {/* Quarter selector (disabled when editing) */}
                 <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">Tahun</label>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">Kuartal</label>
+                  <select
+                    value={form.quarter}
+                    onChange={(e) => setForm((f) => ({ ...f, quarter: e.target.value }))}
+                    disabled={!!form.editingId}
+                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-400"
+                  >
+                    <option value="1">Q1 (Jan–Mar)</option>
+                    <option value="2">Q2 (Apr–Jun)</option>
+                    <option value="3">Q3 (Jul–Sep)</option>
+                    <option value="4">Q4 (Okt–Des)</option>
+                  </select>
+                </div>
+
+                {/* Revenue Target */}
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">Revenue Target (IDR)</label>
                   <input
                     type="number"
-                    value={form.periodYear}
-                    onChange={(e) => setForm((f) => ({ ...f, periodYear: e.target.value }))}
-                    disabled={!!form.editingId}
-                    min={2020}
-                    max={2100}
-                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-400"
+                    value={form.revenueTarget}
+                    onChange={(e) => setForm((f) => ({ ...f, revenueTarget: e.target.value }))}
+                    placeholder="e.g. 4000000000"
+                    min={0}
+                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                  />
+                  {form.revenueTarget && !isNaN(parseFloat(form.revenueTarget)) && (
+                    <p className="text-xs text-neutral-400 mt-1">
+                      ≈ {formatIDR(parseFloat(form.revenueTarget) / 3)}/bulan
+                    </p>
+                  )}
+                </div>
+
+                {/* New Client Target */}
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">New Client Target</label>
+                  <input
+                    type="number"
+                    value={form.newClientTarget}
+                    onChange={(e) => setForm((f) => ({ ...f, newClientTarget: e.target.value }))}
+                    placeholder="0"
+                    min={0}
+                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
                   />
                 </div>
-              </div>
 
-              {/* Revenue Target */}
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">
-                  Revenue Target (IDR)
-                  {form.inputMode === "setahun-penuh" && !form.editingId && (
-                    <span className="ml-1 font-normal text-neutral-400">— total setahun (÷12 per bulan)</span>
-                  )}
-                </label>
-                <input
-                  type="number"
-                  value={form.revenueTarget}
-                  onChange={(e) => setForm((f) => ({ ...f, revenueTarget: e.target.value }))}
-                  onBlur={handleRevenueBlur}
-                  placeholder="e.g. 50000000"
-                  min={0}
-                  className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                />
-              </div>
+                {saveError && <p className="text-xs text-danger-600">{saveError}</p>}
 
-              {/* New Client Target */}
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">
-                  New Client Target
-                  {form.inputMode === "setahun-penuh" && !form.editingId && (
-                    <span className="ml-1 font-normal text-neutral-400">— total setahun (÷12 per bulan)</span>
-                  )}
-                </label>
-                <input
-                  type="number"
-                  value={form.newClientTarget}
-                  onChange={(e) => setForm((f) => ({ ...f, newClientTarget: e.target.value }))}
-                  placeholder="0"
-                  min={0}
-                  className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                />
-              </div>
-
-              {/* Full-year save progress */}
-              {fullYearProgress && (
-                <p className="text-xs text-blue-600 bg-blue-50 rounded-md px-3 py-2">
-                  {fullYearProgress}
-                </p>
-              )}
-
-              {saveError && (
-                <p className="text-xs text-red-500">{saveError}</p>
-              )}
-
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={handleSave}
-                  disabled={saving || !form.revenueTarget}
-                >
-                  {saving
-                    ? "Saving..."
-                    : form.editingId
-                    ? "Update Target"
-                    : form.inputMode === "setahun-penuh"
-                    ? `Set Target Jan–Des ${form.periodYear}`
-                    : "Save Target"}
-                </Button>
-                {form.editingId && (
+                <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
-                    onClick={handleCancelEdit}
-                    disabled={saving}
+                    className="flex-1"
+                    onClick={() => void handleSave()}
+                    disabled={saving || !form.revenueTarget}
                   >
-                    Cancel
+                    {saving ? "Saving..." : form.editingId ? "Update Target" : "Save Target"}
                   </Button>
-                )}
+                  {form.editingId && (
+                    <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving}>
+                      Batal
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>}
+          )}
 
-          {/* Target History table */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-            <h2 className="text-sm font-semibold text-neutral-800 mb-4">
-              Target History
-              {selectedAeId && (
-                <span className="ml-2 text-xs font-normal text-neutral-400">— {selectedAeName}</span>
-              )}
-            </h2>
-            {targets.length === 0 ? (
-              <p className="text-sm text-neutral-400 text-center py-4">No targets set yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-neutral-100">
-                      <th className="pb-2 text-left text-xs font-medium text-neutral-500">Period</th>
-                      <th className="pb-2 text-right text-xs font-medium text-neutral-500">Revenue Target</th>
-                      <th className="pb-2 text-right text-xs font-medium text-neutral-500">New Clients</th>
-                      <th className="pb-2 text-right text-xs font-medium text-neutral-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {targets.map((t) => (
-                      <tr
-                        key={t.id}
-                        className={`border-b border-neutral-50 last:border-0 hover:bg-neutral-50 transition-colors ${
-                          form.editingId === t.id ? "bg-blue-50" : ""
-                        }`}
-                      >
-                        <td className="py-2.5 font-medium text-neutral-700">
-                          <span className="inline-flex items-center gap-1.5">
-                            {formatPeriod(t)}
-                            <span
-                              className={`text-xs px-1.5 py-0.5 rounded font-normal ${
-                                t.type === "quarterly"
-                                  ? "bg-purple-50 text-purple-600"
-                                  : "bg-blue-50 text-blue-600"
-                              }`}
-                            >
-                              {t.type === "quarterly" ? "Q" : "M"}
-                            </span>
-                          </span>
-                        </td>
-                        <td className="py-2.5 text-right text-neutral-600">{formatIDR(t.revenueTarget)}</td>
-                        <td className="py-2.5 text-right text-neutral-600">{t.newClientTarget}</td>
-                        <td className="py-2.5 text-right">
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              onClick={() => handleEditTarget(t)}
-                              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-danger-600 hover:bg-danger-50">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Hapus Target?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Target ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className="bg-danger-600 hover:bg-danger-700 text-white"
-                                    onClick={() => void handleDeleteTarget(t.id)}
-                                  >
-                                    Hapus
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Right column ────────────────────────────────────────────────── */}
-        <div className="space-y-6">
-
-          {/* Current Period Achievement */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-            <h2 className="text-sm font-semibold text-neutral-800 mb-4">
-              {activePeriodLabel} — Achievement
-              {selectedAeId && (
-                <span className="ml-2 text-xs font-normal text-neutral-400">({selectedAeName})</span>
-              )}
-            </h2>
-            {activePeriodTarget ? (
-              <>
-                <ProgressBar
-                  actual={activeActual.revenue}
-                  target={activePeriodTarget.revenueTarget}
-                  label="Revenue"
-                />
-                <ProgressBar
-                  actual={activeActual.newClients}
-                  target={activePeriodTarget.newClientTarget}
-                  label="New Clients"
-                />
-              </>
-            ) : (
-              <p className="text-sm text-neutral-400">
-                No target set for this period. Use the form to add one.
+          {/* Gap context card — shown if any closed quarter has a gap */}
+          {localQuarters.some((q) => q.status === "closed" && q.revenueTarget > 0) && (
+            <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
+              <p className="text-xs font-semibold text-amber-700 mb-2">Gap dari Quarter Sebelumnya</p>
+              {localQuarters
+                .filter((q) => q.status === "closed" && q.revenueTarget > 0)
+                .map((q) => {
+                  const gap = q.actual - q.revenueTarget
+                  return (
+                    <div key={q.quarter} className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-amber-700">Q{q.quarter}</span>
+                      <span className={`font-medium ${gapColor(gap)}`}>
+                        {gap >= 0 ? "+" : ""}{formatIDR(gap)}
+                      </span>
+                    </div>
+                  )
+                })}
+              <p className="text-xs text-amber-600 mt-2 leading-relaxed">
+                Pertimbangkan gap ini saat menyesuaikan target Q2–Q4.
               </p>
-            )}
-          </div>
-
-          {/* Overall Progress */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-            <h2 className="text-sm font-semibold text-neutral-800 mb-3">Overall Progress</h2>
-            {activePeriodTarget ? (
-              <>
-                <div className="mb-1">
-                  <span className="text-3xl font-bold text-neutral-900">
-                    {formatIDR(activeActual.revenue)}
-                  </span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden mb-2">
-                  <div
-                    className={`h-full rounded-full transition-all ${progressColor(
-                      progressPct(activeActual.revenue, activePeriodTarget.revenueTarget)
-                    )}`}
-                    style={{
-                      width: `${Math.min(
-                        progressPct(activeActual.revenue, activePeriodTarget.revenueTarget),
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
-                <p className="text-sm text-neutral-500">
-                  {formatIDR(activeActual.revenue)} dari {formatIDR(activePeriodTarget.revenueTarget)} target (
-                  {progressPct(activeActual.revenue, activePeriodTarget.revenueTarget)}%) — {activePeriodLabel}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-neutral-400">
-                No target set for this period. Use the form to add one.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </main>

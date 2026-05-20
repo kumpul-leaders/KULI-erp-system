@@ -1,13 +1,13 @@
 # VF ERP — Improvement Roadmap
 **Last Updated:** 2026-05-19
-**Status:** Sprint 2 Complete
-**Live URL:** https://execution-phi.vercel.app
+**Status:** Role System Complete — Sprint 3 Next
+**Live URL:** https://vf-erp.vercel.app
 
 ---
 
 ## Overview
 
-Post Phase 1–3 improvement plan. 4 sprints, 33 total items. Scope: CRM + BizDev Pipeline — HRM/Finance tetap out of scope. Sprint 1 adalah critical blocker; Sprint 2–3 UX dan data accuracy; Sprint 4 nice-to-have backlog.
+Post Phase 1–3 improvement plan. 4 sprints, 33 total items + Role System milestone (unplanned). Scope: CRM + BizDev Pipeline — HRM/Finance tetap out of scope. Sprint 1 adalah critical blocker; Sprint 2–3 UX dan data accuracy; Sprint 4 nice-to-have backlog.
 
 ## Sprint Progress
 
@@ -15,8 +15,9 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items. Scope: CRM + BizDe
 |--------|-------|------|--------|
 | Sprint 1 — Critical | 7 | 7 | ✅ Complete |
 | Sprint 2 — UX/Flow | 11 | 11 | ✅ Complete |
-| Sprint 3 — Data Accuracy | 8 | 0 | 🔲 Not Started |
-| Sprint 4 — Nice-to-Have | 6 | 0 | 🔲 Not Started |
+| Role System — Unplanned | 1 | 1 | ✅ Complete |
+| Sprint 3 — Data Accuracy | 8 | 8 | ✅ Complete |
+| Sprint 4 — Nice-to-Have | 6 | 5 | ✅ Complete (4.4 deferred) |
 
 ---
 
@@ -63,33 +64,62 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items. Scope: CRM + BizDe
 
 ---
 
+## Role System — Unplanned Milestone (Post Sprint 2)
+
+> Goal: Implementasi 4-role permission system dengan single source of truth dari Prisma DB.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| R.1 | 4 roles: Super Admin, Commercial Director, Busdev/AE, Operations | ✅ | Enum `Role` di schema. `prisma db push` via DIRECT_URL. |
+| R.2 | Single source of truth: Prisma DB (bukan Supabase user_metadata) | ✅ | `layout.tsx` fetch dari DB. 17 API routes pakai `require-role.ts`. |
+| R.3 | Permission matrix enforcement | ✅ | Matrix A: Admin full; ComDir full kecuali Settings/user mgmt; Account: edit own leads only + analytics forced ke self; Ops: read-only, no Targets. |
+| R.4 | Supabase invite flow (Settings → Add User) | ✅ | `createAdminClient()` + `inviteUserByEmail()`. Requires `SUPABASE_SERVICE_ROLE_KEY`. |
+| R.5 | Targets Forbidden fix + Setahun Penuh ÷12 fix | ✅ | Root cause: role mismatch layout vs API. Fix: DB as single source. Setahun penuh: input annual total, simpan per-bulan = annual÷12. |
+| R.6 | William admin seeded via `fix-admin-user.mjs` | ✅ | `william.sudhana@gmail.com` → id `ac24fbb8-704d-4e1a-ae7d-17aed05f5c22`, role: admin. |
+
+**Key files:**
+- `src/lib/require-role.ts` — `requireRole()` + named shortcuts (`requireAdmin`, `requireAdminOrDirector`, etc.)
+- `src/lib/supabase/admin-client.ts` — `createAdminClient()` service role
+- `src/app/(dashboard)/layout.tsx` — role dari Prisma DB
+- `scripts/fix-admin-user.mjs` — seed admin pattern (Prisma 7: wajib PrismaPg adapter)
+
+---
+
 ## Sprint 3 — Data Accuracy & Enrichment
 
 > Goal: Pastikan angka-angka yang ditampilkan akurat dan data model lengkap.
 
 | # | Item | Area | Status | Notes |
 |---|------|------|--------|-------|
-| 3.1 | Analytics: Funnel conversion rates — % drop-off per stage transition | Analytics | 🔲 | Files: `analytics/page.tsx`, `analytics-content.tsx` |
-| 3.2 | Analytics: Client Retention fix — 2 metric terpisah | Analytics | 🔲 | Metric 1: contract_renewal count; Metric 2: upsell won count. Files: `analytics/page.tsx`, `analytics-content.tsx` |
-| 3.3 | Analytics: Win Rate = won/(won+lost) only | Analytics | 🔲 | Update query filter dari all leads ke won+lost_deal only. File: `analytics/page.tsx` |
-| 3.4 | Analytics: Revenue Trend include contract_renewal | Analytics | 🔲 | Remove stage filter exclusion di revenue query. File: `analytics/page.tsx` |
-| 3.5 | Clients: Multi-field search — name + industry + AE + customer code | Clients | 🔲 | File: `clients/page.tsx` |
-| 3.6 | Clients: Contract urgency badge di table — merah/kuning kalau expiry < 30/60 hari | Clients | 🔲 | File: `clients-table.tsx` |
-| 3.7 | Clients: Notes field di Add Client form | Clients | 🔲 | Tambah textarea Notes di AddClientSheet. File: `add-client-sheet.tsx` |
-| 3.8 | Pipeline: Actual Revenue editable dari list view — inline edit di list view cell | Pipeline | 🔲 | File: `pipeline-list-view.tsx` |
+| 3.1 | Analytics: Funnel conversion rates — % drop-off per stage transition | Analytics | ✅ | `FunnelStage.conversionRate: number|null`. Second-pass loop. Tooltip shows rate. |
+| 3.2 | Analytics: Client Retention fix — 2 metric terpisah | Analytics | ✅ | Metric 1: contract_renewal distinct clients. Metric 2: closed_won+invoiced distinct clients. UI redesigned 3 rows. |
+| 3.3 | Analytics: Win Rate = won/(won+lost) only | Analytics | ✅ | Denominator = `closed = won + lost`. Zero-division guard. |
+| 3.4 | Analytics: Revenue Trend include contract_renewal | Analytics | ✅ | Stage filter: `["closed_won", "invoiced", "contract_renewal"]` |
+| 3.5 | Clients: Multi-field search — name + industry + AE + customer code | Clients | ✅ | OR clause di `fetchClients` + GET /api/clients. Placeholder updated. |
+| 3.6 | Clients: Contract urgency badge di table — merah/kuning kalau expiry < 30/60 hari | Clients | ✅ | `getContractUrgency()` helper. Badge di annual value cell. |
+| 3.7 | Clients: Notes field di Add Client form | Clients | ✅ | `FormState.notes`, Textarea, POST body, API mapped. |
+| 3.8 | Pipeline: Actual Revenue editable dari list view — inline edit di list view cell | Pipeline | ✅ | `ActualRevenueCell` component. cancelledRef fix (Escape). Optimistic overrides. Footer calc uses effective values. |
 
 ---
 
 ## Sprint 4 — Nice-to-Have
 
-| # | Item | Notes |
-|---|------|-------|
-| 4.1 | Drill-down dari chart ke underlying leads | Link dari Analytics chart ke filtered Pipeline view |
-| 4.2 | Audit trail perubahan data client | Log setiap perubahan field penting di Client |
-| 4.3 | YoY comparison Analytics | Tambah toggle Year-over-Year di Revenue Trend |
-| 4.4 | Stage gate & product lines configurable dari Settings | Admin bisa edit tanpa code change |
-| 4.5 | Recurring lead: preview detail sebelum bulk create | Konfirmasi daftar leads yang akan dibuat |
-| 4.6 | Bulk reassign AE di Pipeline list view | Select multiple leads → reassign ke AE lain |
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 4.1 | Drill-down dari chart ke underlying leads | ✅ | AE bar → Pipeline filter salesId. Funnel bar → Pipeline filter stage. |
+| 4.2 | Audit trail perubahan data client | ✅ | `ClientFieldHistory` model. PATCH diffs 12 fields, `createMany` audit. Change History card di client detail. |
+| 4.3 | YoY comparison Analytics | ✅ | `revenuePY` field. PY query dengan date-shifted filter. Toggle "vs Prior Year". Dashed grey Line. |
+| 4.4 | Stage gate & product lines configurable dari Settings | ⏸️ DEFERRED | Already view-only di Settings (Pipeline Reference card). Full editable config = Sprint 5 scope. |
+| 4.5 | Recurring lead: preview detail sebelum bulk create | ✅ | Preview Dialog: numbered table billing plan + quarter. `confirmBulkCreate` gates the actual API call. |
+| 4.6 | Bulk reassign AE di Pipeline list view | ✅ | Checkbox column + bulk action bar. `POST /api/leads/bulk-update`. onRefresh after reassign. |
+
+---
+
+## Sprint 5 — Analytics Backlog
+
+| # | Item | Area | Status | Notes |
+|---|------|------|--------|-------|
+| 5.1 | Analytics: Overall Win Rate — loss deal / total pitched | Analytics | 🔲 | Formula: `lost_deal / (lost_deal + pipeline + negotiation + closed_won + invoiced + contract_renewal)`. Tampil sebagai metric card terpisah di Analytics page. Exclude `leads` (pre-pitch) dan `no_response` dari denominator. Confirm denominator scope dengan William sebelum implement. |
 
 ---
 
@@ -107,8 +137,21 @@ Developer reference untuk keputusan desain yang sudah dikonfirmasi William.
 
 ---
 
+## Context & Design Decisions (Tambahan)
+
+- **Role system single source of truth:** Prisma DB — bukan Supabase `user_metadata`. Semua role check harus via email lookup ke DB.
+- **Prisma 7 script pattern:** Script Node.js harus pakai `PrismaPg` adapter — `new PrismaClient({ adapter })`. Tidak bisa pakai `datasources` constructor (dihapus di Prisma 7).
+- **Supabase service role:** `SUPABASE_SERVICE_ROLE_KEY` wajib ada di env untuk invite flow. Kalau tidak ada, `createAdminClient()` return null (graceful degradation, tidak crash).
+- **Live URL:** https://vf-erp.vercel.app — GitHub auto-deploy kadang tidak trigger. Deploy manual via `npx vercel --prod` dari `execution/` directory.
+
+---
+
 ## Changelog
 
 | Date | Sprint | Change |
 |------|--------|--------|
+| 2026-05-19 | Role System | 4-role permission system: enum schema, require-role.ts, layout DB fetch, 17 API routes, invite flow, admin seed |
+| 2026-05-19 | Targets Fixes | Forbidden fix (root cause: role mismatch); Setahun Penuh ÷12 fix |
+| 2026-05-19 | Sprint 2 | 11 UX/flow items complete |
+| 2026-05-19 | Sprint 1 | 7 critical items complete |
 | 2026-05-19 | — | Roadmap created from approved plan |

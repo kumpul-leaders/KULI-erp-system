@@ -2,17 +2,75 @@
 
 | Project | Last Session | Status | Notes |
 |---------|-------------|--------|-------|
-| VF ERP System | 2026-05-19 | Sprint 2 Complete | Live: https://vf-erp.vercel.app. Roadmap: `directives/VF-ERP-Improvement-Roadmap.md`. Sprint 3 next. |
+| VF ERP System | 2026-05-20 | Sprint 5.1 + Sprint 6 complete | Live: https://vf-erp.vercel.app. Auth/invite outstanding. Sprint 5.2 (stage gate) pending. |
+
+---
+
+## LAST SESSION: 2026-05-20
+
+**Checkpoint:** Sprint 5.1 + Sprint 6 (6 items) complete. Analytics Overall Win/Loss Rate card. Clients: default sort A-Z, Cumulative Value + Opportunity Value columns. Client detail: KPI cards + Linked Projects section. Pipeline: company name → client link.
+**Status:** In Progress
+**Outstanding:**
+- [ ] Auth/Invite: Resend Invite + Send Password Reset di Settings
+- [ ] Sprint 5.2: Stage gate & product lines configurable dari Settings (significant scope — SystemConfig model)
+- [ ] Deploy ke Vercel prod (`npx vercel --prod` dari `execution/`)
+**Output:**
+- `src/app/(dashboard)/analytics/page.tsx` — Sprint 5.1 Overall Win/Loss Rate
+- `src/components/analytics/analytics-content.tsx` — Sprint 5.1 metric card
+- `src/app/(dashboard)/clients/page.tsx` — Sprint 6.1/6.2/6.3
+- `src/components/clients/clients-table.tsx` — Sprint 6.2/6.3
+- `src/app/(dashboard)/clients/[id]/page.tsx` — Sprint 6.4/6.6
+- `src/components/pipeline/pipeline-list-view.tsx` — Sprint 6.5
 
 ---
 
 ## Outstanding
 
-Sprint 3 (8 items): Analytics funnel conversion rates, Client Retention fix (2 metrics), Win Rate formula fix, Revenue Trend include contract_renewal, Clients multi-field search, contract urgency badge, Notes field di Add Client, Pipeline inline actual revenue edit.
+Auth/Invite outstanding:
+- Edit email di Settings hanya update Prisma DB — tidak create Supabase Auth record
+- Team members yang belum diinvite tidak bisa login sama sekali
+- Tidak ada fitur reset password / resend invite di app (harus manual via Supabase dashboard)
+- Rencana: tambah "Resend Invite" + "Send Password Reset" di DropdownMenu Settings table
 
 ---
 
 ## Session Log
+
+### 2026-05-19 — Account Manager Role + Settings UI + Auth Clarification
+3 hal selesai hari ini. Commits: 9e55e14 (role + UI), 37380b7 (VALID_ROLES fix). Deployed ke https://vf-erp.vercel.app.
+- `prisma/schema.prisma` — tambah `account_manager` ke Role enum (antara commercial_director dan account). `prisma db push` + generate.
+- `src/types/index.ts` — Role type union diupdate (7 roles)
+- `src/lib/require-role.ts` — account_manager masuk ke requireAuthenticated, requireCanEditClients, requireCanCreateLeads
+- `src/app/(dashboard)/analytics/page.tsx` + `targets/page.tsx` + `clients/page.tsx` + `clients/[id]/page.tsx` — account_manager ditambah ke AE role filters
+- `src/components/settings/settings-content.tsx` — container max-w-4xl, badge ungu Account Manager, actions column diganti DropdownMenu (ikon ⋯ → Edit / Deactivate / Activate)
+- `src/app/api/users/route.ts` + `api/users/[id]/route.ts` — VALID_ROLES array diupdate, fix bug "role must be one of..." saat save Account Manager
+- Sidebar + Settings page — commercial_director sudah punya akses Settings (manage team members)
+- Bug fix `proxy.ts` (sesi sebelumnya) — stale middleware `/settings` gate dihapus, tidak ada lagi 307 redirect
+
+Auth flow explanation (belum diimplementasi):
+- Edit email di Settings = hanya Prisma DB, bukan Supabase Auth
+- Login hanya bisa lewat invite link (user set password sendiri)
+- Belum ada Resend Invite / Reset Password di app → next session
+
+### 2026-05-19 — Role System Redesign (unplanned, post Sprint 2)
+4 roles live: Super Admin, Commercial Director, Busdev/AE, Operations. Permission matrix enforced DB-side. Supabase invite flow. Schema enum migration. Commit 51c3333, deployed via `npx vercel --prod` → https://vf-erp.vercel.app.
+- `prisma/schema.prisma` — User.role String → enum `Role { admin, commercial_director, account, operation, hr, finance }`. `prisma db push` via DIRECT_URL.
+- `src/types/index.ts` — `Role` type updated: 6-value union
+- `src/app/(dashboard)/layout.tsx` — **Critical fix**: role sekarang fetch dari Prisma DB (bukan `user_metadata`). Single source of truth. SessionUser memakai `dbUser.role`.
+- `src/lib/require-role.ts` — **baru**: shared auth helper. `requireRole(...roles)` + named shortcuts: `requireAdmin`, `requireAdminOrDirector`, `requireCanEditClients`, `requireCanCreateLeads`, `requireAuthenticated`
+- `src/lib/supabase/admin-client.ts` — **baru**: service role client `createAdminClient()` untuk Supabase invite. Graceful null jika `SUPABASE_SERVICE_ROLE_KEY` missing.
+- 17 API routes — lokal `requireAdmin`/`requireAuth` di-replace dengan import dari `@/lib/require-role`. Account role: ownership check di lead PATCH/stage/invoice (salesId === user.id)
+- `src/app/api/users/route.ts` — POST: setelah DB create, kirim Supabase invite email via `adminClient.auth.admin.inviteUserByEmail()`
+- `src/components/layout/sidebar.tsx` — Targets hidden untuk operation role; Settings link di footer hidden untuk non-admin
+- `src/components/analytics/analytics-content.tsx` — AE filter dropdown hidden untuk account role (hanya melihat data sendiri)
+- `src/components/settings/settings-content.tsx` — `commercial_director` added to ROLE_OPTIONS + ROLE_LABEL map
+- `scripts/fix-admin-user.mjs` — **baru**: one-shot script seed `william.sudhana@gmail.com` sebagai admin. Hasil: `✓ Created admin user (id: ac24fbb8-704d-4e1a-ae7d-17aed05f5c22)`. Pattern: Prisma 7 wajib pakai `PrismaPg` adapter.
+- `SUPABASE_SERVICE_ROLE_KEY` — ditambah William ke `.env.local` + Vercel environment variables
+
+### 2026-05-19 — Targets Bug Fixes (post Sprint 2)
+Dua bug Targets page fixed. Commit 013edd1.
+- **Bug 1 — Forbidden saat Set Target:** Root cause: `layout.tsx` baca role dari `user.user_metadata?.role` (Supabase), API routes cek Prisma DB — dua sumber kebenaran, misalign. Fix: layout baca dari Prisma DB. Fix kedua: seed William's gmail sebagai admin via `fix-admin-user.mjs`.
+- **Bug 2 — Setahun Penuh revenue per bulan salah:** Input annual total tapi setiap bulan disimpan full amount. Fix di `targets-content.tsx` `handleSave`: `revenuePerMonth = Math.round(revenueTarget / 12)`, `ncPerMonth = Math.round(nc / 12)`. Label: `"— total setahun (÷12 per bulan)"`.
 
 ### 2026-05-19 — Sprint 2 (11 UX/flow items)
 Sprint 2 selesai. 12 files changed (1 baru: `edit-status-button.tsx`), commit e63c934, deployed ke vf-erp.vercel.app.

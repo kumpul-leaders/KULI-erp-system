@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { ArrowUpDown, ArrowUp, ArrowDown, Pencil } from "lucide-react"
 import {
   Table,
@@ -569,7 +570,13 @@ export function PipelineListView({
 
               {/* Company */}
               <TableCell className="font-medium text-neutral-800">
-                {lead.client.name}
+                <Link
+                  href={`/clients/${lead.client.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-blue-600 hover:underline transition-colors"
+                >
+                  {lead.client.name}
+                </Link>
               </TableCell>
 
               {/* Code */}

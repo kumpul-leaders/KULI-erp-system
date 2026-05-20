@@ -94,7 +94,15 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   const userRole = dbUser?.role ?? null
   const isAdmin = userRole === "admin" || userRole === "commercial_director"
 
-  const [client, aeOptions] = await Promise.all([fetchClient(id), fetchAeOptions()])
+  const [client, aeOptions, clientLeads] = await Promise.all([
+    fetchClient(id),
+    fetchAeOptions(),
+    prisma.lead.findMany({
+      where: { clientId: id },
+      include: { sales: { select: { name: true } } },
+      orderBy: [{ createdAt: "desc" }],
+    }),
+  ])
 
   if (!client) notFound()
 
@@ -131,6 +139,41 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     changerName: entry.changer.name,
   }))
 
+  // Serialize leads for Linked Projects section
+  type SerializedClientLead = {
+    id: string
+    stage: string
+    productLine: string | null
+    billingPlan: string | null
+    actualRevenue: number | null
+    projectedRevenue: number | null
+    salesName: string | null
+    createdAt: string
+  }
+
+  const WON_STAGES_CLIENT = ["closed_won", "invoiced", "contract_renewal"]
+  const IN_PROGRESS_STAGES = ["leads", "pipeline", "negotiation"]
+  const CLOSED_STAGES = ["lost_deal", "no_response"]
+
+  const serializedLeads: SerializedClientLead[] = clientLeads.map((l) => ({
+    id: l.id,
+    stage: l.stage,
+    productLine: l.productLine,
+    billingPlan: l.billingPlan,
+    actualRevenue: l.actualRevenue ? Number(l.actualRevenue) : null,
+    projectedRevenue: l.projectedRevenue ? Number(l.projectedRevenue) : null,
+    salesName: l.sales?.name ?? null,
+    createdAt: l.createdAt.toISOString(),
+  }))
+
+  const wonLeads = serializedLeads.filter((l) => WON_STAGES_CLIENT.includes(l.stage))
+  const inProgressLeads = serializedLeads.filter((l) => IN_PROGRESS_STAGES.includes(l.stage))
+  const closedLeads = serializedLeads.filter((l) => CLOSED_STAGES.includes(l.stage))
+
+  // KPI values (Sprint 6.6)
+  const cumulativeValue = wonLeads.reduce((sum, l) => sum + (l.actualRevenue ?? 0), 0)
+  const opportunityValue = inProgressLeads.reduce((sum, l) => sum + (l.projectedRevenue ?? 0), 0)
+
   // Client data for edit sheet (serialize dates, include new fields)
   const clientForEdit = {
     id: client.id,
@@ -147,6 +190,37 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     clientStatus: client.clientStatus,
     primaryAe: client.primaryAe,
     notes: client.notes,
+  }
+
+  function LinkedProjectRow({ lead }: { lead: SerializedClientLead }) {
+    const STAGE_LABELS: Record<string, string> = {
+      leads: "Leads", pipeline: "Pipeline", negotiation: "Negotiation",
+      closed_won: "Closed Won", invoiced: "Invoiced", contract_renewal: "Contract Renewal",
+      lost_deal: "Lost Deal", no_response: "No Response",
+    }
+    const PRODUCT_LABELS: Record<string, string> = {
+      stracomm: "Stracomm", smm: "SMM", creative_strategy: "Creative Strategy",
+      media_buying: "Media Buying", ads_management: "Ads Mgmt", production: "Production", others: "Others",
+    }
+    const quarter = lead.billingPlan
+      ? `Q${Math.ceil(parseInt(lead.billingPlan.split("-")[1]) / 3)} '${lead.billingPlan.split("-")[0]}`
+      : null
+
+    return (
+      <Link
+        href={`/pipeline/${lead.id}`}
+        className="flex items-center gap-3 rounded-md border border-neutral-100 bg-neutral-50 px-3 py-2 hover:bg-neutral-100 hover:border-neutral-200 transition-colors group"
+      >
+        <Badge variant="outline" className="text-xs shrink-0">{STAGE_LABELS[lead.stage] ?? lead.stage}</Badge>
+        {lead.productLine && (
+          <span className="text-xs text-neutral-600">{PRODUCT_LABELS[lead.productLine] ?? lead.productLine}</span>
+        )}
+        {quarter && <span className="text-xs text-neutral-400">{quarter}</span>}
+        <span className="ml-auto text-xs font-medium tabular-nums text-neutral-700">
+          {lead.actualRevenue ? formatIDR(lead.actualRevenue) : lead.projectedRevenue ? formatIDR(lead.projectedRevenue) : "—"}
+        </span>
+      </Link>
+    )
   }
 
   return (
@@ -193,6 +267,24 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                 currentClientStatus={client.clientStatus ?? "lead"}
               />
             )}
+          </div>
+
+          {/* KPI Row (Sprint 6.6) */}
+          <div className="flex gap-6 mt-4">
+            <div>
+              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Cumulative Value</p>
+              <p className="text-lg font-bold text-neutral-900 tabular-nums">
+                {cumulativeValue > 0 ? formatIDR(cumulativeValue) : "—"}
+              </p>
+              <p className="text-xs text-neutral-400">{wonLeads.length} won project{wonLeads.length !== 1 ? "s" : ""}</p>
+            </div>
+            <div className="border-l border-neutral-200 pl-6">
+              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Opportunity Value</p>
+              <p className="text-lg font-bold text-emerald-700 tabular-nums">
+                {opportunityValue > 0 ? formatIDR(opportunityValue) : "—"}
+              </p>
+              <p className="text-xs text-neutral-400">{inProgressLeads.length} open deal{inProgressLeads.length !== 1 ? "s" : ""}</p>
+            </div>
           </div>
         </div>
 
@@ -275,6 +367,49 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
             {/* Notes */}
             <NotesCard clientId={client.id} notes={client.notes} />
+
+            {/* Linked Projects (Sprint 6.4) */}
+            {serializedLeads.length > 0 && (
+              <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+                <h2 className="font-semibold text-neutral-800 mb-4">Linked Projects</h2>
+
+                {/* Active — Won */}
+                {wonLeads.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Active</p>
+                    <div className="space-y-2">
+                      {wonLeads.map((lead) => (
+                        <LinkedProjectRow key={lead.id} lead={lead} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* In Progress */}
+                {inProgressLeads.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">In Progress</p>
+                    <div className="space-y-2">
+                      {inProgressLeads.map((lead) => (
+                        <LinkedProjectRow key={lead.id} lead={lead} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Closed */}
+                {closedLeads.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">Closed</p>
+                    <div className="space-y-2">
+                      {closedLeads.map((lead) => (
+                        <LinkedProjectRow key={lead.id} lead={lead} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right — col-span-1 */}
@@ -288,14 +423,6 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
             {/* Upsell Opportunities */}
             <UpsellsCard clientId={client.id} upsells={upsells} />
-
-            {/* Pipeline — Phase 2 */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-              <h2 className="font-semibold text-neutral-800 mb-3">Pipeline</h2>
-              <p className="text-sm text-neutral-400 py-2">
-                Pipeline data will appear here once linked from the Pipeline module.
-              </p>
-            </div>
 
             {/* Field History */}
             {fieldHistory.length > 0 && (

@@ -213,6 +213,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
     { key: "projectedRevenue", label: "Projected Revenue", type: "numeric" },
     { key: "actualRevenue",    label: "Actual Revenue",    type: "numeric" },
     { key: "quarter",          label: "Quarter",           type: "text" },
+    { key: "billingPlan",      label: "Billing Plan",      type: "text" },
   ], [salesOptions])
 
   // ── Computed filtered leads ─────────────────────────────────────────────────

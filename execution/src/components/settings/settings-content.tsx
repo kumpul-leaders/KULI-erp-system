@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, MoreHorizontal, Pencil, UserPlus } from "lucide-react"
+import { Loader2, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -161,6 +161,12 @@ export function SettingsContent({
 
   // Activate/Deactivate loading state
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
+
+  // Delete dialog state
+  type DeleteDialogState = { open: false } | { open: true; userId: string; userName: string }
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({ open: false })
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Bulk Reassign section state
   const [bulkFromId, setBulkFromId] = useState<string>("")
@@ -380,6 +386,30 @@ export function SettingsContent({
     }
   }
 
+  async function handleDelete() {
+    if (!deleteDialog.open) return
+    const { userId, userName } = deleteDialog
+
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: "DELETE" })
+      const data = (await res.json()) as { error?: string }
+
+      if (!res.ok) {
+        toast.error(data.error ?? "Gagal menghapus user.")
+        return
+      }
+
+      setUsers((prev) => prev.filter((u) => u.id !== userId))
+      toast.success(`${userName} dihapus permanen.`)
+      setDeleteDialog({ open: false })
+    } catch {
+      toast.error("Network error. Coba lagi.")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   async function handleActivate(userId: string) {
     setLoadingUserId(userId)
     try {
@@ -556,13 +586,26 @@ export function SettingsContent({
                               Deactivate
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem
-                              className="text-emerald-600 focus:text-emerald-700"
-                              onClick={() => void handleActivate(user.id)}
-                              disabled={loadingUserId === user.id}
-                            >
-                              {loadingUserId === user.id ? "Loading..." : "Activate"}
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                className="text-emerald-600 focus:text-emerald-700"
+                                onClick={() => void handleActivate(user.id)}
+                                disabled={loadingUserId === user.id}
+                              >
+                                {loadingUserId === user.id ? "Loading..." : "Activate"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-danger-600 focus:text-danger-700"
+                                onClick={() => {
+                                  setDeleteConfirmInput("")
+                                  setDeleteDialog({ open: true, userId: user.id, userName: user.name })
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -846,6 +889,61 @@ export function SettingsContent({
               </AlertDialogFooter>
             </>
           )}
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Delete User Dialog ───────────────────────────────────────────── */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => {
+        if (!open && !isDeleting) setDeleteDialog({ open: false })
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus User Permanen?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Tindakan ini tidak bisa dibatalkan. User{" "}
+                  <span className="font-medium text-neutral-900">
+                    {deleteDialog.open ? deleteDialog.userName : ""}
+                  </span>{" "}
+                  akan dihapus permanen dari sistem dan tidak bisa login.
+                </p>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-neutral-500">
+                    Ketik{" "}
+                    <code className="px-1 py-0.5 rounded bg-neutral-100 text-neutral-700 font-mono text-xs border border-neutral-200">
+                      {deleteDialog.open ? deleteDialog.userName : ""}
+                    </code>{" "}
+                    untuk konfirmasi:
+                  </p>
+                  <Input
+                    value={deleteConfirmInput}
+                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    placeholder={deleteDialog.open ? deleteDialog.userName : ""}
+                    disabled={isDeleting}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleDelete() }}
+              disabled={isDeleting || !deleteDialog.open || deleteConfirmInput !== deleteDialog.userName}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  Menghapus...
+                </>
+              ) : (
+                "Hapus"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

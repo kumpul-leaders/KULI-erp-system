@@ -65,6 +65,8 @@ interface ClientRow {
   _contactCount: number
   createdAt: string
   updatedAt: string
+  cumulativeValue: number
+  opportunityValue: number
 }
 
 interface ClientsTableProps {
@@ -255,8 +257,9 @@ export function ClientsTable({
       ] },
     { key: "primaryAe",      label: "Busdev/AE", type: "enum",
       options: aeOptions.map((a) => ({ value: a.id, label: a.name })) },
-    { key: "monthlyValue",   label: "Monthly Value",     type: "numeric" },
-    { key: "annualValue",    label: "Annual Value",      type: "numeric" },
+    { key: "monthlyValue",     label: "Monthly Value",     type: "numeric" },
+    { key: "cumulativeValue",  label: "Cumulative Value",  type: "numeric" },
+    { key: "opportunityValue", label: "Opportunity Value", type: "numeric" },
   ], [aeOptions])
 
   // ── Client-side filtered rows ───────────────────────────────────────────────
@@ -328,11 +331,11 @@ export function ClientsTable({
                   currentSort={sortCol}
                   currentDir={sortDir}
                   onSort={handleSort}
-                  className="w-[20%]"
+                  className="w-[18%]"
                 />
 
                 {/* Code */}
-                <TableHead className="w-[8%] font-semibold text-neutral-600">
+                <TableHead className="w-[7%] font-semibold text-neutral-600">
                   Code
                 </TableHead>
 
@@ -343,7 +346,7 @@ export function ClientsTable({
                   currentSort={sortCol}
                   currentDir={sortDir}
                   onSort={handleSort}
-                  className="w-[14%]"
+                  className="w-[12%]"
                 />
 
                 {/* Status */}
@@ -358,7 +361,7 @@ export function ClientsTable({
                   currentSort={sortCol}
                   currentDir={sortDir}
                   onSort={handleSort}
-                  className="w-[9%]"
+                  className="w-[8%]"
                 />
 
                 {/* AE */}
@@ -368,21 +371,31 @@ export function ClientsTable({
                   currentSort={sortCol}
                   currentDir={sortDir}
                   onSort={handleSort}
-                  className="w-[14%]"
+                  className="w-[12%]"
                 />
 
-                {/* Annual Value */}
+                {/* Cumulative Value */}
                 <SortableHeader
-                  label="Annual Value"
-                  col="annualValue"
+                  label="Cumulative Value"
+                  col="cumulativeValue"
                   currentSort={sortCol}
                   currentDir={sortDir}
                   onSort={handleSort}
-                  className="w-[16%] tabular-nums"
+                  className="w-[14%] tabular-nums"
+                />
+
+                {/* Opportunity Value */}
+                <SortableHeader
+                  label="Opportunity Value"
+                  col="opportunityValue"
+                  currentSort={sortCol}
+                  currentDir={sortDir}
+                  onSort={handleSort}
+                  className="w-[12%] tabular-nums"
                 />
 
                 {/* Actions */}
-                <TableHead className="w-[10%] font-semibold text-neutral-600 text-right">
+                <TableHead className="w-[8%] font-semibold text-neutral-600 text-right">
                   Actions
                 </TableHead>
               </TableRow>
@@ -430,9 +443,9 @@ export function ClientsTable({
                       )}
                     </TableCell>
                     <TableCell className="tabular-nums text-neutral-700">
-                      {client.annualValue ? (
+                      {client.cumulativeValue > 0 ? (
                         <div className="flex flex-col gap-0.5">
-                          <span>{formatIDR(client.annualValue)}</span>
+                          <span>{formatIDR(client.cumulativeValue)}</span>
                           {(() => {
                             const urgency = getContractUrgency(client.contractEnd)
                             if (!urgency) return null
@@ -440,12 +453,7 @@ export function ClientsTable({
                               (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                             )
                             return (
-                              <span
-                                className={cn(
-                                  "text-xs font-medium",
-                                  urgency === "critical" ? "text-danger-600" : "text-amber-600"
-                                )}
-                              >
+                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600" : "text-amber-600")}>
                                 Expiry {daysLeft}d
                               </span>
                             )
@@ -461,18 +469,16 @@ export function ClientsTable({
                               (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                             )
                             return (
-                              <span
-                                className={cn(
-                                  "text-xs font-medium",
-                                  urgency === "critical" ? "text-danger-600" : "text-amber-600"
-                                )}
-                              >
+                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600" : "text-amber-600")}>
                                 Expiry {daysLeft}d
                               </span>
                             )
                           })()}
                         </div>
                       )}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-neutral-700">
+                      {client.opportunityValue > 0 ? formatIDR(client.opportunityValue) : <span className="text-neutral-400">—</span>}
                     </TableCell>
                     <TableCell className="text-right" data-actions>
                       <div

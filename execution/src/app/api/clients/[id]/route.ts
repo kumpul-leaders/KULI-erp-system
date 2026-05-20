@@ -200,6 +200,19 @@ export async function DELETE(
       return NextResponse.json({ error: "Client not found" }, { status: 404 })
     }
 
+    const activeLeadCount = await prisma.lead.count({
+      where: {
+        clientId: id,
+        stage: { notIn: ["lost_deal", "invoiced", "no_response"] },
+      },
+    })
+    if (activeLeadCount > 0) {
+      return NextResponse.json(
+        { error: `Client ini masih punya ${activeLeadCount} lead aktif di pipeline. Pindahkan atau selesaikan lead tersebut terlebih dahulu.` },
+        { status: 409 }
+      )
+    }
+
     await prisma.client.delete({ where: { id } })
 
     return NextResponse.json({ success: true })

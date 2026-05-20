@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Trash2 } from "lucide-react"
 import type { EngagementType, HealthStatus, ClientStatus } from "@/types"
 
 interface AeOption {
@@ -51,6 +52,7 @@ interface EditClientSheetProps {
   client: ClientForEdit
   aeOptions: AeOption[]
   onSuccess: () => void
+  onDelete?: () => void
 }
 
 const INDUSTRY_OPTIONS = [
@@ -82,6 +84,7 @@ export function EditClientSheet({
   client,
   aeOptions,
   onSuccess,
+  onDelete,
 }: EditClientSheetProps) {
   const [form, setForm] = useState({
     name: client.name,
@@ -388,18 +391,34 @@ export function EditClientSheet({
             />
           </div>
 
-          <SheetFooter className="pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Saving..." : "Save Changes"}
-            </Button>
+          <SheetFooter className="pt-4 flex justify-between">
+            <div>
+              {onDelete && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Client
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </SheetFooter>
         </form>
       </SheetContent>

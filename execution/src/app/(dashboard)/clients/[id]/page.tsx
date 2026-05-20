@@ -87,6 +87,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     select: { role: true },
   }) : null
   const userRole = dbUser?.role ?? null
+  const isAdmin = userRole === "admin" || userRole === "commercial_director"
 
   const [client, aeOptions] = await Promise.all([fetchClient(id), fetchAeOptions()])
 
@@ -136,7 +137,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   return (
     <>
       <Topbar title={client.name}>
-        <ClientDetailActions client={clientForEdit} aeOptions={aeOptions} />
+        <ClientDetailActions client={clientForEdit} aeOptions={aeOptions} isAdmin={isAdmin} />
       </Topbar>
 
       <main className="flex-1 overflow-y-auto px-8 py-6">

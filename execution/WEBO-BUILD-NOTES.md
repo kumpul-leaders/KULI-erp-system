@@ -338,3 +338,190 @@ Client Management Structure directive — 13-field schema surfaced across list p
 - Dashboard live data components (KPI cards, revenue progress, contract alerts)
 - Analytics charts with Recharts
 - Settings user management CRUD
+
+---
+
+## Sprint 1 Analytics — Date Range Filter + AE Filter + CSV Export
+**Build Date:** 2026-05-19
+**Status:** Complete. TypeScript: 0 new errors (2 pre-existing TS errors in targets/page.tsx unrelated to this build).
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/app/(dashboard)/analytics/page.tsx` | Added searchParams param; date + AE filter Prisma where clauses; lostLeadsByAE groupBy; allAEUsers query; Export button removed from Topbar |
+| `src/components/analytics/analytics-content.tsx` | FilterBar component (preset tabs + custom date inputs + AE multi-select popover); Export button with CSV generation; `lost` field added to AE performance table |
+
+### Feature 1: Date Range Filter
+
+Preset math is calculated **client-side** in `getPresetDates()` and stored as ISO date strings in URL params (`?from=YYYY-MM-DD&to=YYYY-MM-DD`). The server component reads these params, parses them in `resolveDateRange()`, and builds Prisma where clauses.
+
+| Preset | from | to |
+|--------|------|----|
+| Minggu Lalu | Last Monday (dayOfWeek offset) | Last Sunday |
+| Bulan Lalu | 1st of last month | Last day of last month (via `new Date(y, m, 0)`) |
+| 3 Bulan | 1st of 3 months ago | Last day of last month |
+| Custom | User input | User input, clamped to max 3 years span |
+| Semua | `undefined` | `undefined` — no filter |
+
+`detectPreset()` reverse-maps active URL params back to a preset label so the segmented button correctly highlights after a page load or back-navigation.
+
+Date filter application in Prisma:
+- **Closed-stage leads** (won, lost, revenue): `closedAt` filter with an `OR` branch for leads where `closedAt IS NULL` → falls back to `createdAt`
+- **All leads / funnel / industry**: `createdAt` filter
+- **Client retention denominator**: unfiltered (always total clients in system)
+
+### Feature 2: AE / Busdev Filter
+
+`?aeIds=id1,id2` comma-separated URL param. Applied as `salesId: { in: aeIds }` on all lead queries. AE dropdown fetches `isActive: true, role: { in: ["account", "admin"] }` users in the server component and passes as `allAEUsers` prop.
+
+Popover is a shadcn `Popover` + `PopoverContent`. Selecting any AE immediately triggers `router.replace()` to update the URL — no intermediate apply step. "Hapus filter" clears `aeIds` from URL while preserving the active date range.
+
+Both filters are ANDed: if both `from/to` and `aeIds` are set, leads must satisfy both conditions.
+
+### Feature 3: CSV Export
+
+Export button moved from Topbar (server component) into `AnalyticsContent` (client component) so it can access `aePerformance` data without a server round-trip.
+
+`exportAEPerformanceCSV()`:
+1. Builds CSV string with 7 columns: Busdev/AE, Total Leads, Won, Lost, Win Rate, Total Revenue, Avg Revenue Per Won
+2. Revenue columns use `formatIDRPlain()` — `Rp 1.500.000` (Indonesian locale). Wrapped in CSV double-quotes to escape the locale's period/comma.
+3. Creates `Blob` (`text/csv;charset=utf-8`), generates `ObjectURL`, clicks a temporary `<a>` element, then revokes the URL.
+4. Filename: `vf-analytics-ae-{dateRangeLabel}-{YYYY-MM-DD}.csv`
+
+`WinRateByAE` type gained a `lost` field — added to the server groupBy query and the type export.
+
+### Architecture Note
+Export button was previously a dead placeholder in Topbar (server component), which cannot have onClick handlers. Moving it to the client component (`AnalyticsContent`) is the correct pattern — no client-only API call, data already in component memory.
+
+---
+
+## Role System Refactor — Single Source of Truth
+**Build Date:** 2026-05-19
+**Status:** Complete. TypeScript: 0 errors.
+
+### Problem Fixed
+Layout fetched role from `user.user_metadata?.role` (Supabase). API routes checked Prisma DB. Two sources of truth → 403 errors when email was not in DB or role differed. Fix: Prisma DB is now the only source of truth for role everywhere.
+
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/lib/require-role.ts` | Shared auth helper — requireRole(), requireAdmin(), requireAdminOrDirector(), requireCanEditClients(), requireCanCreateLeads(), requireAuthenticated() |
+| `src/lib/supabase/admin-client.ts` | Service-role client for Supabase invite emails (requires SUPABASE_SERVICE_ROLE_KEY) |
+| `scripts/fix-admin-user.mjs` | One-shot script to ensure william.sudhana@gmail.com is admin in DB |
+
+### Schema Change
+`prisma/schema.prisma` — added `commercial_director` to Role enum. Run: `npx prisma migrate dev --name add-commercial-director-role`
+
+### Permission Matrix Applied
+| Endpoint | Guard |
+|----------|-------|
+| All GET reads | requireAuthenticated |
+| Targets POST/PATCH/DELETE | requireAdminOrDirector |
+| Clients POST/PATCH/DELETE | requireAdminOrDirector |
+| Contacts/Upsells write | requireAdminOrDirector |
+| Leads POST (create) | requireCanCreateLeads |
+| Leads PATCH/stage/invoice/docs | requireCanCreateLeads + ownership check for account role |
+| Leads DELETE | requireAdmin |
+| Bulk-reassign | requireAdmin |
+| Users GET | requireAuthenticated |
+| Users POST (create) | requireAdmin + Supabase invite |
+| Users PATCH/DELETE | requireAdmin |
+
+### UI Changes
+- Sidebar: Targets hidden for operation role; Settings icon in footer admin-only; role display labels (e.g. "Commercial Director" not "commercial_director")
+- Settings: ROLE_OPTIONS includes commercial_director; ROLE_LABEL map for display names; badge color added for commercial_director
+- Analytics: account role forced to own AE ID; AE filter dropdown hidden for account role; commercial_director included in AE users queries
+
+### William Action Required
+1. Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` AND Vercel — get from Supabase Dashboard → Project Settings → API → Service Role key
+2. Run `npx prisma migrate dev --name add-commercial-director-role` to apply enum change to production DB
+3. Run `node scripts/fix-admin-user.mjs` to ensure william.sudhana@gmail.com is admin in DB
+
+---
+
+## UX Patterns — General Reference
+
+### Type-to-Confirm Delete Dialog
+**When to use:** Any hard (permanent) delete action where accidental clicks are a real risk — client delete, user delete, bulk operations, anything irreversible.
+
+**Pattern:** AlertDialog with an Input field. The destructive action button stays `disabled` until the user types the exact target name.
+
+**Implementation in `client-detail-actions.tsx` (reference):**
+
+```tsx
+const [confirmInput, setConfirmInput] = useState("")
+
+function openDeleteDialog() {
+  setConfirmInput("")   // always reset on open
+  setDeleteOpen(true)
+}
+
+// In AlertDialog — prevent close while deleting
+<AlertDialog open={deleteOpen} onOpenChange={(open) => { if (!deleting) setDeleteOpen(open) }}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Hapus [Entity]?</AlertDialogTitle>
+      <AlertDialogDescription asChild>
+        <div className="space-y-3">
+          <p>Tindakan ini tidak bisa dibatalkan. ...</p>
+          <div className="space-y-1.5">
+            <p className="text-xs text-neutral-500">
+              Ketik{" "}
+              <code className="px-1 py-0.5 rounded bg-neutral-100 text-neutral-700 font-mono text-xs border border-neutral-200">
+                {targetName}
+              </code>{" "}
+              untuk konfirmasi:
+            </p>
+            <Input
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value)}
+              placeholder={targetName}
+              disabled={deleting}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+      <AlertDialogAction
+        onClick={handleDelete}
+        disabled={deleting || confirmInput !== targetName}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
+      >
+        {deleting ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Menghapus...</> : "Hapus"}
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+**Key rules:**
+- `setConfirmInput("")` on every open — never carry over previous input
+- `onOpenChange` guard: `if (!deleting) setDeleteOpen(open)` — prevents dismiss during API call
+- Button: `disabled={deleting || confirmInput !== targetName}` + `disabled:opacity-40`
+- Use `asChild` on `AlertDialogDescription` when wrapping non-`<p>` content (e.g. `<div>`) to avoid hydration warnings
+- The `<code>` chip for the target name uses `bg-neutral-100 text-neutral-700 font-mono border border-neutral-200` — consistent with design tokens
+
+### Block Delete with Dependency Check (API Pattern)
+**When to use:** When a record has child/linked records that must be resolved first.
+
+**Pattern:** Before `prisma.entity.delete()`, count blocking dependencies. If count > 0, return 409 with a descriptive Indonesian-language message.
+
+```ts
+const activeLeadCount = await prisma.lead.count({
+  where: {
+    clientId: id,
+    stage: { notIn: ["lost_deal", "invoiced", "no_response"] },
+  },
+})
+if (activeLeadCount > 0) {
+  return NextResponse.json(
+    { error: `Entity ini masih punya ${activeLeadCount} lead aktif di pipeline. Selesaikan lead tersebut terlebih dahulu.` },
+    { status: 409 }
+  )
+}
+```
+
+The error message from 409 propagates naturally to `toast.error()` in the client — no special handling needed on the frontend.

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowUpDown, ArrowUp, ArrowDown, Pencil } from "lucide-react"
 import {
@@ -221,8 +221,13 @@ function ActualRevenueCell({ leadId, value, onSaved }: ActualRevenueCellProps) {
   const [editing, setEditing] = useState(false)
   const [inputVal, setInputVal] = useState(value !== null ? String(value) : "")
   const [saving, setSaving] = useState(false)
+  const cancelledRef = React.useRef(false)
 
   async function handleSave() {
+    if (cancelledRef.current) {
+      cancelledRef.current = false
+      return
+    }
     const parsed = inputVal.trim() === "" ? null : Number(inputVal)
     if (parsed !== null && isNaN(parsed)) return
     setSaving(true)
@@ -245,6 +250,7 @@ function ActualRevenueCell({ leadId, value, onSaved }: ActualRevenueCellProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") handleSave()
     if (e.key === "Escape") {
+      cancelledRef.current = true
       setInputVal(value !== null ? String(value) : "")
       setEditing(false)
     }

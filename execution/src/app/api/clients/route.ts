@@ -38,7 +38,14 @@ export async function GET(request: NextRequest) {
   try {
     const where = {
       ...(search
-        ? { name: { contains: search, mode: "insensitive" as const } }
+        ? {
+            OR: [
+              { name: { contains: search, mode: "insensitive" as const } },
+              { industry: { contains: search, mode: "insensitive" as const } },
+              { customerCode: { contains: search, mode: "insensitive" as const } },
+              { ae: { name: { contains: search, mode: "insensitive" as const } } },
+            ],
+          }
         : {}),
       ...(isHealthStatus(health)
         ? { healthStatus: health }

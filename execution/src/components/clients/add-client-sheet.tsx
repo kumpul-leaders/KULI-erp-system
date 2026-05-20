@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ interface FormState {
   healthStatus: HealthStatus | ""
   clientStatus: ClientStatus
   primaryAe: string
+  notes: string
 }
 
 const INDUSTRY_OPTIONS = [
@@ -76,6 +78,7 @@ const initialForm: FormState = {
   healthStatus: "",
   clientStatus: "lead",
   primaryAe: "",
+  notes: "",
 }
 
 export function AddClientSheet({
@@ -127,6 +130,7 @@ export function AddClientSheet({
           healthStatus: form.healthStatus || null,
           clientStatus: form.clientStatus,
           primaryAe: form.primaryAe || null,
+          notes: form.notes.trim() || null,
         }),
       })
 
@@ -345,6 +349,19 @@ export function AddClientSheet({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={form.notes}
+              onChange={(e) => handleField("notes", e.target.value)}
+              placeholder="Internal notes about this client..."
+              rows={3}
+              className="resize-none"
+            />
           </div>
 
           <SheetFooter className="pt-4">

@@ -78,6 +78,14 @@ interface ClientsTableProps {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+function getContractUrgency(contractEnd: string | null): "critical" | "warning" | null {
+  if (!contractEnd) return null
+  const daysLeft = Math.ceil((new Date(contractEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (daysLeft <= 30) return "critical"
+  if (daysLeft <= 60) return "warning"
+  return null
+}
+
 function useDebounce(fn: (val: string) => void, delay: number) {
   let timer: ReturnType<typeof setTimeout>
   return (val: string) => {
@@ -269,8 +277,8 @@ export function ClientsTable({
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400 pointer-events-none" />
           <Input
-            className="pl-8 h-9 w-64"
-            placeholder="Search clients..."
+            className="pl-8 h-9 w-80"
+            placeholder="Search by name, industry, code, AE..."
             defaultValue={searchQuery}
             onChange={(e) => debouncedSearch(e.target.value)}
           />
@@ -423,9 +431,47 @@ export function ClientsTable({
                     </TableCell>
                     <TableCell className="tabular-nums text-neutral-700">
                       {client.annualValue ? (
-                        formatIDR(client.annualValue)
+                        <div className="flex flex-col gap-0.5">
+                          <span>{formatIDR(client.annualValue)}</span>
+                          {(() => {
+                            const urgency = getContractUrgency(client.contractEnd)
+                            if (!urgency) return null
+                            const daysLeft = Math.ceil(
+                              (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                            )
+                            return (
+                              <span
+                                className={cn(
+                                  "text-xs font-medium",
+                                  urgency === "critical" ? "text-danger-600" : "text-amber-600"
+                                )}
+                              >
+                                Expiry {daysLeft}d
+                              </span>
+                            )
+                          })()}
+                        </div>
                       ) : (
-                        <span className="text-neutral-400">—</span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-neutral-400">—</span>
+                          {(() => {
+                            const urgency = getContractUrgency(client.contractEnd)
+                            if (!urgency) return null
+                            const daysLeft = Math.ceil(
+                              (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                            )
+                            return (
+                              <span
+                                className={cn(
+                                  "text-xs font-medium",
+                                  urgency === "critical" ? "text-danger-600" : "text-amber-600"
+                                )}
+                              >
+                                Expiry {daysLeft}d
+                              </span>
+                            )
+                          })()}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="text-right" data-actions>

@@ -38,10 +38,12 @@ export type FunnelStage = {
   stage: string       // raw key
   label: string       // human-readable
   count: number
+  conversionRate: number | null  // null for first stage, % from previous stage
 }
 
 export type ClientRetention = {
   renewed: number
+  upsellWon: number
   total: number
   rate: number
 }
@@ -219,6 +221,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     totalClientCount,
     aeUsers,
     allAEUsers,
+    upsellWonCount,
   ] = await Promise.all([
     // 1a. All leads per AE (has salesId) — funnel filter = createdAt
     prisma.lead.groupBy({
@@ -280,10 +283,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
     }),
 
-    // 3. Won leads with revenue + billingPlan for trend (excludes contract_renewal) — closedAt filter
+    // 3. Won leads with revenue + billingPlan for trend — closedAt filter
     prisma.lead.findMany({
       where: {
-        stage: { in: ["closed_won", "invoiced"] },
+        stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
         actualRevenue: { not: null },
         billingPlan: { not: null },
         ...aeFilter,
@@ -334,6 +337,17 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+
+    // Upsell won — distinct clients with stage in [closed_won, invoiced]
+    prisma.lead.findMany({
+      where: {
+        stage: { in: ["closed_won", "invoiced"] },
+        ...aeFilter,
+        ...closedDateFilter,
+      },
+      select: { clientId: true },
+      distinct: ["clientId"],
+    }),
   ])
 
   // ---------------------------------------------------------------------------
@@ -373,7 +387,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       const won = wonByAEMap.get(salesId) ?? 0
       const lost = lostByAEMap.get(salesId) ?? 0
       const revenue = revenueByAEMap.get(salesId) ?? 0
-      const winRate = total > 0 ? Math.round((won / total) * 100) : 0
+      const closed = won + lost
+      const winRate = closed > 0 ? Math.round((won / closed) * 100) : 0
       return {
         aeName: aeNameMap.get(salesId) ?? "Unknown",
         total,
@@ -456,7 +471,17 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     stage: key,
     label,
     count: stageCountMap.get(key as $Enums.PipelineStage) ?? 0,
+    conversionRate: null,
   }))
+
+  // Compute stage-to-stage conversion rates
+  for (let i = 1; i < pipelineFunnel.length; i++) {
+    const prev = pipelineFunnel[i - 1]
+    const curr = pipelineFunnel[i]
+    curr.conversionRate = prev.count > 0
+      ? Math.round((curr.count / prev.count) * 100)
+      : null
+  }
 
   // ---------------------------------------------------------------------------
   // 5: Client Retention
@@ -470,6 +495,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
 
   const clientRetention: ClientRetention = {
     renewed: renewedClientCount,
+    upsellWon: upsellWonCount.length,
     total: totalClientCount,
     rate: retentionRate,
   }

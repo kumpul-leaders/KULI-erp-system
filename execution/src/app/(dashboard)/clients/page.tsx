@@ -38,7 +38,14 @@ function buildOrderBy(
 
 async function fetchClients(search: string, sort: string, dir: string) {
   const where: Prisma.ClientWhereInput = search
-    ? { name: { contains: search, mode: "insensitive" as const } }
+    ? {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { industry: { contains: search, mode: "insensitive" as const } },
+          { customerCode: { contains: search, mode: "insensitive" as const } },
+          { ae: { name: { contains: search, mode: "insensitive" as const } } },
+        ],
+      }
     : {}
 
   const orderBy = buildOrderBy(sort, dir)

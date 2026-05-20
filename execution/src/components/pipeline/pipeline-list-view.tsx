@@ -209,6 +209,83 @@ function sortLeads(
   })
 }
 
+// ── ActualRevenueCell — inline edit ──────────────────────────────────────────
+
+interface ActualRevenueCellProps {
+  leadId: string
+  value: number | null
+  onSaved: (newValue: number | null) => void
+}
+
+function ActualRevenueCell({ leadId, value, onSaved }: ActualRevenueCellProps) {
+  const [editing, setEditing] = useState(false)
+  const [inputVal, setInputVal] = useState(value !== null ? String(value) : "")
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    const parsed = inputVal.trim() === "" ? null : Number(inputVal)
+    if (parsed !== null && isNaN(parsed)) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actualRevenue: parsed }),
+      })
+      if (!res.ok) throw new Error("Save failed")
+      onSaved(parsed)
+      setEditing(false)
+    } catch {
+      // stay in edit mode on error
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") handleSave()
+    if (e.key === "Escape") {
+      setInputVal(value !== null ? String(value) : "")
+      setEditing(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="number"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleSave}
+          autoFocus
+          disabled={saving}
+          className="w-28 h-6 rounded border border-neutral-300 px-1.5 text-xs text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-400"
+          placeholder="0"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <button
+      className="group flex items-center gap-1 text-left tabular-nums text-neutral-700 hover:text-neutral-900 transition-colors"
+      onClick={(e) => {
+        e.stopPropagation()
+        setEditing(true)
+      }}
+    >
+      {value !== null ? (
+        <span>{formatIDR(value)}</span>
+      ) : (
+        <span className="text-neutral-400">—</span>
+      )}
+      <Pencil className="h-3 w-3 text-neutral-300 group-hover:text-neutral-500 opacity-0 group-hover:opacity-100 transition-all" />
+    </button>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function PipelineListView({
@@ -221,6 +298,9 @@ export function PipelineListView({
 
   // Footer calculator state — keyed by column name
   const [colCalcs, setColCalcs] = useState<Record<string, CalcMode>>({})
+
+  // Optimistic overrides for actual revenue edits
+  const [revenueOverrides, setRevenueOverrides] = useState<Record<string, number | null>>({})
 
   function getCalcMode(col: string): CalcMode {
     return colCalcs[col] ?? "none"
@@ -249,6 +329,19 @@ export function PipelineListView({
   const sortedLeads = useMemo(
     () => sortLeads(leads, sortCol, sortDir),
     [leads, sortCol, sortDir]
+  )
+
+  // effectiveLeads applies optimistic revenue overrides for footer calculations
+  const effectiveLeads = useMemo(
+    () =>
+      sortedLeads.map((l) => ({
+        ...l,
+        actualRevenue:
+          revenueOverrides[l.id] !== undefined
+            ? revenueOverrides[l.id]
+            : l.actualRevenue,
+      })),
+    [sortedLeads, revenueOverrides]
   )
 
   if (leads.length === 0) {
@@ -427,12 +520,18 @@ export function PipelineListView({
               </TableCell>
 
               {/* Actual Revenue */}
-              <TableCell className="tabular-nums text-neutral-700">
-                {lead.actualRevenue ? (
-                  formatIDR(lead.actualRevenue)
-                ) : (
-                  <span className="text-neutral-400">—</span>
-                )}
+              <TableCell className="tabular-nums text-neutral-700 min-w-[130px]">
+                <ActualRevenueCell
+                  leadId={lead.id}
+                  value={
+                    revenueOverrides[lead.id] !== undefined
+                      ? revenueOverrides[lead.id]
+                      : lead.actualRevenue
+                  }
+                  onSaved={(newVal) =>
+                    setRevenueOverrides((prev) => ({ ...prev, [lead.id]: newVal }))
+                  }
+                />
               </TableCell>
 
               {/* Billing Plan */}
@@ -582,7 +681,7 @@ export function PipelineListView({
               </button>
             </TableCell>
 
-            {/* Actual Revenue — full calc */}
+            {/* Actual Revenue — full calc (uses effectiveLeads for optimistic overrides) */}
             <TableCell className="py-2">
               <button
                 className={cn(
@@ -597,7 +696,7 @@ export function PipelineListView({
                 {(() => {
                   const mode = getCalcMode("actualRevenue")
                   if (mode === "none") return "Calculate"
-                  const display = calcDisplay(sortedLeads, "actualRevenue", mode)
+                  const display = calcDisplay(effectiveLeads, "actualRevenue", mode)
                   const labels: Record<CalcMode, string> = {
                     none: "",
                     count: "",

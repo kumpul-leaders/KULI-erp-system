@@ -422,18 +422,27 @@ function RevenueTooltip({ active, payload, label }: RevenueTooltipProps) {
   )
 }
 
+interface FunnelPayload {
+  value: number
+  payload: { conversionRate?: number | null }
+}
+
 interface FunnelTooltipProps {
   active?: boolean
-  payload?: Array<{ value: number }>
+  payload?: Array<FunnelPayload>
   label?: string
 }
 
 function FunnelTooltip({ active, payload, label }: FunnelTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
+  const data = payload[0].payload
   return (
     <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{label}</p>
       <p className="text-neutral-500">Leads: <span className="text-neutral-800 font-medium">{payload[0].value}</span></p>
+      {data.conversionRate !== null && data.conversionRate !== undefined && (
+        <p className="text-neutral-500">From prev: <span className="text-indigo-600 font-medium">{data.conversionRate}%</span></p>
+      )}
     </div>
   )
 }
@@ -684,13 +693,27 @@ export function AnalyticsContent({
           {/* Client Retention */}
           <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card flex flex-col">
             <h3 className="text-sm font-medium text-neutral-500 mb-4">Client Retention</h3>
-            <div className="flex flex-col items-center justify-center flex-1 gap-2 py-4">
-              <span className="text-6xl font-bold text-neutral-800 tabular-nums leading-none">
-                {clientRetention.rate}%
-              </span>
-              <span className="text-sm text-neutral-500">
-                {clientRetention.renewed} dari {clientRetention.total} klien renewed
-              </span>
+            <div className="flex flex-col flex-1 gap-3 py-2">
+              <div className="flex items-center justify-between py-1.5 border-b border-neutral-100">
+                <span className="text-xs text-neutral-500">Contract Renewals</span>
+                <span className="text-sm font-semibold text-neutral-800 tabular-nums">
+                  {clientRetention.renewed} klien
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5 border-b border-neutral-100">
+                <span className="text-xs text-neutral-500">Upsell Won</span>
+                <span className="text-sm font-semibold text-neutral-800 tabular-nums">
+                  {clientRetention.upsellWon} klien
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-xs text-neutral-500">
+                  Renewal Rate dari {clientRetention.total} klien
+                </span>
+                <span className="text-sm font-semibold text-emerald-600 tabular-nums">
+                  {clientRetention.rate}%
+                </span>
+              </div>
               <RetentionBar rate={clientRetention.rate} />
             </div>
           </div>

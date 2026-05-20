@@ -144,6 +144,10 @@ export async function POST(request: NextRequest) {
           typeof body.primaryAe === "string" && body.primaryAe
             ? body.primaryAe
             : null,
+        notes:
+          typeof body.notes === "string" && body.notes
+            ? body.notes
+            : null,
       },
       include: {
         ae: { select: { id: true, name: true } },

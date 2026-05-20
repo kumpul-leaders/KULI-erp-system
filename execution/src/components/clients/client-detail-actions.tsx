@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
 import { EditClientSheet } from "@/components/clients/edit-client-sheet"
 import type { EngagementType, HealthStatus, ClientStatus } from "@/types"
 
@@ -51,6 +52,12 @@ export function ClientDetailActions({ client, aeOptions, isAdmin }: ClientDetail
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [confirmInput, setConfirmInput] = useState("")
+
+  function openDeleteDialog() {
+    setConfirmInput("")
+    setDeleteOpen(true)
+  }
 
   async function handleDelete() {
     setDeleting(true)
@@ -75,7 +82,7 @@ export function ClientDetailActions({ client, aeOptions, isAdmin }: ClientDetail
           variant="destructive"
           size="sm"
           className="gap-1.5"
-          onClick={() => setDeleteOpen(true)}
+          onClick={openDeleteDialog}
         >
           <Trash2 className="h-3.5 w-3.5" />
           Delete
@@ -98,25 +105,45 @@ export function ClientDetailActions({ client, aeOptions, isAdmin }: ClientDetail
         client={client}
         aeOptions={aeOptions}
         onSuccess={() => router.refresh()}
-        onDelete={isAdmin ? () => setDeleteOpen(true) : undefined}
+        onDelete={isAdmin ? openDeleteDialog : undefined}
       />
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialog open={deleteOpen} onOpenChange={(open) => { if (!deleting) setDeleteOpen(open) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Client?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak bisa dibatalkan. Data client{" "}
-              <span className="font-medium text-neutral-900">{client.name}</span>{" "}
-              akan dihapus permanen.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Tindakan ini tidak bisa dibatalkan. Data client{" "}
+                  <span className="font-medium text-neutral-900">{client.name}</span>{" "}
+                  akan dihapus permanen.
+                </p>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-neutral-500">
+                    Ketik{" "}
+                    <code className="px-1 py-0.5 rounded bg-neutral-100 text-neutral-700 font-mono text-xs border border-neutral-200">
+                      {client.name}
+                    </code>{" "}
+                    untuk konfirmasi:
+                  </p>
+                  <Input
+                    value={confirmInput}
+                    onChange={(e) => setConfirmInput(e.target.value)}
+                    placeholder={client.name}
+                    disabled={deleting}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting || confirmInput !== client.name}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-40"
             >
               {deleting ? (
                 <>

@@ -208,6 +208,31 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         }
       : {}
 
+  // Prior-year equivalent of closedDateFilter — same window shifted -12 months
+  const fromPY = from ? new Date(from.getFullYear() - 1, from.getMonth(), from.getDate()) : undefined
+  const toPY = to ? new Date(to.getFullYear() - 1, to.getMonth(), to.getDate(), 23, 59, 59, 999) : undefined
+
+  const closedDateFilterPY =
+    fromPY || toPY
+      ? {
+          OR: [
+            {
+              closedAt: {
+                ...(fromPY ? { gte: fromPY } : {}),
+                ...(toPY ? { lte: toPY } : {}),
+              },
+            },
+            {
+              closedAt: null,
+              createdAt: {
+                ...(fromPY ? { gte: fromPY } : {}),
+                ...(toPY ? { lte: toPY } : {}),
+              },
+            },
+          ],
+        }
+      : {}
+
   // AE filter clause — uses effectiveAeIds (enforced for account role)
   const aeFilter = effectiveAeIds.length > 0 ? { salesId: { in: effectiveAeIds } } : {}
 
@@ -301,13 +326,14 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
     }),
 
-    // 3b. Prior year revenue leads (same 12-month window, 1 year earlier)
+    // 3b. Prior year revenue leads — closedDateFilter shifted -12 months
     prisma.lead.findMany({
       where: {
         stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
         actualRevenue: { not: null },
         billingPlan: { not: null },
         ...aeFilter,
+        ...closedDateFilterPY,
       },
       select: { actualRevenue: true, billingPlan: true },
     }),

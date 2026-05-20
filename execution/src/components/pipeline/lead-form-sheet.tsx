@@ -10,6 +10,13 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -206,6 +213,11 @@ export function LeadFormSheet({
   const [billingPlanEnd, setBillingPlanEnd] = useState("")
   const [billingPlanEndError, setBillingPlanEndError] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [previewItems, setPreviewItems] = useState<Array<{
+    billingPlan: string
+    label: string
+    quarter: string | null
+  }> | null>(null)
 
   // Reset form when sheet closes
   useEffect(() => {
@@ -214,6 +226,7 @@ export function LeadFormSheet({
       setErrors({})
       setBillingPlanEnd("")
       setBillingPlanEndError("")
+      setPreviewItems(null)
     }
   }, [open])
 
@@ -266,62 +279,82 @@ export function LeadFormSheet({
       form.billingPlan &&
       billingPlanEnd
 
+    if (isRecurring) {
+      // Show preview instead of submitting immediately
+      const billingPlans = generateBillingPlanRange(form.billingPlan, billingPlanEnd)
+      setPreviewItems(
+        billingPlans.map((bp) => ({
+          billingPlan: bp,
+          label: billingPlanToLabel(bp),
+          quarter: billingPlanToQuarter(bp),
+        }))
+      )
+      return
+    }
+
+    // Single lead — submit directly
     setSubmitting(true)
     try {
-      if (isRecurring) {
-        const billingPlans = generateBillingPlanRange(form.billingPlan, billingPlanEnd)
-        const res = await fetch("/api/leads/bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientId: form.clientId,
-            productLine: form.productLine,
-            description: form.description || null,
-            projectType: form.projectType,
-            stage: form.stage,
-            salesId: form.salesId || null,
-            projectedRevenue: form.projectedRevenue
-              ? Number(form.projectedRevenue)
-              : null,
-            billingPlans,
-            notes: form.notes || null,
-          }),
-        })
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: form.clientId,
+          productLine: form.productLine,
+          description: form.description || null,
+          projectType: form.projectType,
+          stage: form.stage,
+          salesId: form.salesId || null,
+          projectedRevenue: form.projectedRevenue
+            ? Number(form.projectedRevenue)
+            : null,
+          billingPlan: form.billingPlan || null,
+          notes: form.notes || null,
+        }),
+      })
 
-        if (!res.ok) {
-          const data = (await res.json()) as { error?: string }
-          throw new Error(data.error ?? "Failed to create leads")
-        }
-
-        const data = (await res.json()) as { count: number }
-        toast.success(`${data.count} leads berhasil dibuat`)
-      } else {
-        const res = await fetch("/api/leads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientId: form.clientId,
-            productLine: form.productLine,
-            description: form.description || null,
-            projectType: form.projectType,
-            stage: form.stage,
-            salesId: form.salesId || null,
-            projectedRevenue: form.projectedRevenue
-              ? Number(form.projectedRevenue)
-              : null,
-            billingPlan: form.billingPlan || null,
-            notes: form.notes || null,
-          }),
-        })
-
-        if (!res.ok) {
-          const data = (await res.json()) as { error?: string }
-          throw new Error(data.error ?? "Failed to create lead")
-        }
-
-        toast.success("Lead created successfully")
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to create lead")
       }
 
+      toast.success("Lead created successfully")
+      onOpenChange(false)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function confirmBulkCreate() {
+    if (!previewItems) return
+    const billingPlans = previewItems.map((p) => p.billingPlan)
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/leads/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: form.clientId,
+          productLine: form.productLine,
+          description: form.description || null,
+          projectType: form.projectType,
+          stage: form.stage,
+          salesId: form.salesId || null,
+          projectedRevenue: form.projectedRevenue ? Number(form.projectedRevenue) : null,
+          billingPlans,
+          notes: form.notes || null,
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to create leads")
+      }
+      const data = (await res.json()) as { count: number }
+      toast.success(`${data.count} leads berhasil dibuat`)
+      setPreviewItems(null)
       onOpenChange(false)
       router.refresh()
     } catch (err) {
@@ -332,6 +365,48 @@ export function LeadFormSheet({
   }
 
   return (
+    <>
+    <Dialog open={previewItems !== null} onOpenChange={(isOpen) => { if (!isOpen) setPreviewItems(null) }}>
+      <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Konfirmasi Bulk Lead</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-neutral-500 px-1">
+          Akan membuat{" "}
+          <span className="font-semibold text-neutral-800">{previewItems?.length} leads</span>{" "}
+          untuk {form.clientName}:
+        </p>
+        <div className="flex-1 overflow-y-auto border border-neutral-100 rounded-md">
+          <table className="w-full text-xs">
+            <thead className="bg-neutral-50 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left text-neutral-500 font-medium">#</th>
+                <th className="px-3 py-2 text-left text-neutral-500 font-medium">Bulan</th>
+                <th className="px-3 py-2 text-left text-neutral-500 font-medium">Quarter</th>
+              </tr>
+            </thead>
+            <tbody>
+              {previewItems?.map((item, i) => (
+                <tr key={item.billingPlan} className="border-t border-neutral-50">
+                  <td className="px-3 py-1.5 text-neutral-400">{i + 1}</td>
+                  <td className="px-3 py-1.5 text-neutral-800 font-medium">{item.label}</td>
+                  <td className="px-3 py-1.5 text-neutral-500">{item.quarter ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setPreviewItems(null)} disabled={submitting}>
+            Kembali
+          </Button>
+          <Button onClick={confirmBulkCreate} disabled={submitting}>
+            {submitting ? "Membuat..." : `Buat ${previewItems?.length ?? 0} Leads`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto">
         <SheetHeader className="mb-6">
@@ -602,5 +677,6 @@ export function LeadFormSheet({
         </form>
       </SheetContent>
     </Sheet>
+    </>
   )
 }

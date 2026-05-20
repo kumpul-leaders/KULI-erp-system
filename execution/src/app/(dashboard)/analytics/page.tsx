@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 // ---------------------------------------------------------------------------
 
 export type WinRateByAE = {
+  aeId: string
   aeName: string
   total: number
   won: number
@@ -30,8 +31,9 @@ export type WinRateByIndustry = {
 }
 
 export type RevenueTrendPoint = {
-  month: string // e.g. "Jan 25"
-  revenue: number
+  month: string    // e.g. "Jan 25"
+  revenue: number  // current year
+  revenuePY: number // prior year (default 0)
 }
 
 export type FunnelStage = {
@@ -216,6 +218,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     aeRevenueByAE,
     leadsForIndustry,
     revenueLeads,
+    revenueLeadsPY,
     funnelGroups,
     renewedCount,
     totalClientCount,
@@ -296,6 +299,17 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         actualRevenue: true,
         billingPlan: true,
       },
+    }),
+
+    // 3b. Prior year revenue leads (same 12-month window, 1 year earlier)
+    prisma.lead.findMany({
+      where: {
+        stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
+        actualRevenue: { not: null },
+        billingPlan: { not: null },
+        ...aeFilter,
+      },
+      select: { actualRevenue: true, billingPlan: true },
     }),
 
     // 4. Funnel stage counts — createdAt filter
@@ -390,6 +404,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       const closed = won + lost
       const winRate = closed > 0 ? Math.round((won / closed) * 100) : 0
       return {
+        aeId: salesId,
         aeName: aeNameMap.get(salesId) ?? "Unknown",
         total,
         won,
@@ -455,9 +470,32 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     }
   }
 
+  // Build prior year billing plan → current year display key map
+  const billingPlanToKeyPY = new Map<string, string>()
+  for (let i = 11; i >= 0; i--) {
+    const dPY = new Date(now.getFullYear() - 1, now.getMonth() - i, 1)
+    const bpPY = toBillingPlan(dPY.getFullYear(), dPY.getMonth() + 1)
+    const dCurrent = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const keyCurrent = `${SHORT_MONTHS[dCurrent.getMonth()]} ${String(dCurrent.getFullYear()).slice(2)}`
+    billingPlanToKeyPY.set(bpPY, keyCurrent)
+  }
+
+  // Build revenueByMonthPY with same month slots (default 0)
+  const revenueByMonthPY = new Map<string, number>()
+  for (const key of revenueByMonth.keys()) {
+    revenueByMonthPY.set(key, 0)
+  }
+  for (const lead of revenueLeadsPY) {
+    if (!lead.billingPlan) continue
+    const key = billingPlanToKeyPY.get(lead.billingPlan)
+    if (key && revenueByMonthPY.has(key)) {
+      revenueByMonthPY.set(key, (revenueByMonthPY.get(key) ?? 0) + Number(lead.actualRevenue))
+    }
+  }
+
   const revenueTrend: RevenueTrendPoint[] = Array.from(
     revenueByMonth.entries()
-  ).map(([month, revenue]) => ({ month, revenue }))
+  ).map(([month, revenue]) => ({ month, revenue, revenuePY: revenueByMonthPY.get(month) ?? 0 }))
 
   // ---------------------------------------------------------------------------
   // 4: Pipeline Funnel

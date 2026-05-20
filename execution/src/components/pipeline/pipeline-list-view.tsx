@@ -13,6 +13,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { toast } from "sonner"
 import { PipelineStageBadge } from "./pipeline-stage-badge"
 import { cn, formatIDR } from "@/lib/utils"
 import type { SerializedLead } from "./pipeline-card"
@@ -296,7 +305,8 @@ function ActualRevenueCell({ leadId, value, onSaved }: ActualRevenueCellProps) {
 
 export function PipelineListView({
   leads,
-  onRefresh: _onRefresh,
+  salesOptions,
+  onRefresh,
 }: PipelineListViewProps) {
   const router = useRouter()
   const [sortCol, setSortCol] = useState<SortCol>("createdAt")
@@ -307,6 +317,11 @@ export function PipelineListView({
 
   // Optimistic overrides for actual revenue edits
   const [revenueOverrides, setRevenueOverrides] = useState<Record<string, number | null>>({})
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkSalesId, setBulkSalesId] = useState("")
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   function getCalcMode(col: string): CalcMode {
     return colCalcs[col] ?? "none"
@@ -329,6 +344,27 @@ export function PipelineListView({
     } else {
       setSortCol(typedCol)
       setSortDir("asc")
+    }
+  }
+
+  async function handleBulkReassign() {
+    if (!bulkSalesId || selectedIds.size === 0) return
+    setBulkLoading(true)
+    try {
+      const res = await fetch("/api/leads/bulk-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds: Array.from(selectedIds), salesId: bulkSalesId }),
+      })
+      if (!res.ok) throw new Error("Reassign gagal")
+      toast.success(`${selectedIds.size} lead berhasil direassign`)
+      setSelectedIds(new Set())
+      setBulkSalesId("")
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setBulkLoading(false)
     }
   }
 
@@ -362,11 +398,58 @@ export function PipelineListView({
   }
 
   return (
-    // Fix 1: removed overflow-x-auto — parent wrapper in loader now handles scroll
+    <div>
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 mb-2 p-3 rounded-md bg-blue-50 border border-blue-200">
+          <span className="text-sm text-blue-700 font-medium">
+            {selectedIds.size} lead dipilih
+          </span>
+          <span className="text-blue-300">|</span>
+          <span className="text-sm text-blue-600">Reassign ke:</span>
+          <Select value={bulkSalesId} onValueChange={setBulkSalesId}>
+            <SelectTrigger className="h-7 w-36 text-xs">
+              <SelectValue placeholder="Pilih AE..." />
+            </SelectTrigger>
+            <SelectContent>
+              {salesOptions.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            className="h-7 text-xs"
+            disabled={!bulkSalesId || bulkLoading}
+            onClick={handleBulkReassign}
+          >
+            {bulkLoading ? "..." : "Terapkan"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-blue-600"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Batalkan
+          </Button>
+        </div>
+      )}
+
+    {/* Fix 1: removed overflow-x-auto — parent wrapper in loader now handles scroll */}
     <div className="rounded-lg border border-neutral-200 bg-white shadow-card">
       <Table>
         <TableHeader>
           <TableRow className="bg-neutral-50">
+            {/* Select-all checkbox */}
+            <TableHead className="w-[40px]">
+              <Checkbox
+                checked={selectedIds.size === sortedLeads.length && sortedLeads.length > 0}
+                onCheckedChange={(checked) => {
+                  setSelectedIds(checked ? new Set(sortedLeads.map((l) => l.id)) : new Set())
+                }}
+              />
+            </TableHead>
             <SortableColHeader
               label="Company"
               col="client.name"
@@ -469,6 +552,21 @@ export function PipelineListView({
                 router.push(`/pipeline/${lead.id}`)
               }}
             >
+              {/* Row checkbox */}
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={selectedIds.has(lead.id)}
+                  onCheckedChange={(checked) => {
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev)
+                      if (checked) next.add(lead.id)
+                      else next.delete(lead.id)
+                      return next
+                    })
+                  }}
+                />
+              </TableCell>
+
               {/* Company */}
               <TableCell className="font-medium text-neutral-800">
                 {lead.client.name}
@@ -585,6 +683,9 @@ export function PipelineListView({
         {/* Footer calculator — click cells to cycle calc modes */}
         <TableFooter className="bg-neutral-50">
           <TableRow className="hover:bg-neutral-100 border-t-2 border-neutral-200">
+            {/* Checkbox col — empty */}
+            <TableCell />
+
             {/* Company — count */}
             <TableCell className="py-2">
               <button
@@ -724,6 +825,7 @@ export function PipelineListView({
           </TableRow>
         </TableFooter>
       </Table>
+    </div>
     </div>
   )
 }

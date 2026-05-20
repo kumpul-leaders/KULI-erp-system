@@ -155,6 +155,41 @@ export async function PATCH(
       return NextResponse.json({ error: "Client not found" }, { status: 404 })
     }
 
+    // Compute changed fields for audit log
+    const auditEntries: Array<{
+      clientId: string
+      field: string
+      oldValue: string | null
+      newValue: string | null
+      changedBy: string
+    }> = []
+
+    const TRACKED: Record<string, (v: unknown) => string | null> = {
+      name: (v) => (v as string | null) ?? null,
+      industry: (v) => (v as string | null) ?? null,
+      orgSize: (v) => (v as string | null) ?? null,
+      engagementType: (v) => (v as string | null) ?? null,
+      healthStatus: (v) => (v as string | null) ?? null,
+      clientStatus: (v) => (v as string | null) ?? null,
+      primaryAe: (v) => (v as string | null) ?? null,
+      notes: (v) => (v as string | null) ?? null,
+      monthlyValue: (v) => (v != null ? String(Number(v)) : null),
+      annualValue: (v) => (v != null ? String(Number(v)) : null),
+      contractStart: (v) =>
+        v instanceof Date ? v.toISOString().split("T")[0] : ((v as string | null) ?? null),
+      contractEnd: (v) =>
+        v instanceof Date ? v.toISOString().split("T")[0] : ((v as string | null) ?? null),
+    }
+
+    for (const [field, serializer] of Object.entries(TRACKED)) {
+      if (!(field in updateData)) continue
+      const oldVal = serializer((existing as Record<string, unknown>)[field])
+      const newVal = serializer(updateData[field])
+      if (oldVal !== newVal) {
+        auditEntries.push({ clientId: id, field, oldValue: oldVal, newValue: newVal, changedBy: user.id })
+      }
+    }
+
     const client = await prisma.client.update({
       where: { id },
       data: updateData,
@@ -162,6 +197,10 @@ export async function PATCH(
         ae: { select: { id: true, name: true } },
       },
     })
+
+    if (auditEntries.length > 0) {
+      await prisma.clientFieldHistory.createMany({ data: auditEntries })
+    }
 
     const normalized = {
       ...client,

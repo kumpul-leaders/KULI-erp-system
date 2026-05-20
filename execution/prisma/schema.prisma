@@ -7,16 +7,17 @@ datasource db {
 }
 
 model User {
-  id                   String             @id @default(uuid())
-  email                String             @unique
+  id                   String               @id @default(uuid())
+  email                String               @unique
   name                 String
-  role                 Role               @default(account)
+  role                 Role                 @default(account)
   division             String?
-  isActive             Boolean            @default(true) @map("is_active")
-  isVp                 Boolean            @default(false) @map("is_vp")
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
+  isActive             Boolean              @default(true) @map("is_active")
+  isVp                 Boolean              @default(false) @map("is_vp")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
   clientsManaged       Client[]
+  clientFieldChanges   ClientFieldHistory[] @relation("ClientFieldChanger")
   fieldChangesActioned LeadFieldHistory[]
   stageChangesActioned LeadStageHistory[]
   leadsAssigned        Lead[]
@@ -27,28 +28,43 @@ model User {
 }
 
 model Client {
-  id                  String              @id @default(uuid())
+  id                  String               @id @default(uuid())
   name                String
   industry            String?
-  engagementType      EngagementType      @map("engagement_type")
-  contractStart       DateTime?           @map("contract_start") @db.Date
-  contractEnd         DateTime?           @map("contract_end") @db.Date
-  monthlyValue        Decimal?            @map("monthly_value") @db.Decimal(15, 2)
-  annualValue         Decimal?            @map("annual_value") @db.Decimal(15, 2)
-  healthStatus        HealthStatus        @default(healthy) @map("health_status")
-  primaryAe           String?             @map("primary_ae")
+  engagementType      EngagementType       @map("engagement_type")
+  contractStart       DateTime?            @map("contract_start") @db.Date
+  contractEnd         DateTime?            @map("contract_end") @db.Date
+  monthlyValue        Decimal?             @map("monthly_value") @db.Decimal(15, 2)
+  annualValue         Decimal?             @map("annual_value") @db.Decimal(15, 2)
+  healthStatus        HealthStatus         @default(healthy) @map("health_status")
+  primaryAe           String?              @map("primary_ae")
   notes               String?
-  createdAt           DateTime            @default(now()) @map("created_at")
-  updatedAt           DateTime            @updatedAt @map("updated_at")
-  customerCode        String?             @unique @map("customer_code")
-  orgSize             String?             @map("org_size")
-  clientStatus        ClientStatus?       @map("client_status")
-  ae                  User?               @relation(fields: [primaryAe], references: [id])
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  customerCode        String?              @unique @map("customer_code")
+  orgSize             String?              @map("org_size")
+  clientStatus        ClientStatus?        @map("client_status")
+  ae                  User?                @relation(fields: [primaryAe], references: [id])
   contacts            Contact[]
+  fieldHistory        ClientFieldHistory[]
   leads               Lead[]
   upsellOpportunities UpsellOpportunity[]
 
   @@map("clients")
+}
+
+model ClientFieldHistory {
+  id        String   @id @default(uuid())
+  clientId  String   @map("client_id")
+  field     String
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  changedBy String   @map("changed_by")
+  changedAt DateTime @default(now()) @map("changed_at")
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  changer   User     @relation("ClientFieldChanger", fields: [changedBy], references: [id])
+
+  @@map("client_field_history")
 }
 
 model Contact {

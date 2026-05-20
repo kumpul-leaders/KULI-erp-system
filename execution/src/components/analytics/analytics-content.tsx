@@ -2,6 +2,17 @@
 
 import { useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+
+// ---------------------------------------------------------------------------
+// Drill-down URL builder — encodes filter conditions for /pipeline
+// ---------------------------------------------------------------------------
+
+function buildPipelineUrl(conditions: Array<{ field: string; operator: string; value: string }>): string {
+  const encoded = btoa(JSON.stringify(
+    conditions.map((c, i) => ({ id: String(i + 1), ...c }))
+  ))
+  return `/pipeline?filter=${encoded}`
+}
 import {
   BarChart,
   Bar,
@@ -408,16 +419,23 @@ function WinRateTooltip({ active, payload, label }: WinRateTooltipProps) {
 
 interface RevenueTooltipProps {
   active?: boolean
-  payload?: Array<{ value: number }>
+  payload?: Array<{ value: number; dataKey: string }>
   label?: string
 }
 
 function RevenueTooltip({ active, payload, label }: RevenueTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
+  const current = payload.find((p) => p.dataKey === "revenue")
+  const py = payload.find((p) => p.dataKey === "revenuePY")
   return (
     <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{label}</p>
-      <p className="text-neutral-500">Revenue: <span className="text-emerald-600 font-medium">{formatIDR(payload[0].value)}</span></p>
+      {current && (
+        <p className="text-neutral-500">Revenue: <span className="text-emerald-600 font-medium">{formatIDR(current.value)}</span></p>
+      )}
+      {py && (
+        <p className="text-neutral-500">Prior Year: <span className="text-neutral-500 font-medium">{formatIDR(py.value)}</span></p>
+      )}
     </div>
   )
 }
@@ -475,7 +493,9 @@ export function AnalyticsContent({
   activeAeIds,
   currentUserRole,
 }: AnalyticsContentProps) {
+  const router = useRouter()
   const [winRateTab, setWinRateTab] = useState<"ae" | "industry">("ae")
+  const [showYoY, setShowYoY] = useState(false)
 
   const currentPreset = detectPreset(activeFrom, activeTo)
   const dateRangeLabel = buildDateRangeLabel(currentPreset, activeFrom, activeTo)
@@ -487,6 +507,15 @@ export function AnalyticsContent({
 
   function handleExport() {
     exportAEPerformanceCSV(aePerformance, dateRangeLabel)
+  }
+
+  function handleAEClick(data: WinRateByAE) {
+    if (!data.aeId) return
+    router.push(buildPipelineUrl([{ field: "salesId", operator: "is", value: data.aeId }]))
+  }
+
+  function handleFunnelClick(data: FunnelStage) {
+    router.push(buildPipelineUrl([{ field: "stage", operator: "is", value: data.stage }]))
   }
 
   return (
@@ -573,7 +602,14 @@ export function AnalyticsContent({
                       width={96}
                     />
                     <Tooltip content={<WinRateTooltip />} cursor={{ fill: "#f9fafb" }} />
-                    <Bar dataKey="winRate" fill="#3B82F6" radius={[0, 3, 3, 0]} maxBarSize={20} />
+                    <Bar
+                      dataKey="winRate"
+                      fill="#3B82F6"
+                      radius={[0, 3, 3, 0]}
+                      maxBarSize={20}
+                      onClick={(data) => handleAEClick(data as unknown as WinRateByAE)}
+                      cursor="pointer"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )
@@ -614,7 +650,20 @@ export function AnalyticsContent({
 
           {/* Revenue Trend */}
           <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-            <h3 className="text-sm font-medium text-neutral-500 mb-4">Revenue Trend (12 Months)</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-neutral-500">Revenue Trend (12 Months)</h3>
+              <button
+                onClick={() => setShowYoY((v) => !v)}
+                className={[
+                  "text-xs px-2 py-1 rounded border transition-colors",
+                  showYoY
+                    ? "bg-neutral-800 text-white border-neutral-800"
+                    : "bg-white text-neutral-500 border-neutral-200 hover:bg-neutral-50",
+                ].join(" ")}
+              >
+                vs Prior Year
+              </button>
+            </div>
             {revenueTrend.every((p) => p.revenue === 0) ? (
               <EmptyState label="No revenue data" />
             ) : (
@@ -646,6 +695,17 @@ export function AnalyticsContent({
                     dot={{ r: 3, fill: "#10B981", strokeWidth: 0 }}
                     activeDot={{ r: 5, fill: "#10B981", strokeWidth: 0 }}
                   />
+                  {showYoY && (
+                    <Line
+                      type="monotone"
+                      dataKey="revenuePY"
+                      stroke="#9ca3af"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      dot={{ r: 2, fill: "#9ca3af", strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: "#9ca3af", strokeWidth: 0 }}
+                    />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -684,7 +744,14 @@ export function AnalyticsContent({
                     width={104}
                   />
                   <Tooltip content={<FunnelTooltip />} cursor={{ fill: "#f9fafb" }} />
-                  <Bar dataKey="count" fill="#6366F1" radius={[0, 3, 3, 0]} maxBarSize={16} />
+                  <Bar
+                    dataKey="count"
+                    fill="#6366F1"
+                    radius={[0, 3, 3, 0]}
+                    maxBarSize={16}
+                    onClick={(data) => handleFunnelClick(data as unknown as FunnelStage)}
+                    cursor="pointer"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}

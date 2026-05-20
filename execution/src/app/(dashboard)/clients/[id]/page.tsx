@@ -39,6 +39,11 @@ async function fetchClient(id: string) {
       ae: { select: { id: true, name: true, email: true } },
       contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
       upsellOpportunities: { orderBy: { createdAt: "desc" } },
+      fieldHistory: {
+        orderBy: { changedAt: "desc" },
+        take: 30,
+        include: { changer: { select: { name: true } } },
+      },
     },
   })
 }
@@ -114,6 +119,16 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     estimatedValue: u.estimatedValue ? Number(u.estimatedValue) : null,
     createdAt: u.createdAt.toISOString(),
     updatedAt: u.updatedAt.toISOString(),
+  }))
+
+  // Normalized field history (serialize changedAt)
+  const fieldHistory = client.fieldHistory.map((entry) => ({
+    id: entry.id,
+    field: entry.field,
+    oldValue: entry.oldValue,
+    newValue: entry.newValue,
+    changedAt: entry.changedAt.toISOString(),
+    changerName: entry.changer.name,
   }))
 
   // Client data for edit sheet (serialize dates, include new fields)
@@ -281,6 +296,36 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                 Pipeline data will appear here once linked from the Pipeline module.
               </p>
             </div>
+
+            {/* Field History */}
+            {fieldHistory.length > 0 && (
+              <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+                <h3 className="text-sm font-semibold text-neutral-700 mb-3">Change History</h3>
+                <div className="space-y-2">
+                  {fieldHistory.map((entry) => (
+                    <div key={entry.id} className="flex items-start gap-3 text-xs">
+                      <span className="text-neutral-400 whitespace-nowrap mt-0.5">
+                        {new Date(entry.changedAt).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "2-digit",
+                        })}
+                      </span>
+                      <div className="flex-1">
+                        <span className="font-medium text-neutral-700 capitalize">
+                          {entry.field.replace(/([A-Z])/g, " $1")}
+                        </span>
+                        {": "}
+                        <span className="text-neutral-500 line-through">{entry.oldValue ?? "—"}</span>
+                        {" → "}
+                        <span className="text-neutral-800">{entry.newValue ?? "—"}</span>
+                      </div>
+                      <span className="text-neutral-400 whitespace-nowrap">{entry.changerName}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useTransition, useMemo } from "react"
+import { useState, useTransition, useMemo } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -88,7 +88,7 @@ function getContractUrgency(contractEnd: string | null): "critical" | "warning" 
   return null
 }
 
-function useDebounce(fn: (val: string) => void, delay: number) {
+function createDebounced(fn: (val: string) => void, delay: number) {
   let timer: ReturnType<typeof setTimeout>
   return (val: string) => {
     clearTimeout(timer)
@@ -147,7 +147,7 @@ function SortableHeader({
 
 export function ClientsTable({
   initialClients,
-  initialTotal,
+  initialTotal: _initialTotal, // eslint-disable-line @typescript-eslint/no-unused-vars
   aeOptions,
   searchQuery,
   sortCol,
@@ -196,9 +196,9 @@ export function ClientsTable({
     })
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSearch = useCallback(
-    useDebounce((val: string) => updateParam("search", val), 350),
+  const debouncedSearch = useMemo(
+    () => createDebounced((val: string) => updateParam("search", val), 350),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [searchParams, pathname]
   )
 

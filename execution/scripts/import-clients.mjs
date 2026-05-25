@@ -130,15 +130,6 @@ function normalizeOrgSize(raw) {
   return raw.trim()
 }
 
-// ─── Client Status from Stage ─────────────────────────────────────────────────
-function deriveClientStatus(stage) {
-  if (!stage) return "lead"
-  if (stage.includes("Order won") || stage.includes("🎉")) return "active"
-  if (stage.includes("Possible opportunity") || stage.includes("🚩")) return "lead"
-  if (stage.includes("No opportunity") || stage.includes("❕")) return "inactive"
-  return "lead"
-}
-
 // ─── Parsers ──────────────────────────────────────────────────────────────────
 
 function parseIDR(str) {

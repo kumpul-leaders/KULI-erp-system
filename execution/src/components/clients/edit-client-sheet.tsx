@@ -105,6 +105,7 @@ export function EditClientSheet({
 
   // Sync form when client prop changes (e.g. after refetch)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       name: client.name,
       industry: client.industry ?? "",

@@ -211,6 +211,7 @@ export function PipelineKanban({
 
   // Sync leads when initialLeads (filter changes) or sortKey changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLeads(sortLeadsForKanban(initialLeads, sortKey))
   }, [initialLeads, sortKey])
 

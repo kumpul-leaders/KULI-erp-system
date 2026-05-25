@@ -40,8 +40,7 @@ interface PipelineListViewProps {
 
 type CalcMode = "none" | "count" | "sum" | "avg" | "median"
 
-const NUMERIC_COLS = ["projectedRevenue", "actualRevenue"] as const
-type NumericCol = (typeof NUMERIC_COLS)[number]
+type NumericCol = "projectedRevenue" | "actualRevenue"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

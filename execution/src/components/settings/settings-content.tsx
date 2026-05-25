@@ -174,7 +174,7 @@ export function SettingsContent({
   const [productLineLabels, setProductLineLabels] = useState<ProductLineLabelMap>(
     Object.fromEntries(PRODUCT_LINES.map((p) => [p.db, p.display]))
   )
-  const [configLoaded, setConfigLoaded] = useState(false)
+
   const [editingGateIdx, setEditingGateIdx] = useState<number | null>(null)
   const [editingGateValue, setEditingGateValue] = useState("")
   const [editingLabelKey, setEditingLabelKey] = useState<string | null>(null)
@@ -195,9 +195,8 @@ export function SettingsContent({
         ) {
           setProductLineLabels(data.config.product_line_labels as ProductLineLabelMap)
         }
-        setConfigLoaded(true)
       })
-      .catch(() => setConfigLoaded(true)) // fallback to hardcoded on error
+      .catch(() => {}) // fallback to hardcoded on error
   }, [])
 
   // Delete dialog state

@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, AlertCircle } from "lucide-react"
-import type { Metadata } from "next"
-
 // Note: metadata cannot be exported from a "use client" file.
 // Title is set in root layout template. For SEO, wrap in a Server Component if needed.
 

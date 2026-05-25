@@ -106,6 +106,7 @@ function ClientCombobox({ value, onSelect, error }: ClientComboboxProps) {
 
   useEffect(() => {
     if (!query || query.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([])
       return
     }
@@ -222,6 +223,7 @@ export function LeadFormSheet({
   // Reset form when sheet closes
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(INITIAL_FORM)
       setErrors({})
       setBillingPlanEnd("")

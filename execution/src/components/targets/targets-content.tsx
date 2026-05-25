@@ -86,18 +86,6 @@ function KpiCard({ label, value, sub, color }: {
   )
 }
 
-// ── Progress Bar ──────────────────────────────────────────────────────────────
-
-function ProgressBar({ value, max }: { value: number; max: number }) {
-  const p = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0
-  const color = p >= 100 ? "bg-emerald-500" : p >= 75 ? "bg-blue-500" : p >= 50 ? "bg-amber-500" : "bg-red-400"
-  return (
-    <div className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden mt-1">
-      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${p}%` }} />
-    </div>
-  )
-}
-
 // Stacked bar: actual (solid) + forecast (lighter amber), both relative to target
 function ForecastBar({ actual, forecast, max }: { actual: number; forecast: number; max: number }) {
   if (max <= 0) return null
@@ -117,7 +105,7 @@ function ForecastBar({ actual, forecast, max }: { actual: number; forecast: numb
 
 export function TargetsContent({
   quarters,
-  annualTarget,
+  annualTarget: _annualTarget, // eslint-disable-line @typescript-eslint/no-unused-vars
   annualActual,
   year,
   aeOptions,

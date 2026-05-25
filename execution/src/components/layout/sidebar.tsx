@@ -9,6 +9,7 @@ import {
   Target,
   BarChart3,
   Settings,
+  UserCircle,
 } from "lucide-react"
 import { cn, getInitials } from "@/lib/utils"
 import type { SessionUser } from "@/types"
@@ -137,6 +138,34 @@ export function Sidebar({ user }: SidebarProps) {
             </ul>
           </div>
         )}
+
+        {/* Account — all users */}
+        <div className="mb-2">
+          <p className="mb-1 mt-4 px-4 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+            ACCOUNT
+          </p>
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                href="/account"
+                className={cn(
+                  "flex items-center gap-2.5 mx-2 rounded-md px-3 py-2 text-[13px] font-medium transition-colors duration-100",
+                  isActive("/account")
+                    ? "bg-accent-50 text-accent-700 font-semibold border-l-2 border-accent-600 pl-[calc(0.75rem_-_2px)]"
+                    : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800"
+                )}
+              >
+                <UserCircle
+                  className={cn(
+                    "h-4 w-4 flex-shrink-0",
+                    isActive("/account") ? "text-accent-600" : "text-neutral-400"
+                  )}
+                />
+                Account
+              </Link>
+            </li>
+          </ul>
+        </div>
       </nav>
 
       {/* User info — bottom */}

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react"
+import { KeyRound, Loader2, Mail, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -161,6 +161,9 @@ export function SettingsContent({
 
   // Activate/Deactivate loading state
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
+
+  // Auth email (invite / reset) loading state
+  const [loadingAuthUserId, setLoadingAuthUserId] = useState<string | null>(null)
 
   // Delete dialog state
   type DeleteDialogState = { open: false } | { open: true; userId: string; userName: string }
@@ -410,6 +413,26 @@ export function SettingsContent({
     }
   }
 
+  async function handleAuthAction(userId: string, _userEmail: string, type: "invite" | "reset") {
+    setLoadingAuthUserId(userId)
+    try {
+      const res = await fetch(`/api/users/${userId}/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      })
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(data.error ?? "Failed")
+      toast.success(
+        type === "invite" ? "Invite email terkirim" : "Password reset email terkirim"
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setLoadingAuthUserId(null)
+    }
+  }
+
   async function handleActivate(userId: string) {
     setLoadingUserId(userId)
     try {
@@ -579,12 +602,33 @@ export function SettingsContent({
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {user.isActive ? (
-                            <DropdownMenuItem
-                              className="text-danger-600 focus:text-danger-700"
-                              onClick={() => openDeactivateDialog(user)}
-                            >
-                              Deactivate
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  void handleAuthAction(user.id, user.email, "invite")
+                                }
+                                disabled={loadingAuthUserId === user.id}
+                              >
+                                <Mail className="h-3.5 w-3.5 mr-2" />
+                                Resend Invite
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  void handleAuthAction(user.id, user.email, "reset")
+                                }
+                                disabled={loadingAuthUserId === user.id}
+                              >
+                                <KeyRound className="h-3.5 w-3.5 mr-2" />
+                                Send Password Reset
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-danger-600 focus:text-danger-700"
+                                onClick={() => openDeactivateDialog(user)}
+                              >
+                                Deactivate
+                              </DropdownMenuItem>
+                            </>
                           ) : (
                             <>
                               <DropdownMenuItem

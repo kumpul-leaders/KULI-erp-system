@@ -98,6 +98,21 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
   )
 }
 
+// Stacked bar: actual (solid) + forecast (lighter amber), both relative to target
+function ForecastBar({ actual, forecast, max }: { actual: number; forecast: number; max: number }) {
+  if (max <= 0) return null
+  const actualPct = Math.min((actual / max) * 100, 100)
+  const forecastPct = Math.min((forecast / max) * 100, 100 - actualPct)
+  return (
+    <div className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden mt-1 flex">
+      <div className="h-full bg-blue-500 transition-all" style={{ width: `${actualPct}%` }} />
+      {forecastPct > 0 && (
+        <div className="h-full bg-amber-300 transition-all" style={{ width: `${forecastPct}%` }} />
+      )}
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function TargetsContent({
@@ -351,23 +366,33 @@ export function TargetsContent({
                         </p>
                         {q.status === "active" && (
                           <p className="text-xs text-neutral-400">
-                            YTD actual: {formatIDR(q.actual)}
-                            {q.revenueTarget > 0 && (
-                              <span className={`ml-2 font-medium ${gapColor(q.actual - q.revenueTarget)}`}>
-                                {q.actual - q.revenueTarget >= 0 ? "+" : ""}{formatIDR(q.actual - q.revenueTarget)}
+                            Actual: {formatIDR(q.actual)}
+                            {q.forecast > 0 && (
+                              <span className="ml-2 text-amber-600 font-medium">
+                                +{formatIDR(q.forecast)} forecast
                               </span>
                             )}
+                            {q.revenueTarget > 0 && (
+                              <span className={`ml-2 font-medium ${gapColor(q.actual + q.forecast - q.revenueTarget)}`}>
+                                ({q.actual + q.forecast - q.revenueTarget >= 0 ? "+" : ""}{formatIDR(q.actual + q.forecast - q.revenueTarget)} proj. gap)
+                              </span>
+                            )}
+                          </p>
+                        )}
+                        {q.status === "future" && q.forecast > 0 && (
+                          <p className="text-xs text-amber-600">
+                            {formatIDR(q.forecast)} in pipeline
                           </p>
                         )}
                       </div>
                     )}
                     {q.revenueTarget > 0 && (
-                      <ProgressBar value={q.actual} max={q.revenueTarget} />
+                      <ForecastBar actual={q.actual} forecast={q.forecast} max={q.revenueTarget} />
                     )}
                   </div>
 
-                  {/* Actions — only for active/future */}
-                  {isAdmin && q.status !== "closed" && (
+                  {/* Actions — admin can edit any quarter including closed */}
+                  {isAdmin && (
                     <div className="flex items-center gap-1 shrink-0">
                       <Button
                         variant="ghost"
@@ -428,10 +453,23 @@ export function TargetsContent({
                 {/* Monthly breakdown (collapsible) */}
                 {isExpanded && (
                   <div className="border-t border-neutral-100 bg-neutral-50 px-4 py-3 space-y-2">
+                    {/* Legend */}
+                    <div className="flex items-center gap-3 pb-1">
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                        <span className="inline-block w-3 h-1.5 rounded-full bg-blue-500" />
+                        Actual
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                        <span className="inline-block w-3 h-1.5 rounded-full bg-amber-300" />
+                        Forecast (pipeline)
+                      </div>
+                    </div>
                     {q.months.map((m) => {
                       const mActual = m.actual
+                      const mForecast = m.forecast
                       const mTarget = monthlyTarget
-                      const mPct = pct(mActual, mTarget)
+                      const mActualPct = pct(mActual, mTarget)
+                      const mCombinedPct = mTarget > 0 ? Math.round(((mActual + mForecast) / mTarget) * 100) : 0
                       return (
                         <div key={m.month} className="flex items-center gap-3">
                           <span className="w-8 text-xs font-medium text-neutral-500 shrink-0">
@@ -439,12 +477,23 @@ export function TargetsContent({
                           </span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between text-xs mb-0.5">
-                              <span className="text-neutral-600">{formatIDR(mActual)}</span>
+                              <span className="text-neutral-700">
+                                {formatIDR(mActual)}
+                                {mForecast > 0 && (
+                                  <span className="text-amber-600 ml-1">+{formatIDR(mForecast)}</span>
+                                )}
+                              </span>
                               <span className="text-neutral-400">
-                                {mTarget > 0 ? `/ ${formatIDR(mTarget)} (${mPct}%)` : "No target"}
+                                {mTarget > 0
+                                  ? mForecast > 0
+                                    ? `/ ${formatIDR(mTarget)} (${mActualPct}% actual, ${mCombinedPct}% w/ forecast)`
+                                    : `/ ${formatIDR(mTarget)} (${mActualPct}%)`
+                                  : "No target"}
                               </span>
                             </div>
-                            {mTarget > 0 && <ProgressBar value={mActual} max={mTarget} />}
+                            {mTarget > 0 && (
+                              <ForecastBar actual={mActual} forecast={mForecast} max={mTarget} />
+                            )}
                           </div>
                         </div>
                       )

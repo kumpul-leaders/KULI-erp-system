@@ -31,11 +31,13 @@ export type QuarterData = {
   revenueTarget: number  // 0 if no target set
   newClientTarget: number
   actual: number         // SUM actualRevenue from won leads in those 3 months
+  forecast: number       // SUM projectedRevenue from pipeline leads in those 3 months
   status: "closed" | "active" | "future"
   months: {
     month: number        // 1-12
     billingPlan: string  // "26-01", "26-02", etc.
     actual: number       // SUM actualRevenue for that month
+    forecast: number     // SUM projectedRevenue from pipeline leads for that month
   }[]
 }
 
@@ -95,7 +97,7 @@ export default async function TargetsPage({
     return "future"
   }
 
-  const [aeOptions, quarterlyTargets, wonLeads2026] = await Promise.all([
+  const [aeOptions, quarterlyTargets, wonLeads2026, pipelineLeads2026] = await Promise.all([
     // Active AEs for the selector
     prisma.user.findMany({
       where: { isActive: true, role: { in: ["account", "admin", "account_manager"] } },
@@ -112,22 +114,45 @@ export default async function TargetsPage({
       },
     }),
 
-    // All won leads in 2026 for actual revenue computation
+    // Actual revenue: closed_won + invoiced only
     prisma.lead.findMany({
       where: {
-        stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
+        stage: { in: ["closed_won", "invoiced"] },
         billingPlan: { in: allBP2026 },
         ...(selectedAeId ? { salesId: selectedAeId } : {}),
       },
-      select: { actualRevenue: true, billingPlan: true },
+      select: { actualRevenue: true, projectedRevenue: true, billingPlan: true },
+    }),
+
+    // Forecast revenue: pipeline + negotiation + contract_renewal
+    prisma.lead.findMany({
+      where: {
+        stage: { in: ["pipeline", "negotiation", "contract_renewal"] },
+        billingPlan: { in: allBP2026 },
+        ...(selectedAeId ? { salesId: selectedAeId } : {}),
+      },
+      select: { projectedRevenue: true, actualRevenue: true, billingPlan: true },
     }),
   ])
 
   // Build billing plan → actual revenue map
+  // closed_won/invoiced may not have actualRevenue filled yet — fall back to projectedRevenue
   const bpActualMap = new Map<string, number>()
   for (const lead of wonLeads2026) {
-    if (!lead.billingPlan || !lead.actualRevenue) continue
-    bpActualMap.set(lead.billingPlan, (bpActualMap.get(lead.billingPlan) ?? 0) + Number(lead.actualRevenue))
+    if (!lead.billingPlan) continue
+    const value = lead.actualRevenue ?? lead.projectedRevenue
+    if (!value) continue
+    bpActualMap.set(lead.billingPlan, (bpActualMap.get(lead.billingPlan) ?? 0) + Number(value))
+  }
+
+  // Build billing plan → forecast revenue map (pipeline + negotiation + contract_renewal)
+  // Use projectedRevenue, fall back to actualRevenue (contract_renewal may have actual set)
+  const bpForecastMap = new Map<string, number>()
+  for (const lead of pipelineLeads2026) {
+    if (!lead.billingPlan) continue
+    const value = lead.projectedRevenue ?? lead.actualRevenue
+    if (!value) continue
+    bpForecastMap.set(lead.billingPlan, (bpForecastMap.get(lead.billingPlan) ?? 0) + Number(value))
   }
 
   // Build target map: quarter → Target record
@@ -138,15 +163,22 @@ export default async function TargetsPage({
     const t = targetByQ.get(quarter)
     const monthsData = months.map((m) => {
       const bp = `26-${String(m).padStart(2, "0")}`
-      return { month: m, billingPlan: bp, actual: bpActualMap.get(bp) ?? 0 }
+      return {
+        month: m,
+        billingPlan: bp,
+        actual: bpActualMap.get(bp) ?? 0,
+        forecast: bpForecastMap.get(bp) ?? 0,
+      }
     })
     const actual = monthsData.reduce((sum, md) => sum + md.actual, 0)
+    const forecast = monthsData.reduce((sum, md) => sum + md.forecast, 0)
     return {
       quarter,
       targetId: t?.id ?? null,
       revenueTarget: t ? Number(t.revenueTarget) : 0,
       newClientTarget: t?.newClientTarget ?? 0,
       actual,
+      forecast,
       status: getQuarterStatus(quarter),
       months: monthsData,
     }

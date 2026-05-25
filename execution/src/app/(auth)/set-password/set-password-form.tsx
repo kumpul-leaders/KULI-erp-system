@@ -39,6 +39,7 @@ export function SetPasswordForm() {
     }
 
     router.push("/dashboard")
+    router.refresh()
   }
 
   return (

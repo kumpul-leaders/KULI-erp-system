@@ -2,7 +2,24 @@
 
 | Project | Last Session | Status | Notes |
 |---------|-------------|--------|-------|
-| VF ERP System | 2026-05-20 | Sprint 5.1 + Sprint 6 complete | Live: https://vf-erp.vercel.app. Auth/invite outstanding. Sprint 5.2 (stage gate) pending. |
+| VF ERP System | 2026-05-25 | Auth/Invite + Sprint 5.2 complete | Live: https://vf-erp.vercel.app. Deploy ke Vercel prod masih outstanding. |
+
+---
+
+## LAST SESSION: 2026-05-25
+
+**Checkpoint:** Auth/Invite + Sprint 5.2 done. 4 commits hari ini: hotfix commit (backlog), auth actions, roadmap docs, SystemConfig.
+**Status:** In Progress
+**Outstanding:**
+- [ ] Deploy ke Vercel prod (`npx vercel --prod` dari `execution/`) — seed-system-config.mjs perlu dijalankan di prod DB setelah deploy
+- [ ] Sprint 5.3 (optional): Propagasi product line labels dari SystemConfig ke pipeline/kanban components
+**Output:**
+- `src/app/api/users/[id]/invite/route.ts` — POST resend invite + send password reset
+- `src/components/settings/settings-content.tsx` — Resend Invite + Send Password Reset di dropdown; stage gates + product line labels inline-editable
+- `prisma/schema.prisma` — SystemConfig model
+- `scripts/seed-system-config.mjs` — seed stage_gates + product_line_labels
+- `src/app/api/system-config/route.ts` — GET all config (auth required)
+- `src/app/api/system-config/[key]/route.ts` — PATCH upsert (admin/director only)
 
 ---
 

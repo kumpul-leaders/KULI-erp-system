@@ -19,7 +19,7 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items + Role System miles
 | Sprint 3 — Data Accuracy | 8 | 8 | ✅ Complete |
 | Sprint 4 — Nice-to-Have | 6 | 5 | ✅ Complete (4.4 deferred) |
 | Hotfix — Actual Revenue | 2 | 2 | ✅ Complete |
-| Sprint 5 — Analytics | 1 | 1 | ✅ Complete |
+| Sprint 5 — Analytics + Config | 2 | 2 | ✅ Complete |
 | Sprint 6 — Client & Pipeline UX | 6 | 6 | ✅ Complete |
 | Auth/Invite — Unplanned | 1 | 1 | ✅ Complete |
 
@@ -133,7 +133,7 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items + Role System miles
 | # | Item | Area | Status | Notes |
 |---|------|------|--------|-------|
 | 5.1 | Analytics: Overall Win Rate — loss deal / total pitched | Analytics | ✅ | Metric card di Analytics page. Done 2026-05-20. |
-| 5.2 | Stage gate & product lines configurable dari Settings | Settings | 🔲 | `SystemConfig` model baru. Significant scope — view-only di Settings sudah ada (Pipeline Reference card). Full editable = next sprint. |
+| 5.2 | Stage gate & product lines configurable dari Settings | Settings | ✅ | `SystemConfig` model. `GET /api/system-config` + `PATCH /api/system-config/[key]`. Pipeline Reference card jadi inline-editable (admin). Pipeline components tetap hardcoded — propagasi = next sprint. |
 
 ---
 

@@ -1,6 +1,6 @@
 # VF ERP — Improvement Roadmap
-**Last Updated:** 2026-05-19
-**Status:** Role System Complete — Sprint 3 Next
+**Last Updated:** 2026-05-25
+**Status:** Sprint 5.1 + Sprint 6 + Auth/Invite done — Sprint 5.2 (stage gate) next
 **Live URL:** https://vf-erp.vercel.app
 
 ---
@@ -18,6 +18,10 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items + Role System miles
 | Role System — Unplanned | 1 | 1 | ✅ Complete |
 | Sprint 3 — Data Accuracy | 8 | 8 | ✅ Complete |
 | Sprint 4 — Nice-to-Have | 6 | 5 | ✅ Complete (4.4 deferred) |
+| Hotfix — Actual Revenue | 2 | 2 | ✅ Complete |
+| Sprint 5 — Analytics | 1 | 1 | ✅ Complete |
+| Sprint 6 — Client & Pipeline UX | 6 | 6 | ✅ Complete |
+| Auth/Invite — Unplanned | 1 | 1 | ✅ Complete |
 
 ---
 
@@ -115,11 +119,42 @@ Post Phase 1–3 improvement plan. 4 sprints, 33 total items + Role System miles
 
 ---
 
+## Hotfix — Actual Revenue Backfill (2026-05-20)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| H.1 | invoice route: auto-set `actualRevenue = projectedRevenue` saat transisi ke invoiced (kalau null) | ✅ | `execution/src/app/api/leads/[id]/invoice/route.ts` |
+| H.2 | Lead detail: Actual Revenue field inline-editable (bukan read-only) | ✅ | `ActualRevenueInline` component di `lead-detail-client.tsx` |
+
+---
+
 ## Sprint 5 — Analytics Backlog
 
 | # | Item | Area | Status | Notes |
 |---|------|------|--------|-------|
-| 5.1 | Analytics: Overall Win Rate — loss deal / total pitched | Analytics | 🔲 | Formula: `lost_deal / (lost_deal + pipeline + negotiation + closed_won + invoiced + contract_renewal)`. Tampil sebagai metric card terpisah di Analytics page. Exclude `leads` (pre-pitch) dan `no_response` dari denominator. Confirm denominator scope dengan William sebelum implement. |
+| 5.1 | Analytics: Overall Win Rate — loss deal / total pitched | Analytics | ✅ | Metric card di Analytics page. Done 2026-05-20. |
+| 5.2 | Stage gate & product lines configurable dari Settings | Settings | 🔲 | `SystemConfig` model baru. Significant scope — view-only di Settings sudah ada (Pipeline Reference card). Full editable = next sprint. |
+
+---
+
+## Sprint 6 — Client & Pipeline UX (2026-05-20)
+
+| # | Item | Area | Status | Notes |
+|---|------|------|--------|-------|
+| 6.1 | Analytics: Overall Win/Loss Rate card | Analytics | ✅ | |
+| 6.2 | Clients: Default sort A-Z | Clients | ✅ | |
+| 6.3 | Clients: Cumulative Value + Opportunity Value columns | Clients | ✅ | |
+| 6.4 | Client detail: KPI cards | Clients | ✅ | |
+| 6.5 | Pipeline: Company name → client link | Pipeline | ✅ | |
+| 6.6 | Client detail: Linked Projects section | Clients | ✅ | |
+
+---
+
+## Auth/Invite — Unplanned (2026-05-25)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| A.1 | Settings: Resend Invite + Send Password Reset di DropdownMenu | ✅ | `POST /api/users/[id]/invite` — `type: "invite"` pakai `inviteUserByEmail`, `type: "reset"` pakai `resetPasswordForEmail`. Active users only. |
 
 ---
 

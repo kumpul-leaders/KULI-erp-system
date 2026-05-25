@@ -67,9 +67,13 @@ export async function POST(
     )
   }
 
-  const redirectTo = `${
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://vf-erp.vercel.app"
-  }/api/auth/callback?next=/set-password`
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "https://vf-erp.vercel.app")
+
+  const redirectTo = `${appUrl}/api/auth/callback?next=/set-password`
 
   try {
     if (type === "invite") {

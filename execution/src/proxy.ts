@@ -42,7 +42,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/pipeline") ||
     pathname.startsWith("/targets") ||
     pathname.startsWith("/analytics") ||
-    pathname.startsWith("/settings")
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/account")
 
   if (!user && isDashboardRoute) {
     const url = request.nextUrl.clone()

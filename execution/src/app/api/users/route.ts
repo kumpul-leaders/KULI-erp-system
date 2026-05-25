@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 })
   }
 
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://vf-erp.vercel.app"}/api/auth/callback?next=/dashboard`
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://vf-erp.vercel.app"}/api/auth/callback?next=/set-password`
 
   const sendInvite = async () => {
     const adminClient = createAdminClient()

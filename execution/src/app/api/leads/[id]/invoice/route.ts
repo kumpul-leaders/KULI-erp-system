@@ -53,6 +53,9 @@ export async function POST(
         data: {
           stage: "invoiced",
           invoiceRequestedAt: now,
+          ...(lead.actualRevenue === null && lead.projectedRevenue !== null
+            ? { actualRevenue: lead.projectedRevenue }
+            : {}),
         },
         include: {
           client: { select: { id: true, name: true, customerCode: true } },

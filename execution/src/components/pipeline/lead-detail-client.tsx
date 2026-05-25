@@ -570,6 +570,73 @@ function ProjectedRevenueInline({ leadId, initialValue }: ProjectedRevenueInline
   )
 }
 
+// ── Inline: Actual Revenue ────────────────────────────────────────────────────
+
+interface ActualRevenueInlineProps {
+  leadId: string
+  initialValue: number | null
+}
+
+function ActualRevenueInline({ leadId, initialValue }: ActualRevenueInlineProps) {
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState<string>(initialValue !== null ? String(initialValue) : "")
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const numeric = value === "" ? null : Number(value)
+      if (value !== "" && isNaN(Number(value))) {
+        toast.error("Invalid number")
+        return
+      }
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actualRevenue: numeric }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to update")
+      }
+      toast.success("Actual Revenue updated")
+      setEditing(false)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleCancel() {
+    setValue(initialValue !== null ? String(initialValue) : "")
+    setEditing(false)
+  }
+
+  return (
+    <InlineField
+      label="Actual Revenue"
+      display={<span className="tabular-nums">{formatIDR(initialValue)}</span>}
+      editing={editing}
+      saving={saving}
+      onEdit={() => setEditing(true)}
+      onSave={() => void handleSave()}
+      onCancel={handleCancel}
+    >
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="e.g. 15000000"
+        autoFocus
+        className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
+      />
+    </InlineField>
+  )
+}
+
 // ── Inline: Description ──────────────────────────────────────────────────────
 
 interface DescriptionInlineProps {
@@ -993,14 +1060,7 @@ export function LeadDetailClient({ lead }: LeadDetailClientProps) {
               </div>
 
               {showActualRevenue && (
-                <div>
-                  <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide mb-1">
-                    Actual Revenue
-                  </p>
-                  <p className="text-sm text-neutral-800 tabular-nums">
-                    {formatIDR(lead.actualRevenue)}
-                  </p>
-                </div>
+                <ActualRevenueInline leadId={lead.id} initialValue={lead.actualRevenue} />
               )}
 
               {showLossDealReason && lead.lossDealReason && (

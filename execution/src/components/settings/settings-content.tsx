@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { KeyRound, Loader2, Mail, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
@@ -164,6 +164,41 @@ export function SettingsContent({
 
   // Auth email (invite / reset) loading state
   const [loadingAuthUserId, setLoadingAuthUserId] = useState<string | null>(null)
+
+  // ── System Config: stage gates + product line labels ─────────────────────
+
+  type StageGateRow = { from: string; gate: string }
+  type ProductLineLabelMap = Record<string, string>
+
+  const [stageGates, setStageGates] = useState<StageGateRow[]>(STAGE_GATES)
+  const [productLineLabels, setProductLineLabels] = useState<ProductLineLabelMap>(
+    Object.fromEntries(PRODUCT_LINES.map((p) => [p.db, p.display]))
+  )
+  const [configLoaded, setConfigLoaded] = useState(false)
+  const [editingGateIdx, setEditingGateIdx] = useState<number | null>(null)
+  const [editingGateValue, setEditingGateValue] = useState("")
+  const [editingLabelKey, setEditingLabelKey] = useState<string | null>(null)
+  const [editingLabelValue, setEditingLabelValue] = useState("")
+  const [savingConfig, setSavingConfig] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/system-config")
+      .then((r) => r.json())
+      .then((data: { config: Record<string, unknown> }) => {
+        if (Array.isArray(data.config?.stage_gates)) {
+          setStageGates(data.config.stage_gates as StageGateRow[])
+        }
+        if (
+          data.config?.product_line_labels &&
+          typeof data.config.product_line_labels === "object" &&
+          !Array.isArray(data.config.product_line_labels)
+        ) {
+          setProductLineLabels(data.config.product_line_labels as ProductLineLabelMap)
+        }
+        setConfigLoaded(true)
+      })
+      .catch(() => setConfigLoaded(true)) // fallback to hardcoded on error
+  }, [])
 
   // Delete dialog state
   type DeleteDialogState = { open: false } | { open: true; userId: string; userName: string }
@@ -501,6 +536,50 @@ export function SettingsContent({
     }
   }
 
+  // ── Handlers: System Config ──────────────────────────────────────────────
+
+  async function handleSaveGate(idx: number) {
+    setSavingConfig(true)
+    const updated = stageGates.map((row, i) =>
+      i === idx ? { ...row, gate: editingGateValue } : row
+    )
+    try {
+      const res = await fetch("/api/system-config/stage_gates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: updated }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      setStageGates(updated)
+      setEditingGateIdx(null)
+      toast.success("Stage gate updated")
+    } catch {
+      toast.error("Failed to save")
+    } finally {
+      setSavingConfig(false)
+    }
+  }
+
+  async function handleSaveLabel(key: string) {
+    setSavingConfig(true)
+    const updated = { ...productLineLabels, [key]: editingLabelValue }
+    try {
+      const res = await fetch("/api/system-config/product_line_labels", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: updated }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      setProductLineLabels(updated)
+      setEditingLabelKey(null)
+      toast.success("Label updated")
+    } catch {
+      toast.error("Failed to save")
+    } finally {
+      setSavingConfig(false)
+    }
+  }
+
   // ── Derived values for Bulk Reassign preview ─────────────────────────────
 
   const bulkLeadCount = bulkFromId ? (leadCountMap[bulkFromId] ?? 0) : 0
@@ -763,10 +842,57 @@ export function SettingsContent({
               </tr>
             </thead>
             <tbody>
-              {STAGE_GATES.map((row) => (
+              {stageGates.map((row, idx) => (
                 <tr key={row.from} className="border-b border-neutral-100 last:border-0">
                   <td className="px-4 py-3 text-neutral-700">{row.from}</td>
-                  <td className="px-4 py-3 text-neutral-600">{row.gate}</td>
+                  <td className="px-4 py-3 text-neutral-600">
+                    {isAdmin && editingGateIdx === idx ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          autoFocus
+                          value={editingGateValue}
+                          onChange={(e) => setEditingGateValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleSaveGate(idx)
+                            if (e.key === "Escape") setEditingGateIdx(null)
+                          }}
+                          className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => void handleSaveGate(idx)}
+                          disabled={savingConfig}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setEditingGateIdx(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 group">
+                        <span>{row.gate}</span>
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setEditingGateIdx(idx)
+                              setEditingGateValue(row.gate)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-neutral-600 transition-opacity"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -789,7 +915,54 @@ export function SettingsContent({
               {PRODUCT_LINES.map((row) => (
                 <tr key={row.db} className="border-b border-neutral-100 last:border-0">
                   <td className="px-4 py-3 font-mono text-xs text-neutral-500">{row.db}</td>
-                  <td className="px-4 py-3 text-neutral-700">{row.display}</td>
+                  <td className="px-4 py-3 text-neutral-700">
+                    {isAdmin && editingLabelKey === row.db ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          autoFocus
+                          value={editingLabelValue}
+                          onChange={(e) => setEditingLabelValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleSaveLabel(row.db)
+                            if (e.key === "Escape") setEditingLabelKey(null)
+                          }}
+                          className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => void handleSaveLabel(row.db)}
+                          disabled={savingConfig}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setEditingLabelKey(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 group">
+                        <span>{productLineLabels[row.db] ?? row.display}</span>
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setEditingLabelKey(row.db)
+                              setEditingLabelValue(productLineLabels[row.db] ?? row.display)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-neutral-600 transition-opacity"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

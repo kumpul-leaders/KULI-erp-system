@@ -252,3 +252,11 @@ enum TargetType {
   monthly
   quarterly
 }
+
+model SystemConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}

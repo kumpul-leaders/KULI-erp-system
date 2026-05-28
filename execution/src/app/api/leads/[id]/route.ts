@@ -52,8 +52,58 @@ function billingPlanToQuarter(billingPlan: string): string | null {
 
 // ── Serializer ──────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeLead(lead: any) {
+function serializeLead(lead: {
+  id: string
+  clientId: string
+  productLine: ProductLine
+  description: string | null
+  projectType: ProjectType
+  stage: PipelineStage
+  salesId: string | null
+  projectedRevenue: { toNumber?: () => number } | null
+  billingPlan: string | null
+  quarter: string | null
+  actualRevenue: { toNumber?: () => number } | null
+  lossDealReason: string | null
+  invoiceRequestedAt: Date | null
+  notes: string | null
+  createdAt: Date
+  closedAt: Date | null
+  expectedCloseDate: Date | null
+  updatedAt: Date
+  client?: { id: string; name: string; customerCode?: string | null }
+  sales?: { id: string; name: string } | null
+  documents?: Array<{
+    id: string
+    leadId: string
+    type: string
+    fileUrl: string
+    fileName: string | null
+    uploadedAt: Date
+    uploadedBy: string
+    createdAt: Date
+    uploader?: { id: string; name: string }
+  }>
+  stageHistory?: Array<{
+    id: string
+    leadId: string
+    fromStage: PipelineStage
+    toStage: PipelineStage
+    changedBy: string
+    changedAt: Date
+    changer?: { id: string; name: string }
+  }>
+  fieldHistory?: Array<{
+    id: string
+    leadId: string
+    field: string
+    oldValue: string | null
+    newValue: string | null
+    changedBy: string
+    changedAt: Date
+    changer?: { id: string; name: string }
+  }>
+}) {
   return {
     ...lead,
     projectedRevenue: lead.projectedRevenue ? Number(lead.projectedRevenue) : null,
@@ -63,16 +113,16 @@ function serializeLead(lead: any) {
     closedAt: lead.closedAt?.toISOString() ?? null,
     expectedCloseDate: lead.expectedCloseDate?.toISOString() ?? null,
     updatedAt: lead.updatedAt.toISOString(),
-    documents: lead.documents?.map((d: { uploadedAt: Date; createdAt: Date; [key: string]: unknown }) => ({
+    documents: lead.documents?.map((d) => ({
       ...d,
       uploadedAt: d.uploadedAt.toISOString(),
       createdAt: d.createdAt.toISOString(),
     })),
-    stageHistory: lead.stageHistory?.map((h: { changedAt: Date; [key: string]: unknown }) => ({
+    stageHistory: lead.stageHistory?.map((h) => ({
       ...h,
       changedAt: h.changedAt.toISOString(),
     })),
-    fieldHistory: lead.fieldHistory?.map((h: { changedAt: Date; [key: string]: unknown }) => ({
+    fieldHistory: lead.fieldHistory?.map((h) => ({
       ...h,
       changedAt: h.changedAt.toISOString(),
     })),

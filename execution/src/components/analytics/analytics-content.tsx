@@ -454,7 +454,7 @@ function RevenueTooltip({ active, payload, label }: RevenueTooltipProps) {
     <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{label}</p>
       {won && (
-        <p className="text-neutral-500">Won: <span className="text-emerald-600 font-medium">{formatIDR(won.value)}</span></p>
+        <p className="text-neutral-500">Won: <span className="text-success-500 font-medium">{formatIDR(won.value)}</span></p>
       )}
       {active_ && (
         <p className="text-neutral-500">Active Pipeline: <span className="text-blue-600 font-medium">{formatIDR(active_.value)}</span></p>
@@ -491,7 +491,7 @@ function FunnelTooltip({ active, payload, label }: FunnelTooltipProps) {
         <p className="text-neutral-500">From prev: <span className="text-indigo-600 font-medium">{data.conversionRate}%</span></p>
       )}
       {data.revenue !== undefined && data.revenue > 0 && (
-        <p className="text-neutral-500">Value: <span className="text-emerald-600 font-medium">{formatIDR(data.revenue)}</span></p>
+        <p className="text-neutral-500">Value: <span className="text-success-500 font-medium">{formatIDR(data.revenue)}</span></p>
       )}
     </div>
   )
@@ -747,7 +747,7 @@ export function AnalyticsContent({
                 </select>
               </div>
               <div className="flex items-center gap-4 text-xs">
-                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-emerald-500 rounded" />Won</span>
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-success-500 rounded" />Won</span>
                 <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-blue-500 rounded" />Active Pipeline</span>
                 <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-neutral-400 rounded border-dashed" style={{borderTop: '2px dashed #9CA3AF', background: 'transparent', height: 0}} />Potential</span>
               </div>
@@ -900,7 +900,7 @@ export function AnalyticsContent({
                 <span className="text-xs text-neutral-500">
                   Renewal Rate dari {clientRetention.total} klien
                 </span>
-                <span className="text-sm font-semibold text-emerald-600 tabular-nums">
+                <span className="text-sm font-semibold text-success-500 tabular-nums">
                   {clientRetention.rate}%
                 </span>
               </div>
@@ -944,7 +944,7 @@ export function AnalyticsContent({
                           <span
                             className={
                               row.winRate >= 50
-                                ? "text-emerald-600 font-medium"
+                                ? "text-success-500 font-medium"
                                 : row.winRate >= 25
                                 ? "text-amber-600 font-medium"
                                 : "text-red-500 font-medium"
@@ -1062,7 +1062,7 @@ function RetentionBar({ rate }: { rate: number }) {
     <div className="w-full max-w-[160px] mt-2">
       <div className="h-2 w-full rounded-full bg-neutral-100 overflow-hidden">
         <div
-          className="h-full rounded-full bg-emerald-500 transition-all"
+          className="h-full rounded-full bg-success-500 transition-all"
           style={{ width: `${Math.min(rate, 100)}%` }}
         />
       </div>

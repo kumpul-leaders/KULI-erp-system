@@ -1206,8 +1206,9 @@ function DeleteLeadButton({ leadId }: DeleteLeadButtonProps) {
       router.push("/pipeline")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong")
-      setDeleting(false)
       setOpen(false)
+    } finally {
+      setDeleting(false)
     }
   }
 

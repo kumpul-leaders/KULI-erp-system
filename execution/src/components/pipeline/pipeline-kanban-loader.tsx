@@ -131,6 +131,8 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
+  // Client-side fetch: this component manages heavy interactive state (view, filter, search)
+  // that prevents RSC data lifting. AbortController improvement is tracked separately.
   useEffect(() => {
     let cancelled = false
 
@@ -178,7 +180,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
       params.delete("filter")
     }
     router.replace(`/pipeline?${params.toString()}`, { scroll: false })
-  }, [conditions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conditions, searchParams, router])
 
   async function refetchLeads() {
     try {

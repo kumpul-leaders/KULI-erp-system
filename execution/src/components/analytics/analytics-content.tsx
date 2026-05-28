@@ -78,6 +78,7 @@ interface AnalyticsContentProps {
   overallWinRate: OverallWinRate
   rtYear: number
   revenueByProductLine: RevenueByProductLine[]
+  pipelineValue: number
 }
 
 // ---------------------------------------------------------------------------
@@ -541,6 +542,7 @@ export function AnalyticsContent({
   overallWinRate,
   rtYear,
   revenueByProductLine,
+  pipelineValue,
 }: AnalyticsContentProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -835,8 +837,8 @@ export function AnalyticsContent({
           )}
         </div>
 
-        {/* Row 2: Pipeline Funnel + Client Retention + AE Performance + Overall Win/Loss Rate */}
-        <div className="grid grid-cols-4 gap-6">
+        {/* Row 2: Pipeline Funnel + Client Retention + AE Performance + Active Pipeline Value + Overall Win/Loss Rate */}
+        <div className="grid grid-cols-5 gap-6">
 
           {/* Pipeline Funnel */}
           <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
@@ -962,6 +964,17 @@ export function AnalyticsContent({
                 </table>
               </div>
             )}
+          </div>
+
+          {/* Active Pipeline Value */}
+          <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-card">
+            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">
+              Active Pipeline Value
+            </p>
+            <p className="text-2xl font-bold text-neutral-900 tabular-nums">
+              {formatIDR(pipelineValue)}
+            </p>
+            <p className="text-xs text-neutral-400 mt-0.5">Leads + Pipeline + Negotiation</p>
           </div>
 
           {/* Overall Win/Loss Rate */}

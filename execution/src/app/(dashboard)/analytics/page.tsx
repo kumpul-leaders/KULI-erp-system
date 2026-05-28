@@ -68,6 +68,10 @@ export type RevenueByProductLine = {
   revenue: number
 }
 
+export type PipelineValueStat = {
+  total: number
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -235,6 +239,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     upsellWonCount,
     overallStageGroups,
     revenueByProductLineGroups,
+    pipelineValueAgg,
   ] = await Promise.all([
     // 1a. All leads per AE (has salesId) — funnel filter = createdAt
     prisma.lead.groupBy({
@@ -397,12 +402,23 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       _sum: { actualRevenue: true },
       orderBy: { _sum: { actualRevenue: "desc" } },
     }),
+
+    // Active pipeline value — leads in active (pre-won) stages
+    prisma.lead.aggregate({
+      _sum: { projectedRevenue: true },
+      where: {
+        stage: { in: ["leads", "pipeline", "negotiation"] },
+        ...aeFilter,
+      },
+    }),
   ])
 
   const revenueByProductLine: RevenueByProductLine[] = revenueByProductLineGroups.map((r) => ({
     productLine: r.productLine,
     revenue: Number(r._sum.actualRevenue ?? 0),
   }))
+
+  const pipelineValue = Number(pipelineValueAgg._sum.projectedRevenue ?? 0)
 
   // ---------------------------------------------------------------------------
   // 1 + 6: Win Rate per AE + AE performance table
@@ -618,6 +634,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         overallWinRate={overallWinRate}
         rtYear={rtYear}
         revenueByProductLine={revenueByProductLine}
+        pipelineValue={pipelineValue}
       />
     </>
   )

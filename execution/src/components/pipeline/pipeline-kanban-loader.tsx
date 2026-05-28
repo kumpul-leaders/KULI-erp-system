@@ -149,7 +149,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
           }
 
           const salesUsers = usersData.users.filter(
-            (u) => u.role === "account" || u.role === "admin"
+            (u) => u.role === "account" || u.role === "admin" || u.role === "account_manager"
           )
 
           setLeads(leadsData.leads ?? [])

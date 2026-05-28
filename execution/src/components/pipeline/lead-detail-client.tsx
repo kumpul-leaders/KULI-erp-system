@@ -939,26 +939,98 @@ function DocumentsCard({ leadId, initialDocuments }: DocumentsCardProps) {
 // ── AE card ───────────────────────────────────────────────────────────────────
 
 interface AeCardProps {
+  leadId: string
   sales: { id: string; name: string } | null
+  salesOptions: Array<{ id: string; name: string }>
 }
 
-function AeCard({ sales }: AeCardProps) {
+function AeCard({ leadId, sales, salesOptions }: AeCardProps) {
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [selectedId, setSelectedId] = useState(sales?.id ?? "")
+  const [saving, setSaving] = useState(false)
   const initials = sales ? getInitials(sales.name) : "?"
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ salesId: selectedId || null }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to update")
+      }
+      toast.success("Busdev/AE updated")
+      setEditing(false)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-      <h2 className="font-semibold text-neutral-800 mb-3">Busdev/AE</h2>
-      <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-semibold text-accent-700">{initials}</span>
-        </div>
-        <div>
-          <p className="text-sm font-medium text-neutral-800">
-            {sales?.name ?? "Unassigned"}
-          </p>
-          <p className="text-xs text-neutral-500">Busdev/AE</p>
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-neutral-800">Busdev/AE</h2>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="rounded p-0.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+            aria-label="Edit AE"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
       </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+          >
+            <option value="">Unassigned</option>
+            {salesOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setSelectedId(sales?.id ?? ""); setEditing(false) }}
+              disabled={saving}
+              className="gap-1 h-7 px-2 text-xs"
+            >
+              <X className="h-3 w-3" />Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void handleSave()}
+              disabled={saving}
+              className="gap-1 h-7 px-2 text-xs"
+            >
+              <Check className="h-3 w-3" />{saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-semibold text-accent-700">{initials}</span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-neutral-800">{sales?.name ?? "Unassigned"}</p>
+            <p className="text-xs text-neutral-500">Busdev/AE</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -984,9 +1056,10 @@ const REVENUE_VISIBLE_STAGES: PipelineStage[] = [
 
 export interface LeadDetailClientProps {
   lead: SerializedLead
+  salesOptions: Array<{ id: string; name: string }>
 }
 
-export function LeadDetailClient({ lead }: LeadDetailClientProps) {
+export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) {
   const showActualRevenue = REVENUE_VISIBLE_STAGES.includes(lead.stage)
   const showLossDealReason = lead.stage === "lost_deal"
 
@@ -1103,7 +1176,7 @@ export function LeadDetailClient({ lead }: LeadDetailClientProps) {
           </div>
 
           {/* AE / Sales */}
-          <AeCard sales={lead.sales} />
+          <AeCard leadId={lead.id} sales={lead.sales} salesOptions={salesOptions} />
         </div>
       </div>
     </main>

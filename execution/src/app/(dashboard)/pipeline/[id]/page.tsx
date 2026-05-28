@@ -76,7 +76,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     data: { user: supabaseUser },
   } = await supabase.auth.getUser()
 
-  const [lead, currentDbUser] = await Promise.all([
+  const [lead, currentDbUser, salesOptions] = await Promise.all([
     fetchLead(id),
     supabaseUser?.email
       ? prisma.user.findUnique({
@@ -84,6 +84,11 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
           select: { role: true },
         })
       : null,
+    prisma.user.findMany({
+      where: { isActive: true, role: { in: ["account", "admin", "account_manager"] } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ])
 
   if (!lead) notFound()
@@ -152,7 +157,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       <Topbar title={lead.client.name}>
         <LeadDetailActions leadId={lead.id} stage={lead.stage} userRole={userRole} />
       </Topbar>
-      <LeadDetailClient lead={serializedLead} />
+      <LeadDetailClient lead={serializedLead} salesOptions={salesOptions} />
     </>
   )
 }

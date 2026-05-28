@@ -44,23 +44,23 @@ export default function ForgotPasswordPage() {
         <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-modal">
           {sent ? (
             <div className="text-center space-y-3">
-              <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
-              <h2 className="text-lg font-semibold text-neutral-800">Email terkirim</h2>
+              <CheckCircle2 className="h-10 w-10 text-success-500 mx-auto" />
+              <h2 className="text-lg font-semibold text-neutral-800">Email sent</h2>
               <p className="text-sm text-neutral-500">
-                Cek inbox <strong>{email}</strong> dan klik link reset password.
+                Check your inbox at <strong>{email}</strong> and click the reset link.
               </p>
               <Link
                 href="/login"
                 className="inline-block mt-2 text-sm text-accent-600 hover:underline"
               >
-                Kembali ke login
+                Back to login
               </Link>
             </div>
           ) : (
             <>
               <h2 className="mb-2 text-lg font-semibold text-neutral-800">Reset password</h2>
               <p className="mb-6 text-sm text-neutral-500">
-                Masukkan email kamu dan kami akan kirimkan link reset password.
+                Enter your email and we'll send you a password reset link.
               </p>
 
               {error && (
@@ -88,16 +88,16 @@ export default function ForgotPasswordPage() {
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Mengirim…</>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending…</>
                   ) : (
-                    "Kirim link reset"
+                    "Send reset link"
                   )}
                 </Button>
               </form>
 
               <p className="mt-4 text-center text-xs text-neutral-400">
                 <Link href="/login" className="hover:text-neutral-600 transition-colors">
-                  Kembali ke login
+                  Back to login
                 </Link>
               </p>
             </>

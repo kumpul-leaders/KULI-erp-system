@@ -37,7 +37,7 @@ function LoginForm() {
       return
     }
 
-    const dest = returnTo && returnTo.startsWith("/") ? returnTo : "/dashboard"
+    const dest = returnTo && /^\/(?!\/)/.test(returnTo) ? returnTo : "/dashboard"
     router.push(dest)
     router.refresh()
   }

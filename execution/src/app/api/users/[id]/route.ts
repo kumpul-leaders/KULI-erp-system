@@ -124,13 +124,17 @@ export async function PATCH(
 
     // Sync email change to Supabase Auth — non-fatal (follows same pattern as DELETE handler)
     if (updateData.email && existingEmail && updateData.email !== existingEmail) {
-      const adminClient = createAdminClient()
-      if (adminClient) {
-        const { data: { users } } = await adminClient.auth.admin.listUsers()
-        const supaUser = users?.find((u) => u.email === existingEmail)
-        if (supaUser) {
-          await adminClient.auth.admin.updateUserById(supaUser.id, { email: updateData.email })
+      try {
+        const adminClient = createAdminClient()
+        if (adminClient) {
+          const { data: { users } } = await adminClient.auth.admin.listUsers()
+          const supaUser = users?.find((u) => u.email === existingEmail)
+          if (supaUser) {
+            await adminClient.auth.admin.updateUserById(supaUser.id, { email: updateData.email })
+          }
         }
+      } catch (syncErr) {
+        console.error("[PATCH /api/users/[id]] Supabase email sync failed (non-fatal):", syncErr)
       }
     }
 

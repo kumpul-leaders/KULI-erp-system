@@ -42,6 +42,7 @@ export type FunnelStage = {
   label: string       // human-readable
   count: number
   conversionRate: number | null  // null for first stage, % from previous stage
+  revenue: number     // total projected + actual revenue in this stage
 }
 
 export type ClientRetention = {
@@ -226,6 +227,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     leadsForIndustry,
     revenueTrendLeads,
     funnelGroups,
+    funnelRevenueGroups,
     renewedCount,
     totalClientCount,
     aeUsers,
@@ -320,6 +322,16 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         ...createdDateFilter,
       },
       _count: { _all: true },
+    }),
+
+    // 4b. Funnel revenue — projected + actual revenue per stage
+    prisma.lead.groupBy({
+      by: ["stage"],
+      _sum: { projectedRevenue: true, actualRevenue: true },
+      where: {
+        ...aeFilter,
+        ...createdDateFilter,
+      },
     }),
 
     // 5a. Renewed client count (distinct clientIds with contract_renewal) — closedAt filter
@@ -527,11 +539,19 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     funnelGroups.map((g) => [g.stage, g._count._all])
   )
 
+  const funnelRevenueMap = new Map(
+    funnelRevenueGroups.map((r) => [
+      r.stage as string,
+      Number(r._sum.projectedRevenue ?? 0) + Number(r._sum.actualRevenue ?? 0),
+    ])
+  )
+
   const pipelineFunnel: FunnelStage[] = FUNNEL_ORDER.map(({ key, label }) => ({
     stage: key,
     label,
     count: stageCountMap.get(key as $Enums.PipelineStage) ?? 0,
     conversionRate: null,
+    revenue: funnelRevenueMap.get(key) ?? 0,
   }))
 
   // Compute stage-to-stage conversion rates

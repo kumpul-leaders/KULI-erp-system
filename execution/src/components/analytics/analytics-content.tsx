@@ -468,7 +468,10 @@ function RevenueTooltip({ active, payload, label }: RevenueTooltipProps) {
 
 interface FunnelPayload {
   value: number
-  payload: { conversionRate?: number | null }
+  payload: {
+    conversionRate?: number | null
+    revenue?: number
+  }
 }
 
 interface FunnelTooltipProps {
@@ -486,6 +489,9 @@ function FunnelTooltip({ active, payload, label }: FunnelTooltipProps) {
       <p className="text-neutral-500">Leads: <span className="text-neutral-800 font-medium">{payload[0].value}</span></p>
       {data.conversionRate !== null && data.conversionRate !== undefined && (
         <p className="text-neutral-500">From prev: <span className="text-indigo-600 font-medium">{data.conversionRate}%</span></p>
+      )}
+      {data.revenue !== undefined && data.revenue > 0 && (
+        <p className="text-neutral-500">Value: <span className="text-emerald-600 font-medium">{formatIDR(data.revenue)}</span></p>
       )}
     </div>
   )

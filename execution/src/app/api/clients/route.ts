@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAuthenticated, requireAdminOrDirector } from "@/lib/require-role"
+import { requireAuthenticated, requireCanEditClients } from "@/lib/require-role"
 import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
 
 // ── Validation helpers ──────────────────────────────────────────────────────
@@ -89,10 +89,10 @@ export async function GET(request: NextRequest) {
 }
 
 // ── POST /api/clients ───────────────────────────────────────────────────────
-// Admin or Commercial Director only.
+// Admin, Commercial Director, Account Manager, or Account.
 
 export async function POST(request: NextRequest) {
-  const user = await requireAdminOrDirector()
+  const user = await requireCanEditClients()
   if (!user) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

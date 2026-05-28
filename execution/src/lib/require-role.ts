@@ -36,9 +36,9 @@ export const requireAdmin = () => requireRole("admin")
 export const requireAdminOrDirector = () =>
   requireRole("admin", "commercial_director")
 
-/** Admin or Commercial Director (client create/edit) */
+/** Admin, Commercial Director, Account Manager, or Account (client create/edit) */
 export const requireCanEditClients = () =>
-  requireRole("admin", "commercial_director", "account_manager")
+  requireRole("admin", "commercial_director", "account_manager", "account")
 
 /** Admin, Commercial Director, or Account (can create/edit leads) */
 export const requireCanCreateLeads = () =>

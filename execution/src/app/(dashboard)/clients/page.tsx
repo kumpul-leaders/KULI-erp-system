@@ -4,6 +4,7 @@ import { Topbar } from "@/components/layout/topbar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ClientsTable } from "@/components/clients/clients-table"
 import { prisma } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 import type { Prisma } from "@prisma/client"
 
 export const metadata: Metadata = {
@@ -134,6 +135,17 @@ async function fetchAeOptions() {
   return users
 }
 
+async function fetchCurrentUserRole(): Promise<string | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return null
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email },
+    select: { role: true },
+  })
+  return dbUser?.role ?? null
+}
+
 // ── Table skeleton (shown during Suspense / navigation) ──────────────────────
 
 function ClientsTableSkeleton() {
@@ -179,9 +191,10 @@ interface ClientsContentProps {
 }
 
 async function ClientsContent({ search, sort, dir }: ClientsContentProps) {
-  const [{ clients, total }, aeOptions] = await Promise.all([
+  const [{ clients, total }, aeOptions, userRole] = await Promise.all([
     fetchClients(search, sort, dir),
     fetchAeOptions(),
+    fetchCurrentUserRole(),
   ])
 
   return (
@@ -192,6 +205,7 @@ async function ClientsContent({ search, sort, dir }: ClientsContentProps) {
       searchQuery={search}
       sortCol={sort}
       sortDir={dir}
+      userRole={userRole}
     />
   )
 }

@@ -76,6 +76,7 @@ interface ClientsTableProps {
   searchQuery: string
   sortCol: string
   sortDir: string
+  userRole: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -152,6 +153,7 @@ export function ClientsTable({
   searchQuery,
   sortCol,
   sortDir,
+  userRole,
 }: ClientsTableProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -299,14 +301,16 @@ export function ClientsTable({
           {filteredClients.length === 1 ? "client" : "clients"}
         </span>
 
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setAddSheetOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Add Client
-        </Button>
+        {["admin", "commercial_director", "account_manager", "account"].includes(userRole ?? "") && (
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setAddSheetOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Add Client
+          </Button>
+        )}
       </div>
 
       {/* Table */}

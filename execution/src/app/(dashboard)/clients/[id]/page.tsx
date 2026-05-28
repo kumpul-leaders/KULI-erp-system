@@ -93,6 +93,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   }) : null
   const userRole = dbUser?.role ?? null
   const isAdmin = userRole === "admin" || userRole === "commercial_director"
+  const canEditStatus = isAdmin || userRole === "account_manager" || userRole === "account"
 
   const [client, aeOptions, clientLeads] = await Promise.all([
     fetchClient(id),
@@ -260,7 +261,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                 {client.industry}
               </Badge>
             )}
-            {userRole === "admin" && (
+            {canEditStatus && (
               <EditStatusButton
                 clientId={client.id}
                 currentHealthStatus={client.healthStatus}

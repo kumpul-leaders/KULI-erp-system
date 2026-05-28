@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAuthenticated, requireAdminOrDirector } from "@/lib/require-role"
+import { requireAuthenticated, requireAdminOrDirector, requireCanEditClients } from "@/lib/require-role"
 import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
 
 const ENGAGEMENT_TYPES: EngagementType[] = ["retainer", "project", "both"]
@@ -80,10 +80,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAdminOrDirector()
+  const user = await requireCanEditClients()
   if (!user) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
+  const isAdminOrDirector = user.role === "admin" || user.role === "commercial_director"
 
   const { id } = await params
 
@@ -92,6 +93,15 @@ export async function PATCH(
     body = (await request.json()) as Record<string, unknown>
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  // Non-admin/director: can only update healthStatus
+  if (!isAdminOrDirector) {
+    const requestedKeys = Object.keys(body)
+    const forbidden = requestedKeys.filter((k) => k !== "healthStatus")
+    if (forbidden.length > 0) {
+      return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 })
+    }
   }
 
   // Validate name if provided

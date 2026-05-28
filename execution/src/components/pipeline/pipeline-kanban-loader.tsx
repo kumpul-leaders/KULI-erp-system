@@ -236,7 +236,33 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
   }, [leads, search, conditions, matchMode])
 
   if (loading) {
-    return null
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-56 rounded-md bg-neutral-100 animate-pulse" />
+          <div className="h-9 w-24 rounded-md bg-neutral-100 animate-pulse" />
+          <div className="ml-auto h-9 w-24 rounded-md bg-neutral-100 animate-pulse" />
+        </div>
+        <div className="flex gap-3 overflow-x-auto">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex w-[280px] flex-shrink-0 flex-col rounded-lg bg-neutral-50 border border-neutral-200">
+              <div className="px-3 py-2.5 border-b border-neutral-200">
+                <div className="h-4 w-28 rounded bg-neutral-200 animate-pulse" />
+              </div>
+              <div className="flex flex-col gap-2 p-2">
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <div key={j} className="rounded-lg border border-neutral-200 bg-white p-4 space-y-2">
+                    <div className="h-4 w-3/4 rounded bg-neutral-100 animate-pulse" />
+                    <div className="h-3 w-1/3 rounded bg-neutral-100 animate-pulse" />
+                    <div className="h-5 w-24 rounded bg-neutral-100 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (

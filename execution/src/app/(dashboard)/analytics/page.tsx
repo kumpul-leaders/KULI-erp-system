@@ -62,6 +62,11 @@ export type AEUser = {
   name: string
 }
 
+export type RevenueByProductLine = {
+  productLine: string
+  revenue: number
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -227,6 +232,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     allAEUsers,
     upsellWonCount,
     overallStageGroups,
+    revenueByProductLineGroups,
   ] = await Promise.all([
     // 1a. All leads per AE (has salesId) — funnel filter = createdAt
     prisma.lead.groupBy({
@@ -366,7 +372,25 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
       _count: { _all: true },
     }),
+
+    // Revenue by product line (won deals only)
+    prisma.lead.groupBy({
+      by: ["productLine"],
+      where: {
+        stage: { in: WON_STAGES },
+        actualRevenue: { not: null },
+        ...aeFilter,
+        ...closedDateFilter,
+      },
+      _sum: { actualRevenue: true },
+      orderBy: { _sum: { actualRevenue: "desc" } },
+    }),
   ])
+
+  const revenueByProductLine: RevenueByProductLine[] = revenueByProductLineGroups.map((r) => ({
+    productLine: r.productLine,
+    revenue: Number(r._sum.actualRevenue ?? 0),
+  }))
 
   // ---------------------------------------------------------------------------
   // 1 + 6: Win Rate per AE + AE performance table
@@ -573,6 +597,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         currentUserRole={currentDbUser?.role ?? null}
         overallWinRate={overallWinRate}
         rtYear={rtYear}
+        revenueByProductLine={revenueByProductLine}
       />
     </>
   )

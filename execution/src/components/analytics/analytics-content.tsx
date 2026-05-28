@@ -43,6 +43,7 @@ import type {
   ClientRetention,
   AEUser,
   OverallWinRate,
+  RevenueByProductLine,
 } from "@/app/(dashboard)/analytics/page"
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ interface AnalyticsContentProps {
   currentUserRole?: string | null
   overallWinRate: OverallWinRate
   rtYear: number
+  revenueByProductLine: RevenueByProductLine[]
 }
 
 // ---------------------------------------------------------------------------
@@ -501,6 +503,20 @@ function formatRevenueTick(value: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Product line label map
+// ---------------------------------------------------------------------------
+
+const PRODUCT_LINE_LABELS: Record<string, string> = {
+  stracomm: "Stracomm",
+  smm: "SMM",
+  creative_strategy: "Creative Strategy",
+  media_buying: "Media Buying",
+  ads_management: "Ads Mgmt",
+  production: "Production",
+  others: "Others",
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -518,6 +534,7 @@ export function AnalyticsContent({
   currentUserRole,
   overallWinRate,
   rtYear,
+  revenueByProductLine,
 }: AnalyticsContentProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -777,6 +794,39 @@ export function AnalyticsContent({
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </div>
+
+        {/* Revenue by Product Line */}
+        <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card mb-6">
+          <h3 className="text-sm font-semibold text-neutral-800 mb-4">Revenue by Product Line</h3>
+          {revenueByProductLine.length === 0 ? (
+            <p className="text-sm text-neutral-400 py-8 text-center">No won revenue data for this period</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart
+                data={revenueByProductLine.map((r) => ({
+                  name: PRODUCT_LINE_LABELS[r.productLine] ?? r.productLine,
+                  revenue: r.revenue,
+                }))}
+                margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis
+                  tickFormatter={(v: number) => `${(v / 1_000_000).toFixed(0)}M`}
+                  tick={{ fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={40}
+                />
+                <Tooltip
+                  formatter={(value: unknown) => [formatIDR(typeof value === "number" ? value : 0), "Revenue"]}
+                  contentStyle={{ fontSize: 12 }}
+                />
+                <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Row 2: Pipeline Funnel + Client Retention + AE Performance + Overall Win/Loss Rate */}

@@ -274,19 +274,25 @@ function StageActions({ leadId, stage }: StageActionsProps) {
                 {STAGE_NEXT_LABELS[stage]}
               </button>
             )}
+            {nextStage && <div className="h-px bg-neutral-200 my-1" />}
+            {stage !== "no_response" && (
+              <button
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-100 transition-colors text-left"
+                onClick={() => void handleAdvanceStage("no_response")}
+              >
+                Move to No Response
+              </button>
+            )}
             {!isLostDeal && (
-              <>
-                {nextStage && <div className="h-px bg-neutral-200 my-1" />}
-                <button
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-danger-600 hover:bg-danger-50 transition-colors text-left"
-                  onClick={() => {
-                    setPopoverOpen(false)
-                    setLostDealOpen(true)
-                  }}
-                >
-                  Move to Lost Deal
-                </button>
-              </>
+              <button
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-danger-600 hover:bg-danger-50 transition-colors text-left"
+                onClick={() => {
+                  setPopoverOpen(false)
+                  setLostDealOpen(true)
+                }}
+              >
+                Move to Lost Deal
+              </button>
             )}
           </div>
         </PopoverContent>

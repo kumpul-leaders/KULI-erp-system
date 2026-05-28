@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -102,6 +103,15 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 disabled={loading}
               />
+            </div>
+
+            <div className="flex justify-end -mt-1">
+              <Link
+                href="/forgot-password"
+                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+              >
+                Forgot password?
+              </Link>
             </div>
 
             <Button

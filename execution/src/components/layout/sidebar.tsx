@@ -66,9 +66,10 @@ export function Sidebar({ user }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto py-4">
         {NAV_GROUPS.map((group) => {
           // Filter items by role
+          const NON_COMMERCIAL_ROLES = ["operation", "hr", "finance"]
           const visibleItems = group.items.filter((item) => {
-            // Hide Targets for operation role
-            if (item.href === "/targets" && user.role === "operation") return false
+            if (item.href === "/targets" && NON_COMMERCIAL_ROLES.includes(user.role)) return false
+            if (item.href === "/pipeline" && NON_COMMERCIAL_ROLES.includes(user.role)) return false
             return true
           })
           if (visibleItems.length === 0) return null
@@ -185,8 +186,14 @@ export function Sidebar({ user }: SidebarProps) {
                 ? "Super Admin"
                 : user.role === "account"
                 ? "Busdev/AE"
+                : user.role === "account_manager"
+                ? "Account Manager"
                 : user.role === "operation"
                 ? "Operations"
+                : user.role === "hr"
+                ? "HR"
+                : user.role === "finance"
+                ? "Finance"
                 : user.role}
             </p>
           </div>

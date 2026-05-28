@@ -46,4 +46,4 @@ export const requireCanCreateLeads = () =>
 
 /** Any authenticated DB user */
 export const requireAuthenticated = () =>
-  requireRole("admin", "commercial_director", "account_manager", "account", "operation")
+  requireRole("admin", "commercial_director", "account_manager", "account", "operation", "hr", "finance")

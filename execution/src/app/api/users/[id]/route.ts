@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { requireAdminOrDirector } from "@/lib/require-role"
+import { requireAdminOrDirector, requireAuthenticated } from "@/lib/require-role"
 import { createAdminClient } from "@/lib/supabase/admin-client"
 import type { Role } from "@/types"
 
@@ -21,12 +21,25 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await requireAdminOrDirector()
-  if (!admin) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const { id } = await params
+
+  const adminUser = await requireAdminOrDirector()
+  const authUser = adminUser ?? await requireAuthenticated()
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { id } = await params
+  // Non-admins can only update their own name
+  if (!adminUser) {
+    if (authUser.id !== id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    const bodyKeys = Object.keys((await request.clone().json()) as Record<string, unknown>)
+    const forbidden = bodyKeys.filter((k) => k !== "name")
+    if (forbidden.length > 0) {
+      return NextResponse.json({ error: "Forbidden: can only update name" }, { status: 403 })
+    }
+  }
 
   let body: Record<string, unknown>
   try {

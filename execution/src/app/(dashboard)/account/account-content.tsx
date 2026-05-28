@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import type { Role } from "@/types"
 
@@ -24,9 +24,14 @@ interface AccountContentProps {
   email: string
   role: Role
   division: string | null
+  userId: string
 }
 
-export function AccountContent({ name, email, role, division }: AccountContentProps) {
+export function AccountContent({ name, email, role, division, userId }: AccountContentProps) {
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState(name)
+  const [nameSaving, setNameSaving] = useState(false)
+
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [loading, setLoading] = useState(false)
@@ -69,9 +74,62 @@ export function AccountContent({ name, email, role, division }: AccountContentPr
       <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
         <h3 className="text-sm font-semibold text-neutral-800 mb-4">Profile</h3>
         <dl className="space-y-3 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <dt className="text-neutral-500">Name</dt>
-            <dd className="font-medium text-neutral-800">{name}</dd>
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  className="h-7 text-sm w-40"
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={nameSaving}
+                  onClick={async () => {
+                    if (!nameValue.trim()) return
+                    setNameSaving(true)
+                    try {
+                      const res = await fetch(`/api/users/${userId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: nameValue.trim() }),
+                      })
+                      if (!res.ok) throw new Error("Failed to update name")
+                      toast.success("Name updated")
+                      setEditingName(false)
+                    } catch {
+                      toast.error("Failed to update name")
+                    } finally {
+                      setNameSaving(false)
+                    }
+                  }}
+                >
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => { setNameValue(name); setEditingName(false) }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <dd className="font-medium text-neutral-800">{nameValue}</dd>
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                  aria-label="Edit name"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex justify-between">
             <dt className="text-neutral-500">Email</dt>

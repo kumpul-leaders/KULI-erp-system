@@ -17,7 +17,7 @@ export default async function AccountPage() {
   const dbUser = user.email
     ? await prisma.user.findUnique({
         where: { email: user.email },
-        select: { name: true, role: true, division: true },
+        select: { id: true, name: true, role: true, division: true },
       })
     : null
 
@@ -32,6 +32,7 @@ export default async function AccountPage() {
           email={user.email ?? ""}
           role={dbUser.role as Role}
           division={dbUser.division ?? null}
+          userId={dbUser.id}
         />
       </main>
     </>

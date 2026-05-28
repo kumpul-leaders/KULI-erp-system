@@ -74,7 +74,7 @@ export async function GET(
 }
 
 // ── PATCH /api/clients/[id] ─────────────────────────────────────────────────
-// Admin or Commercial Director only.
+// account_manager and account can update healthStatus/clientStatus. Admins/directors can update all fields.
 
 export async function PATCH(
   request: NextRequest,
@@ -95,10 +95,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  // Non-admin/director: can only update healthStatus
+  // Non-admin/director: can only update healthStatus or clientStatus
   if (!isAdminOrDirector) {
+    const ALLOWED_FIELDS = new Set(["healthStatus", "clientStatus"])
     const requestedKeys = Object.keys(body)
-    const forbidden = requestedKeys.filter((k) => k !== "healthStatus")
+    const forbidden = requestedKeys.filter((k) => !ALLOWED_FIELDS.has(k))
     if (forbidden.length > 0) {
       return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 })
     }

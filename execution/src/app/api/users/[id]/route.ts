@@ -112,10 +112,27 @@ export async function PATCH(
   }
 
   try {
+    // Capture old email before update (needed for Supabase Auth sync)
+    const existingEmail = updateData.email
+      ? (await prisma.user.findUnique({ where: { id }, select: { email: true } }))?.email ?? null
+      : null
+
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
     })
+
+    // Sync email change to Supabase Auth — non-fatal (follows same pattern as DELETE handler)
+    if (updateData.email && existingEmail && updateData.email !== existingEmail) {
+      const adminClient = createAdminClient()
+      if (adminClient) {
+        const { data: { users } } = await adminClient.auth.admin.listUsers()
+        const supaUser = users?.find((u) => u.email === existingEmail)
+        if (supaUser) {
+          await adminClient.auth.admin.updateUserById(supaUser.id, { email: updateData.email })
+        }
+      }
+    }
 
     return NextResponse.json({
       user: {

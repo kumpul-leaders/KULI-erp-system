@@ -1000,6 +1000,7 @@ export function SettingsContent({
               error={editError}
               isSubmitting={isSubmitting}
               submitLabel="Save Changes"
+              isEdit
             />
           </form>
         </SheetContent>
@@ -1205,6 +1206,7 @@ interface UserFormFieldsProps {
   error: string | null
   isSubmitting: boolean
   submitLabel: string
+  isEdit?: boolean
 }
 
 function UserFormFields({
@@ -1213,6 +1215,7 @@ function UserFormFields({
   error,
   isSubmitting,
   submitLabel,
+  isEdit,
 }: UserFormFieldsProps) {
   return (
     <>
@@ -1242,6 +1245,11 @@ function UserFormFields({
           onChange={(e) => onChange({ ...form, email: e.target.value })}
           placeholder="e.g. andi@vosFoyer.com"
         />
+        {isEdit && (
+          <p className="text-xs text-neutral-400 mt-1">
+            Changing email will also update the user&apos;s login credentials.
+          </p>
+        )}
       </div>
 
       {/* Role */}

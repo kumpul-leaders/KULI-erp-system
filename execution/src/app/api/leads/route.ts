@@ -72,6 +72,7 @@ function serializeLead(lead: {
   notes: string | null
   createdAt: Date
   closedAt: Date | null
+  expectedCloseDate: Date | null
   updatedAt: Date
   client?: { id: string; name: string; customerCode?: string | null }
   sales?: { id: string; name: string } | null
@@ -105,6 +106,7 @@ function serializeLead(lead: {
     invoiceRequestedAt: lead.invoiceRequestedAt?.toISOString() ?? null,
     createdAt: lead.createdAt.toISOString(),
     closedAt: lead.closedAt?.toISOString() ?? null,
+    expectedCloseDate: lead.expectedCloseDate?.toISOString() ?? null,
     updatedAt: lead.updatedAt.toISOString(),
     documents: lead.documents?.map((d) => ({
       ...d,
@@ -241,6 +243,10 @@ export async function POST(request: NextRequest) {
         quarter,
         notes:
           typeof body.notes === "string" && body.notes ? body.notes : null,
+        expectedCloseDate:
+          typeof body.expectedCloseDate === "string" && body.expectedCloseDate
+            ? new Date(body.expectedCloseDate)
+            : null,
       },
       include: {
         client: { select: { id: true, name: true, customerCode: true } },

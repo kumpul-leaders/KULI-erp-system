@@ -113,6 +113,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     notes: lead.notes,
     createdAt: lead.createdAt.toISOString(),
     closedAt: lead.closedAt?.toISOString() ?? null,
+    expectedCloseDate: lead.expectedCloseDate?.toISOString() ?? null,
     updatedAt: lead.updatedAt.toISOString(),
     client: {
       id: lead.client.id,

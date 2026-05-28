@@ -113,6 +113,7 @@ model Lead {
   projectedRevenue   Decimal?           @map("projected_revenue") @db.Decimal(15, 2)
   salesId            String?            @map("sales_id")
   quarter            String?
+  expectedCloseDate  DateTime?          @map("expected_close_date")
   fieldHistory       LeadFieldHistory[]
   stageHistory       LeadStageHistory[]
   client             Client             @relation(fields: [clientId], references: [id])

@@ -186,6 +186,7 @@ interface FormState {
   stage: PipelineStage
   projectedRevenue: string
   billingPlan: string
+  expectedCloseDate: string
   notes: string
 }
 
@@ -200,6 +201,7 @@ const INITIAL_FORM: FormState = {
   stage: "leads",
   projectedRevenue: "",
   billingPlan: "",
+  expectedCloseDate: "",
   notes: "",
 }
 
@@ -311,6 +313,7 @@ export function LeadFormSheet({
             ? Number(form.projectedRevenue)
             : null,
           billingPlan: form.billingPlan || null,
+          expectedCloseDate: form.expectedCloseDate || null,
           notes: form.notes || null,
         }),
       })
@@ -347,6 +350,7 @@ export function LeadFormSheet({
           salesId: form.salesId || null,
           projectedRevenue: form.projectedRevenue ? Number(form.projectedRevenue) : null,
           billingPlans,
+          expectedCloseDate: form.expectedCloseDate || null,
           notes: form.notes || null,
         }),
       })
@@ -651,6 +655,17 @@ export function LeadFormSheet({
               })()}
             </div>
           )}
+
+          {/* Expected Close Date */}
+          <div className="space-y-1.5">
+            <Label htmlFor="expectedCloseDate">Expected Close Date</Label>
+            <Input
+              id="expectedCloseDate"
+              type="date"
+              value={form.expectedCloseDate}
+              onChange={(e) => handleField("expectedCloseDate", e.target.value)}
+            />
+          </div>
 
           {/* Notes */}
           <div className="space-y-1.5">

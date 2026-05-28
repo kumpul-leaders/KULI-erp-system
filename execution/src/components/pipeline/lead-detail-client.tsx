@@ -88,6 +88,7 @@ interface SerializedLead {
   notes: string | null
   createdAt: string
   closedAt: string | null
+  expectedCloseDate: string | null
   updatedAt: string
   client: { id: string; name: string; customerCode: string | null }
   sales: { id: string; name: string } | null
@@ -1157,6 +1158,15 @@ export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) 
                 </p>
                 <p className="text-sm text-neutral-800">{formatDate(lead.createdAt)}</p>
               </div>
+
+              {lead.expectedCloseDate && (
+                <div>
+                  <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide mb-1">
+                    Expected Close
+                  </p>
+                  <p className="text-sm text-neutral-800">{formatDate(lead.expectedCloseDate)}</p>
+                </div>
+              )}
             </div>
           </div>
 

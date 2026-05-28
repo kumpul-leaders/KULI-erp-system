@@ -61,6 +61,7 @@ function serializeLead(lead: any) {
     invoiceRequestedAt: lead.invoiceRequestedAt?.toISOString() ?? null,
     createdAt: lead.createdAt.toISOString(),
     closedAt: lead.closedAt?.toISOString() ?? null,
+    expectedCloseDate: lead.expectedCloseDate?.toISOString() ?? null,
     updatedAt: lead.updatedAt.toISOString(),
     documents: lead.documents?.map((d: { uploadedAt: Date; createdAt: Date; [key: string]: unknown }) => ({
       ...d,
@@ -202,6 +203,12 @@ export async function PATCH(
     if ("notes" in body) updateData.notes = body.notes ?? null
     if ("closedAt" in body) {
       updateData.closedAt = body.closedAt ? new Date(body.closedAt as string) : null
+    }
+    if ("expectedCloseDate" in body) {
+      updateData.expectedCloseDate =
+        typeof body.expectedCloseDate === "string" && body.expectedCloseDate
+          ? new Date(body.expectedCloseDate)
+          : null
     }
 
     // ── Detect field changes for history ────────────────────────────────────

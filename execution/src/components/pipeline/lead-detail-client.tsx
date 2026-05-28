@@ -4,7 +4,7 @@ import { useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Pencil, Check, X, ChevronDown, MoreHorizontal, Trash2, Loader2 } from "lucide-react"
+import { Pencil, Check, X, ChevronDown, Trash2, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -1276,10 +1276,6 @@ export function LeadDetailActions({ leadId, stage, userRole }: LeadDetailActions
     <>
       <StageActions leadId={leadId} stage={stage} />
       {userRole === "admin" && <DeleteLeadButton leadId={leadId} />}
-      <Button variant="ghost" size="icon" className="h-8 w-8" disabled aria-disabled>
-        <MoreHorizontal className="h-4 w-4" />
-        <span className="sr-only">More options</span>
-      </Button>
     </>
   )
 }

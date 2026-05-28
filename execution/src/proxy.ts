@@ -47,6 +47,7 @@ export async function proxy(request: NextRequest) {
 
   if (!user && isDashboardRoute) {
     const url = request.nextUrl.clone()
+    url.searchParams.set("returnTo", pathname)
     url.pathname = "/login"
     return NextResponse.redirect(url)
   }

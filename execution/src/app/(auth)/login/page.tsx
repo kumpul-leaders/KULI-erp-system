@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -11,8 +11,10 @@ import { Loader2, AlertCircle } from "lucide-react"
 // Note: metadata cannot be exported from a "use client" file.
 // Title is set in root layout template. For SEO, wrap in a Server Component if needed.
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get("returnTo")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -35,7 +37,8 @@ export default function LoginPage() {
       return
     }
 
-    router.push("/dashboard")
+    const dest = returnTo && returnTo.startsWith("/") ? returnTo : "/dashboard"
+    router.push(dest)
     router.refresh()
   }
 
@@ -136,5 +139,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }

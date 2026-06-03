@@ -67,10 +67,12 @@ export async function POST(
     )
   }
 
+  // VERCEL_URL is deployment-specific (changes per deploy) and is NOT whitelisted in Supabase.
+  // VERCEL_PROJECT_PRODUCTION_URL is the permanent production alias — use that instead.
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "https://vf-erp.vercel.app")
 
   const redirectTo = `${appUrl}/api/auth/callback?next=/set-password`

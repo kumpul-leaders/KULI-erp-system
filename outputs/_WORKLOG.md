@@ -2,7 +2,30 @@
 
 | Project | Last Session | Status | Notes |
 |---------|-------------|--------|-------|
-| VF ERP System | 2026-05-25 | Auth/Invite + Sprint 5.2 complete | Live: https://vf-erp.vercel.app. Deploy ke Vercel prod masih outstanding. |
+| VF ERP System | 2026-06-03 | Auth flow, pipeline, analytics, client features complete | Live: https://vf-erp.vercel.app. 25 commits pending deploy. |
+
+---
+
+## LAST SESSION: 2026-06-03
+
+**Checkpoint:** Auth/password flow selesai, pipeline + analytics + client enhancements selesai. 25 commits accumulated since 2026-05-25. Push + Vercel prod deploy dilakukan hari ini.
+**Status:** In Progress
+**Outstanding:**
+- [ ] Sprint 5.3 (optional): Propagasi product line labels dari SystemConfig ke pipeline/kanban components
+- [ ] Reinvite users yang belum bisa login (link lama tidak valid setelah invite flow fix)
+**Output:**
+- `src/app/(auth)/set-password/page.tsx` — halaman set password untuk invite + reset flows
+- `src/app/(dashboard)/account/page.tsx` — change password + edit nama sendiri
+- `src/app/(auth)/forgot-password/page.tsx` — forgot password dengan email reset
+- `src/app/(auth)/login/page.tsx` — login redirect ke returnTo URL asal, expiry error untuk invalid invite
+- `src/app/api/leads/[id]/route.ts` — expected close date field
+- `src/app/api/leads/bulk/route.ts` — expected close date di bulk leads
+- `src/components/pipeline/lead-detail-client.tsx` — AE reassignment, Move to No Response
+- `src/app/api/clients/route.ts` — account + account_manager bisa buat client
+- `src/app/api/clients/[id]/route.ts` — account + account_manager bisa update health status
+- `src/components/analytics/analytics-content.tsx` — revenue by product line chart, pipeline funnel deal value tooltip, Active Pipeline Value KPI card
+- `src/app/api/users/[id]/route.ts` — email sync ke Supabase Auth (non-fatal)
+- `src/lib/require-role.ts` — HR + finance masuk requireAuthenticated
 
 ---
 

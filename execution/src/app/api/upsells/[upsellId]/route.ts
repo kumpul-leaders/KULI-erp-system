@@ -76,3 +76,24 @@ export async function PATCH(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+// ── DELETE /api/upsells/[upsellId] ────────────────────────────────────────
+// Admin or Commercial Director only.
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ upsellId: string }> }
+) {
+  const user = await requireAdminOrDirector()
+  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const { upsellId } = await params
+  try {
+    const existing = await prisma.upsellOpportunity.findUnique({ where: { id: upsellId } })
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    await prisma.upsellOpportunity.delete({ where: { id: upsellId } })
+    return new NextResponse(null, { status: 204 })
+  } catch (err) {
+    console.error("[DELETE /api/upsells/[upsellId]]", err)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronDown, ChevronRight, Lock, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,12 +61,14 @@ function gapColor(gap: number): string {
   return gap >= 0 ? "text-emerald-600" : "text-danger-600"
 }
 
-const INITIAL_FORM: EditForm = {
-  quarter: "1",
-  year: "2026",
-  revenueTarget: "",
-  newClientTarget: "0",
-  editingId: null,
+function makeInitialForm(year: number): EditForm {
+  return {
+    quarter: "1",
+    year: String(year),
+    revenueTarget: "",
+    newClientTarget: "0",
+    editingId: null,
+  }
 }
 
 // ── Annual KPI Card ───────────────────────────────────────────────────────────
@@ -114,9 +116,10 @@ export function TargetsContent({
 }: TargetsContentProps) {
   const isAdmin = userRole === "admin" || userRole === "commercial_director"
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [, startTransition] = useTransition()
 
-  const [form, setForm] = useState<EditForm>(INITIAL_FORM)
+  const [form, setForm] = useState<EditForm>(() => makeInitialForm(year))
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [expandedQ, setExpandedQ] = useState<number | null>(null)
@@ -138,6 +141,13 @@ export function TargetsContent({
     startTransition(() => router.replace(url.pathname + url.search))
   }
 
+  // Year selector
+  function handleYearChange(y: string) {
+    const p = new URLSearchParams(searchParams.toString())
+    p.set("year", y)
+    startTransition(() => router.replace(`?${p.toString()}`))
+  }
+
   // Edit existing target
   function handleEdit(q: QuarterData) {
     if (!q.targetId) return
@@ -152,7 +162,7 @@ export function TargetsContent({
   }
 
   function handleCancel() {
-    setForm(INITIAL_FORM)
+    setForm(makeInitialForm(year))
     setSaveError(null)
   }
 
@@ -167,7 +177,7 @@ export function TargetsContent({
           ? { ...lq, targetId: null, revenueTarget: 0, newClientTarget: 0 }
           : lq
       ))
-      if (form.editingId === q.targetId) setForm(INITIAL_FORM)
+      if (form.editingId === q.targetId) setForm(makeInitialForm(year))
     } catch (err) {
       console.error("[DELETE /api/targets]", err)
     }
@@ -203,7 +213,7 @@ export function TargetsContent({
             ? { ...lq, revenueTarget: revenue, newClientTarget: nc }
             : lq
         ))
-        setForm(INITIAL_FORM)
+        setForm(makeInitialForm(year))
       } else {
         // POST new
         const res = await fetch("/api/targets", {
@@ -229,7 +239,7 @@ export function TargetsContent({
             ? { ...lq, targetId: data.target.id, revenueTarget: data.target.revenueTarget, newClientTarget: data.target.newClientTarget }
             : lq
         ))
-        setForm(INITIAL_FORM)
+        setForm(makeInitialForm(year))
       }
     } catch {
       setSaveError("Network error. Coba lagi.")
@@ -240,8 +250,8 @@ export function TargetsContent({
 
   return (
     <main className="flex-1 overflow-y-auto px-8 py-6">
-      {/* AE / Company selector */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Selectors */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
         <label className="text-xs font-medium text-neutral-500 shrink-0">View targets for:</label>
         <select
           value={selectedAeId ?? ""}
@@ -256,6 +266,15 @@ export function TargetsContent({
         {selectedAeId && (
           <span className="text-xs text-neutral-400">Showing: {selectedAeName}</span>
         )}
+        <select
+          value={year}
+          onChange={(e) => handleYearChange(e.target.value)}
+          className="text-xs border border-neutral-200 rounded px-2 py-0.5 bg-white text-neutral-600 focus:outline-none ml-auto"
+        >
+          {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
       </div>
 
       {/* Annual Overview */}
@@ -427,7 +446,7 @@ export function TargetsContent({
                           size="sm"
                           className="h-7 text-xs"
                           onClick={() => {
-                            setForm({ ...INITIAL_FORM, quarter: String(q.quarter) })
+                            setForm({ ...makeInitialForm(year), quarter: String(q.quarter) })
                             setSaveError(null)
                           }}
                         >

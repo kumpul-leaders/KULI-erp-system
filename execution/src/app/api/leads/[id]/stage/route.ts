@@ -14,6 +14,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
   "lost_deal",
   "invoiced",
   "contract_renewal",
+  "no_response",
 ]
 
 function isPipelineStage(v: unknown): v is PipelineStage {

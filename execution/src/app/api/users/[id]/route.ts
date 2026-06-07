@@ -14,20 +14,74 @@ function isRole(v: unknown): v is Role {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// ── GET /api/users/[id] ──────────────────────────────────────────────────────
+// Any authenticated user can fetch their own record. Admin/Director can fetch any.
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authUser = await requireAuthenticated()
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const { id } = await params
+
+  const isAdmin = authUser.role === "admin" || authUser.role === "commercial_director"
+
+  if (!isAdmin && authUser.id !== id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        division: true,
+        isActive: true,
+        isVp: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      user: {
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+    })
+  } catch (err) {
+    console.error("[GET /api/users/[id]]", err)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
 // ── PATCH /api/users/[id] ────────────────────────────────────────────────────
-// Admin only. Partial update of a user record.
+// Admin/Director can update any user. Non-admin can only update their own name.
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-
-  const adminUser = await requireAdminOrDirector()
-  const authUser = adminUser ?? await requireAuthenticated()
+  const authUser = await requireAuthenticated()
   if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  const { id } = await params
+
+  const isAdmin = authUser.role === "admin" || authUser.role === "commercial_director"
 
   let body: Record<string, unknown>
   try {
@@ -37,7 +91,7 @@ export async function PATCH(
   }
 
   // Non-admins can only update their own name
-  if (!adminUser) {
+  if (!isAdmin) {
     if (authUser.id !== id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }

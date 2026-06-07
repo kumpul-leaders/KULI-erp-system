@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { requireAuthenticated, requireAdminOrDirector, requireCanEditClients } from "@/lib/require-role"
 import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
 
@@ -125,6 +126,9 @@ export async function PATCH(
   // Build update payload — only include fields that were sent
   const updateData: Record<string, unknown> = {}
   if ("name" in body) updateData.name = (body.name as string).trim()
+  if ("customerCode" in body) {
+    updateData.customerCode = typeof body.customerCode === "string" && body.customerCode.trim() ? body.customerCode.trim() : null
+  }
   if ("industry" in body) updateData.industry = body.industry ?? null
   if ("orgSize" in body) updateData.orgSize = body.orgSize ?? null
   if ("engagementType" in body) updateData.engagementType = body.engagementType
@@ -177,6 +181,7 @@ export async function PATCH(
 
     const TRACKED: Record<string, (v: unknown) => string | null> = {
       name: (v) => (v as string | null) ?? null,
+      customerCode: (v) => (v as string | null) ?? null,
       industry: (v) => (v as string | null) ?? null,
       orgSize: (v) => (v as string | null) ?? null,
       engagementType: (v) => (v as string | null) ?? null,
@@ -225,6 +230,9 @@ export async function PATCH(
 
     return NextResponse.json({ client: normalized })
   } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "Customer code already in use" }, { status: 409 })
+    }
     console.error("[PATCH /api/clients/[id]]", err)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

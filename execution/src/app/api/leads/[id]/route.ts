@@ -14,6 +14,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
   "lost_deal",
   "invoiced",
   "contract_renewal",
+  "no_response",
 ]
 
 const PRODUCT_LINES: ProductLine[] = [
@@ -203,15 +204,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
+  if ("stage" in body) {
+    return NextResponse.json(
+      { error: "Stage changes must use POST /api/leads/[id]/stage" },
+      { status: 400 }
+    )
+  }
+
   // Validate enum fields if provided
   if ("productLine" in body && !isProductLine(body.productLine)) {
     return NextResponse.json({ error: "Invalid productLine" }, { status: 400 })
   }
   if ("projectType" in body && !isProjectType(body.projectType)) {
     return NextResponse.json({ error: "Invalid projectType" }, { status: 400 })
-  }
-  if ("stage" in body && !isPipelineStage(body.stage)) {
-    return NextResponse.json({ error: "Invalid stage" }, { status: 400 })
   }
 
   // billingPlan format validation
@@ -238,7 +243,6 @@ export async function PATCH(
     if ("productLine" in body) updateData.productLine = body.productLine
     if ("description" in body) updateData.description = body.description ?? null
     if ("projectType" in body) updateData.projectType = body.projectType
-    if ("stage" in body) updateData.stage = body.stage
     if ("salesId" in body) updateData.salesId = body.salesId ?? null
     if ("projectedRevenue" in body)
       updateData.projectedRevenue = body.projectedRevenue ?? null
@@ -328,15 +332,6 @@ export async function PATCH(
       ),
     ])
 
-    // If stage was updated, sync client status — non-fatal if it fails
-    if ("stage" in body) {
-      try {
-        await syncClientStatus(existing.clientId)
-      } catch (syncErr) {
-        console.error("[PATCH /api/leads/[id]] syncClientStatus failed", syncErr)
-      }
-    }
-
     return NextResponse.json({ lead: serializeLead(lead) })
   } catch (err) {
     console.error("[PATCH /api/leads/[id]]", err)
@@ -365,6 +360,12 @@ export async function DELETE(
     }
 
     await prisma.lead.delete({ where: { id } })
+
+    try {
+      await syncClientStatus(existing.clientId)
+    } catch (err) {
+      console.error("syncClientStatus failed after lead delete", err)
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {

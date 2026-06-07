@@ -369,15 +369,14 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       orderBy: { name: "asc" },
     }),
 
-    // Upsell won — distinct clients with stage in [closed_won, invoiced]
-    prisma.lead.findMany({
+    // Upsell won — UpsellOpportunity records with status = won
+    prisma.upsellOpportunity.count({
       where: {
-        stage: { in: ["closed_won", "invoiced"] },
-        ...aeFilter,
-        ...closedDateFilter,
+        status: "won",
+        ...(effectiveAeIds.length > 0
+          ? { client: { primaryAe: { in: effectiveAeIds } } }
+          : {}),
       },
-      select: { clientId: true },
-      distinct: ["clientId"],
     }),
 
     // Overall win rate — stage counts for all pitched leads
@@ -591,7 +590,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
 
   const clientRetention: ClientRetention = {
     renewed: renewedClientCount,
-    upsellWon: upsellWonCount.length,
+    upsellWon: upsellWonCount,
     total: totalClientCount,
     rate: retentionRate,
   }

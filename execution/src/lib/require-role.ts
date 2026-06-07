@@ -9,6 +9,7 @@ export interface AuthUser {
 /**
  * Verify the current Supabase session and check that the DB user has one of
  * the specified roles. Returns the AuthUser if authorized, null otherwise.
+ * Deactivated users are always rejected regardless of role.
  */
 export async function requireRole(...roles: string[]): Promise<AuthUser | null> {
   const supabase = await createClient()
@@ -20,9 +21,9 @@ export async function requireRole(...roles: string[]): Promise<AuthUser | null> 
 
   const dbUser = await prisma.user.findUnique({
     where: { email: user.email },
-    select: { id: true, role: true },
+    select: { id: true, role: true, isActive: true },
   })
-  if (!dbUser || !roles.includes(dbUser.role)) return null
+  if (!dbUser || !dbUser.isActive || !roles.includes(dbUser.role)) return null
 
   return { id: dbUser.id, role: dbUser.role }
 }

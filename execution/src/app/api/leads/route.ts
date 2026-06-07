@@ -13,6 +13,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
   "lost_deal",
   "invoiced",
   "contract_renewal",
+  "no_response",
 ]
 
 const PRODUCT_LINES: ProductLine[] = [

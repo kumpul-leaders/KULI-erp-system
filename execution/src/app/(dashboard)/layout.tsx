@@ -23,24 +23,24 @@ export default async function DashboardLayout({
   }
 
   // Prisma DB is single source of truth for role.
-  // Supabase user_metadata is only used as fallback for name when no DB record exists.
   const dbUser = user.email
     ? await prisma.user.findUnique({
         where: { email: user.email },
-        select: { id: true, name: true, role: true, isVp: true },
+        select: { id: true, name: true, role: true, isVp: true, isActive: true },
       })
     : null
+
+  // Orphan Supabase accounts (no DB record) and deactivated users are blocked here.
+  if (!dbUser || !dbUser.isActive) {
+    redirect("/login?error=account_disabled")
+  }
 
   const sessionUser: SessionUser = {
     id: user.id,
     email: user.email ?? "",
-    name:
-      dbUser?.name ??
-      (user.user_metadata?.name as string | undefined) ??
-      user.email ??
-      "User",
-    role: (dbUser?.role as Role | undefined) ?? "account",
-    isVp: dbUser?.isVp ?? Boolean(user.user_metadata?.is_vp),
+    name: dbUser.name,
+    role: dbUser.role as Role,
+    isVp: dbUser.isVp,
   }
 
   return (

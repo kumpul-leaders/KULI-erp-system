@@ -8,7 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, AlertCircle } from "lucide-react"
 
-export function SetPasswordForm() {
+interface SetPasswordFormProps {
+  flow?: "invite" | "recovery"
+}
+
+export function SetPasswordForm({ flow = "invite" }: SetPasswordFormProps) {
   const router = useRouter()
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
@@ -38,8 +42,14 @@ export function SetPasswordForm() {
       return
     }
 
-    router.push("/dashboard")
-    router.refresh()
+    if (flow === "recovery") {
+      await supabase.auth.signOut()
+      router.push("/login?message=password_updated")
+      router.refresh()
+    } else {
+      router.push("/dashboard")
+      router.refresh()
+    }
   }
 
   return (

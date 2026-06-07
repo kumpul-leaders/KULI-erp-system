@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
 import { createAdminClient } from "@/lib/supabase/admin-client"
+import { getAppUrl } from "@/lib/app-url"
 
 // ── Type guard ───────────────────────────────────────────────────────────────
 
@@ -67,15 +68,7 @@ export async function POST(
     )
   }
 
-  // VERCEL_URL is deployment-specific (changes per deploy) and is NOT whitelisted in Supabase.
-  // VERCEL_PROJECT_PRODUCTION_URL is the permanent production alias — use that instead.
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "https://vf-erp.vercel.app")
-
-  const redirectTo = `${appUrl}/api/auth/callback?next=/set-password`
+  const redirectTo = `${getAppUrl()}/api/auth/callback?next=${encodeURIComponent("/set-password?flow=invite")}`
 
   try {
     if (type === "invite") {

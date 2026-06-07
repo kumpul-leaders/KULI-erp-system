@@ -53,10 +53,15 @@ export type AeOption = {
 export default async function TargetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ aeId?: string }>
+  searchParams: Promise<{ aeId?: string; year?: string }>
 }) {
-  const { aeId } = await searchParams
+  const { aeId, year: yearParam } = await searchParams
   const selectedAeId = aeId ?? null
+
+  const parsedYear = Number(yearParam)
+  const YEAR = !isNaN(parsedYear) && parsedYear >= 2024 && parsedYear <= 2030
+    ? parsedYear
+    : new Date().getFullYear()
 
   // Role check
   const supabase = await createClient()
@@ -66,11 +71,9 @@ export default async function TargetsPage({
     : null
   const userRole = dbUser?.role ?? null
 
-  const YEAR = 2026
-
-  // Build billing plans for all 12 months of 2026
-  const allBP2026 = Array.from({ length: 12 }, (_, i) =>
-    `26-${String(i + 1).padStart(2, "0")}`
+  const yearPrefix = YEAR.toString().slice(2)
+  const allBP = Array.from({ length: 12 }, (_, i) =>
+    `${yearPrefix}-${String(i + 1).padStart(2, "0")}`
   )
 
   // Quarter definitions
@@ -97,7 +100,7 @@ export default async function TargetsPage({
     return "future"
   }
 
-  const [aeOptions, quarterlyTargets, wonLeads2026, pipelineLeads2026] = await Promise.all([
+  const [aeOptions, quarterlyTargets, wonLeads, pipelineLeads] = await Promise.all([
     // Active AEs for the selector
     prisma.user.findMany({
       where: { isActive: true, role: { in: ["account", "admin", "account_manager"] } },
@@ -105,7 +108,7 @@ export default async function TargetsPage({
       orderBy: { name: "asc" },
     }),
 
-    // All quarterly targets for 2026 (company-wide or per-AE)
+    // All quarterly targets for the selected year (company-wide or per-AE)
     prisma.target.findMany({
       where: {
         type: "quarterly" as $Enums.TargetType,
@@ -118,7 +121,7 @@ export default async function TargetsPage({
     prisma.lead.findMany({
       where: {
         stage: { in: ["closed_won", "invoiced"] },
-        billingPlan: { in: allBP2026 },
+        billingPlan: { in: allBP },
         ...(selectedAeId ? { salesId: selectedAeId } : {}),
       },
       select: { actualRevenue: true, projectedRevenue: true, billingPlan: true },
@@ -128,7 +131,7 @@ export default async function TargetsPage({
     prisma.lead.findMany({
       where: {
         stage: { in: ["pipeline", "negotiation", "contract_renewal"] },
-        billingPlan: { in: allBP2026 },
+        billingPlan: { in: allBP },
         ...(selectedAeId ? { salesId: selectedAeId } : {}),
       },
       select: { projectedRevenue: true, actualRevenue: true, billingPlan: true },
@@ -138,7 +141,7 @@ export default async function TargetsPage({
   // Build billing plan → actual revenue map
   // closed_won/invoiced may not have actualRevenue filled yet — fall back to projectedRevenue
   const bpActualMap = new Map<string, number>()
-  for (const lead of wonLeads2026) {
+  for (const lead of wonLeads) {
     if (!lead.billingPlan) continue
     const value = lead.actualRevenue ?? lead.projectedRevenue
     if (!value) continue
@@ -148,7 +151,7 @@ export default async function TargetsPage({
   // Build billing plan → forecast revenue map (pipeline + negotiation + contract_renewal)
   // Use projectedRevenue, fall back to actualRevenue (contract_renewal may have actual set)
   const bpForecastMap = new Map<string, number>()
-  for (const lead of pipelineLeads2026) {
+  for (const lead of pipelineLeads) {
     if (!lead.billingPlan) continue
     const value = lead.projectedRevenue ?? lead.actualRevenue
     if (!value) continue
@@ -162,7 +165,7 @@ export default async function TargetsPage({
   const quarters: QuarterData[] = QUARTERS.map(({ quarter, months }) => {
     const t = targetByQ.get(quarter)
     const monthsData = months.map((m) => {
-      const bp = `26-${String(m).padStart(2, "0")}`
+      const bp = `${yearPrefix}-${String(m).padStart(2, "0")}`
       return {
         month: m,
         billingPlan: bp,
@@ -184,7 +187,6 @@ export default async function TargetsPage({
     }
   })
 
-  // Annual summary: total target (sum of Q1-Q4), total actual (all won in 2026)
   const annualTarget = quarters.reduce((sum, q) => sum + q.revenueTarget, 0)
   const annualActual = Array.from(bpActualMap.values()).reduce((sum, v) => sum + v, 0)
 

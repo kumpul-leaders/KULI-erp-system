@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 // Note: metadata cannot be exported from a "use client" file.
 // Title is set in root layout template. For SEO, wrap in a Server Component if needed.
 
@@ -15,6 +15,8 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnTo = searchParams.get("returnTo")
+  const urlError = searchParams.get("error")
+  const urlMessage = searchParams.get("message")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -59,7 +61,27 @@ function LoginForm() {
             Sign in to your account
           </h2>
 
-          {/* Error banner */}
+          {/* URL-driven banners (from redirects) */}
+          {urlMessage === "password_updated" && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-success-50 border border-success-500/20 px-3 py-2.5 text-sm text-success-700">
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-success-500" />
+              Password updated. Sign in with your new password.
+            </div>
+          )}
+          {urlError === "auth_callback_failed" && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-warning-50 border border-warning-500/20 px-3 py-2.5 text-sm text-warning-700">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 text-warning-500" />
+              Your invitation or reset link has expired or is invalid. Ask your admin to resend the invite, or use &lsquo;Forgot password&rsquo; to try again.
+            </div>
+          )}
+          {urlError === "account_disabled" && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-50 border border-danger-500/20 px-3 py-2.5 text-sm text-danger-700">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 text-danger-500" />
+              Your account has been disabled. Contact your admin.
+            </div>
+          )}
+
+          {/* Sign-in error banner */}
           {error && (
             <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-50 border border-danger-500/20 px-3 py-2.5 text-sm text-danger-700">
               <AlertCircle className="h-4 w-4 flex-shrink-0 text-danger-500" />

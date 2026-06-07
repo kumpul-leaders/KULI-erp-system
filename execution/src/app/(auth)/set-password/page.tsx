@@ -3,7 +3,14 @@ import { createClient } from "@/lib/supabase/server"
 import { SetPasswordForm } from "./set-password-form"
 import { AlertCircle } from "lucide-react"
 
-export default async function SetPasswordPage() {
+interface SetPasswordPageProps {
+  searchParams: Promise<{ flow?: string }>
+}
+
+export default async function SetPasswordPage({ searchParams }: SetPasswordPageProps) {
+  const { flow: rawFlow } = await searchParams
+  const flow: "invite" | "recovery" = rawFlow === "recovery" ? "recovery" : "invite"
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -19,24 +26,45 @@ export default async function SetPasswordPage() {
           {!user ? (
             <div className="text-center space-y-4">
               <AlertCircle className="h-10 w-10 text-warning-500 mx-auto" />
-              <h2 className="text-lg font-semibold text-neutral-800">Link has expired</h2>
-              <p className="text-sm text-neutral-500">
-                This invitation link is no longer valid. Ask your admin to resend the invite from the Settings page.
-              </p>
-              <Link
-                href="/login"
-                className="inline-block text-sm text-accent-600 hover:underline"
-              >
-                Back to login
-              </Link>
+              {flow === "recovery" ? (
+                <>
+                  <h2 className="text-lg font-semibold text-neutral-800">Reset link expired</h2>
+                  <p className="text-sm text-neutral-500">
+                    This password reset link is no longer valid. Request a new one below.
+                  </p>
+                  <Link
+                    href="/forgot-password"
+                    className="inline-block text-sm text-accent-600 hover:underline"
+                  >
+                    Request new reset link
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold text-neutral-800">Link has expired</h2>
+                  <p className="text-sm text-neutral-500">
+                    This invitation link is no longer valid. Ask your admin to resend the invite from the Settings page.
+                  </p>
+                  <Link
+                    href="/login"
+                    className="inline-block text-sm text-accent-600 hover:underline"
+                  >
+                    Back to login
+                  </Link>
+                </>
+              )}
             </div>
           ) : (
             <>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-800">Set your password</h2>
+              <h2 className="mb-2 text-lg font-semibold text-neutral-800">
+                {flow === "recovery" ? "Reset your password" : "Set your password"}
+              </h2>
               <p className="mb-6 text-sm text-neutral-500">
-                Choose a password to secure your account.
+                {flow === "recovery"
+                  ? "Enter a new password for your account."
+                  : "Choose a password to secure your account."}
               </p>
-              <SetPasswordForm />
+              <SetPasswordForm flow={flow} />
             </>
           )}
         </div>

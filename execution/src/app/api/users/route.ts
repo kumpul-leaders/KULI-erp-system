@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAuthenticated, requireAdminOrDirector } from "@/lib/require-role"
 import { createAdminClient } from "@/lib/supabase/admin-client"
+import { getAppUrl } from "@/lib/app-url"
 import type { Role } from "@/types"
 
 // ── Validation helpers ───────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 })
   }
 
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://vf-erp.vercel.app"}/api/auth/callback?next=/set-password`
+  const redirectTo = `${getAppUrl()}/api/auth/callback?next=${encodeURIComponent("/set-password?flow=invite")}`
 
   const sendInvite = async () => {
     const adminClient = createAdminClient()

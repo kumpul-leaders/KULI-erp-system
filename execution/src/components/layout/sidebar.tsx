@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { cn, getInitials } from "@/lib/utils"
 import type { SessionUser } from "@/types"
+import { LogoutButton } from "@/components/layout/logout-button"
 
 // ─── Nav structure ───────────────────────────────────────────
 
@@ -206,6 +207,9 @@ export function Sidebar({ user }: SidebarProps) {
               <Settings className="h-4 w-4" />
             </Link>
           )}
+        </div>
+        <div className="mt-1">
+          <LogoutButton />
         </div>
       </div>
     </aside>

@@ -52,11 +52,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // ── Authenticated user visiting /login → redirect to /dashboard ──
-  if (user && pathname === "/login") {
+  // ── Authenticated user visiting /login or /forgot-password → redirect to /dashboard ──
+  if (user && (pathname === "/login" || pathname === "/forgot-password")) {
     const url = request.nextUrl.clone()
     url.pathname = "/dashboard"
     return NextResponse.redirect(url)
+  }
+
+  // ── Authenticated user visiting /set-password → redirect to /account ──
+  // Exception: allow if request came directly from /api/auth/callback (invited user
+  // who has just been authenticated via the callback and is being forwarded to set
+  // their password for the first time).
+  if (user && pathname === "/set-password") {
+    if (!request.nextUrl.searchParams.has("flow")) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/account"
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { requireAuthenticated, requireCanEditClients } from "@/lib/require-role"
 import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
 
@@ -151,6 +152,7 @@ export async function POST(request: NextRequest) {
           typeof body.primaryAe === "string" && body.primaryAe
             ? body.primaryAe
             : null,
+        customerCode: typeof body.customerCode === "string" && body.customerCode.trim() ? body.customerCode.trim() : null,
         notes:
           typeof body.notes === "string" && body.notes
             ? body.notes
@@ -173,6 +175,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ client: normalized }, { status: 201 })
   } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "Customer code already in use" }, { status: 409 })
+    }
     console.error("[POST /api/clients]", err)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

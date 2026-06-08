@@ -10,15 +10,6 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code")
   const next = searchParams.get("next") ?? "/dashboard"
 
-  console.log("[auth-callback] params", {
-    hasTokenHash: !!token_hash,
-    type,
-    hasCode: !!code,
-    next,
-    allKeys: Array.from(searchParams.keys()),
-    fullUrl: request.url,
-  })
-
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -47,10 +38,8 @@ export async function GET(request: NextRequest) {
           : type === "invite" && !searchParams.has("next")
             ? `/set-password?flow=invite`
             : next
-      console.log("[auth-callback] otp success", { type, destination })
       return NextResponse.redirect(`${origin}${destination}`)
     }
-    console.error("[auth-callback] verifyOtp failed", { type, message: error.message, status: error.status })
   }
 
   if (code) {
@@ -59,16 +48,9 @@ export async function GET(request: NextRequest) {
       const destination = type === "recovery"
         ? `/set-password?flow=recovery`
         : next
-      console.log("[auth-callback] pkce success", { destination })
       return NextResponse.redirect(`${origin}${destination}`)
     }
-    console.error("[auth-callback] exchangeCodeForSession failed", { message: error.message, status: error.status })
   }
 
-  console.error("[auth-callback] fall-through to error redirect", {
-    hadTokenHash: !!token_hash,
-    hadCode: !!code,
-    type,
-  })
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
 }

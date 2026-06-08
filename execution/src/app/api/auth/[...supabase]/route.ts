@@ -10,6 +10,15 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code")
   const next = searchParams.get("next") ?? "/dashboard"
 
+  console.log("[auth-callback] params", {
+    hasTokenHash: !!token_hash,
+    type,
+    hasCode: !!code,
+    next,
+    allKeys: Array.from(searchParams.keys()),
+    fullUrl: request.url,
+  })
+
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -29,7 +38,6 @@ export async function GET(request: NextRequest) {
     }
   )
 
-  // OTP flow (invite / recovery) — token_hash takes priority over code
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type })
     if (!error) {
@@ -39,21 +47,28 @@ export async function GET(request: NextRequest) {
           : type === "invite" && !searchParams.has("next")
             ? `/set-password?flow=invite`
             : next
+      console.log("[auth-callback] otp success", { type, destination })
       return NextResponse.redirect(`${origin}${destination}`)
     }
+    console.error("[auth-callback] verifyOtp failed", { type, message: error.message, status: error.status })
   }
 
-  // PKCE flow (OAuth, magic link via code)
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // If type indicates recovery but arrived via code, still route correctly
       const destination = type === "recovery"
         ? `/set-password?flow=recovery`
         : next
+      console.log("[auth-callback] pkce success", { destination })
       return NextResponse.redirect(`${origin}${destination}`)
     }
+    console.error("[auth-callback] exchangeCodeForSession failed", { message: error.message, status: error.status })
   }
 
+  console.error("[auth-callback] fall-through to error redirect", {
+    hadTokenHash: !!token_hash,
+    hadCode: !!code,
+    type,
+  })
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
 }

@@ -184,18 +184,27 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
     }
   }, [])
 
-  // Sync filter conditions to URL and reset pagination
+  // Sync filter conditions to URL and reset pagination.
+  // Depends on the serialized filter value only — depending on searchParams
+  // would re-trigger after our own router.replace (infinite replace loop)
+  // and wipe the page param on every navigation, incl. pagination clicks.
+  const filterValue = useMemo(
+    () => (conditions.length > 0 ? btoa(JSON.stringify(conditions)) : null),
+    [conditions]
+  )
+
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (conditions.length > 0) {
-      params.set("filter", btoa(JSON.stringify(conditions)))
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("filter") === filterValue) return
+    if (filterValue) {
+      params.set("filter", filterValue)
     } else {
       params.delete("filter")
     }
-    // Reset to page 1 whenever filter changes
+    // Reset to page 1 only when the filter actually changed
     params.delete("page")
     router.replace(`/pipeline?${params.toString()}`, { scroll: false })
-  }, [conditions, searchParams, router])
+  }, [filterValue, router])
 
   async function refetchLeads() {
     try {

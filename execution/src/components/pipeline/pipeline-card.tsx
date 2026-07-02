@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { formatIDR, cn } from "@/lib/utils"
+import { ActivityDot } from "@/components/activities/activity-dot"
 import type { PipelineStage, ProductLine, LostReason } from "@/types"
 
 // ── Serialized lead shape passed from server ────────────────────────────────
@@ -36,6 +37,8 @@ export interface SerializedLead {
   createdAt: string
   closedAt: string | null
   updatedAt: string
+  /** ISO datetime of the earliest open activity, or null if none */
+  nextActivityAt: string | null
   client: { id: string; name: string; customerCode: string | null }
   sales: { id: string; name: string } | null
   documents: Array<{
@@ -98,6 +101,19 @@ function getMissingGateDoc(lead: SerializedLead): string | null {
   return null
 }
 
+// Stale flag: no activity scheduled AND lead not updated in 7+ days AND open stage
+const STALE_OPEN_STAGES: PipelineStage[] = ["leads", "pipeline", "negotiation", "contract_renewal"]
+const STALE_DAYS = 7
+
+function isStaleWithoutActivity(lead: SerializedLead): boolean {
+  if (lead.nextActivityAt !== null) return false
+  if (!STALE_OPEN_STAGES.includes(lead.stage)) return false
+  const updatedAt = new Date(lead.updatedAt)
+  const now = new Date()
+  const diffDays = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24)
+  return diffDays > STALE_DAYS
+}
+
 export function PipelineCard({
   lead,
   isDragging,
@@ -121,6 +137,7 @@ export function PipelineCard({
   }
 
   const missingDoc = getMissingGateDoc(lead)
+  const stale = isStaleWithoutActivity(lead)
 
   return (
     <div
@@ -244,6 +261,14 @@ export function PipelineCard({
           </span>
         </div>
       )}
+
+      {/* Activity dot footer */}
+      <div className="mt-2 pt-2 border-t border-neutral-100 flex items-center">
+        <ActivityDot
+          nextActivityAt={lead.nextActivityAt}
+          stale={stale}
+        />
+      </div>
     </div>
   )
 }

@@ -13,10 +13,12 @@ import { AeCard } from "@/components/clients/ae-card"
 import { ClientDetailActions } from "@/components/clients/client-detail-actions"
 import { EditStatusButton } from "@/components/clients/edit-status-button"
 import { SmartButtons, type SmartButtonConfig } from "@/components/shared/smart-buttons"
+import { ActivityPanel } from "@/components/activities/activity-panel"
+import { RecordTimeline } from "@/components/chatter/record-timeline"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { formatIDR, daysUntil, contractUrgency } from "@/lib/utils"
-import { Layers, Users, TrendingUp, DollarSign } from "lucide-react"
+import { Layers, Users, TrendingUp, DollarSign, ClipboardList, MessageSquare } from "lucide-react"
 // ── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -91,9 +93,10 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   const { data: { user } } = await supabase.auth.getUser()
   const dbUser = user ? await prisma.user.findUnique({
     where: { email: user.email! },
-    select: { role: true },
+    select: { id: true, role: true },
   }) : null
   const userRole = dbUser?.role ?? null
+  const currentUserId = dbUser?.id ?? ""
   const isAdmin = userRole === "admin" || userRole === "commercial_director"
   const canEditStatus = isAdmin || userRole === "account_manager" || userRole === "account"
 
@@ -132,14 +135,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     updatedAt: u.updatedAt.toISOString(),
   }))
 
-  // Normalized field history (serialize changedAt)
+  // Normalized field history — shape matches RecordTimeline's FieldHistoryEntry
   const fieldHistory = client.fieldHistory.map((entry) => ({
     id: entry.id,
     field: entry.field,
     oldValue: entry.oldValue,
     newValue: entry.newValue,
     changedAt: entry.changedAt.toISOString(),
-    changerName: entry.changer.name,
+    changer: { id: "", name: entry.changer.name },
   }))
 
   // Serialize leads for Linked Projects section
@@ -274,6 +277,20 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
               label: "Upsells",
               targetId: "section-upsells",
               title: "Lihat upsell opportunities",
+            },
+            {
+              type: "scroll",
+              icon: <ClipboardList />,
+              label: "Activities",
+              targetId: "section-client-activities",
+              title: "Lihat planned activities",
+            },
+            {
+              type: "scroll",
+              icon: <MessageSquare />,
+              label: "Chatter",
+              targetId: "section-client-chatter",
+              title: "Lihat timeline dan chatter",
             },
             ...(cumulativeValue > 0
               ? ([
@@ -478,36 +495,25 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
               <UpsellsCard clientId={client.id} upsells={upsells} />
             </div>
 
-            {/* Field History */}
-            {fieldHistory.length > 0 && (
-              <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-                <h3 className="text-sm font-semibold text-neutral-700 mb-3">Change History</h3>
-                <div className="space-y-2">
-                  {fieldHistory.map((entry) => (
-                    <div key={entry.id} className="flex items-start gap-3 text-xs">
-                      <span className="text-neutral-400 whitespace-nowrap mt-0.5">
-                        {new Date(entry.changedAt).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "short",
-                          year: "2-digit",
-                        })}
-                      </span>
-                      <div className="flex-1">
-                        <span className="font-medium text-neutral-700 capitalize">
-                          {entry.field.replace(/([A-Z])/g, " $1")}
-                        </span>
-                        {": "}
-                        <span className="text-neutral-500 line-through">{entry.oldValue ?? "—"}</span>
-                        {" → "}
-                        <span className="text-neutral-800">{entry.newValue ?? "—"}</span>
-                      </div>
-                      <span className="text-neutral-400 whitespace-nowrap">{entry.changerName}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Planned Activities */}
+            <div id="section-client-activities">
+              <ActivityPanel
+                clientId={client.id}
+                currentUserId={currentUserId}
+                assigneeOptions={aeOptions}
+              />
+            </div>
+
           </div>
+        </div>
+
+        {/* Timeline & Chatter — full-width below the 3-col grid */}
+        <div id="section-client-chatter" className="mt-6">
+          <RecordTimeline
+            clientId={client.id}
+            currentUserId={currentUserId}
+            fieldHistory={fieldHistory}
+          />
         </div>
       </main>
     </>

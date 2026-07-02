@@ -2,6 +2,8 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { Sidebar } from "@/components/layout/sidebar"
+import { CommandPalette } from "@/components/shared/command-palette"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 import type { SessionUser, Role } from "@/types"
 
 interface DashboardLayoutProps {
@@ -46,9 +48,18 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <Sidebar user={sessionUser} />
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+      {/* Right panel — relative so bell overlay works */}
+      <div className="relative flex flex-1 flex-col overflow-hidden min-w-0">
         {children}
+        {/* Bell overlaid on topbar right — h-14 matches topbar height */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex h-14 items-center justify-end pr-4">
+          <div className="pointer-events-auto">
+            <NotificationBell />
+          </div>
+        </div>
       </div>
+      {/* Command palette — global, available on all authenticated pages */}
+      <CommandPalette user={sessionUser} />
     </div>
   )
 }

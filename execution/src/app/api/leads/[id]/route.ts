@@ -5,6 +5,7 @@ import { syncClientStatus } from "@/lib/client-status"
 import { parseBody } from "@/lib/validations/parse"
 import { UpdateLeadSchema } from "@/lib/validations/lead"
 import { getStageConfig } from "@/lib/stage-config.server"
+import { createNotification } from "@/lib/notifications"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ function serializeLead(lead: {
   closedAt: Date | null
   expectedCloseDate: Date | null
   updatedAt: Date
+  nextActivityAt?: Date | null
   client?: { id: string; name: string; customerCode?: string | null }
   sales?: { id: string; name: string } | null
   documents?: Array<{
@@ -95,6 +97,7 @@ function serializeLead(lead: {
       ...h,
       changedAt: h.changedAt.toISOString(),
     })),
+    nextActivityAt: lead.nextActivityAt?.toISOString() ?? null,
     fieldHistory: lead.fieldHistory?.map((h) => ({
       ...h,
       changedAt: h.changedAt.toISOString(),
@@ -299,6 +302,22 @@ export async function PATCH(
         prisma.leadFieldHistory.create({ data: entry })
       ),
     ])
+
+    // lead_assigned: notify new sales when salesId changes and new assignee is not the actor
+    const newSalesId =
+      "salesId" in updateData ? (updateData.salesId as string | null) : undefined
+    const salesChanged = newSalesId !== undefined && newSalesId !== existing.salesId
+    if (salesChanged && newSalesId && newSalesId !== user.id) {
+      const clientName = lead.client?.name ?? ""
+      await createNotification({
+        userId: newSalesId,
+        type: "lead_assigned",
+        title: `Lu di-assign lead ${clientName}`,
+        entityType: "lead",
+        entityId: id,
+        actorId: user.id,
+      })
+    }
 
     return NextResponse.json({ lead: serializeLead(lead) })
   } catch (err) {

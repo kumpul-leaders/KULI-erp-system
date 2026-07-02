@@ -118,6 +118,31 @@ export function generateBillingPlanRange(start: string, end: string): string[] {
   return result
 }
 
+/**
+ * Returns a short relative time string in Indonesian.
+ *
+ * Examples: "baru saja" | "5m lalu" | "2j lalu" | "kemarin" | "3 hari lalu" | "2 mgu lalu"
+ *
+ * Works with ISO datetime strings or Date objects.
+ */
+export function formatRelativeTime(date: Date | string): string {
+  const target = typeof date === "string" ? new Date(date) : date
+  const diffMs = Date.now() - target.getTime()
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHour = Math.floor(diffMin / 60)
+  const diffDay = Math.floor(diffHour / 24)
+  const diffWeek = Math.floor(diffDay / 7)
+
+  if (diffSec < 60) return "baru saja"
+  if (diffMin < 60) return `${diffMin}m lalu`
+  if (diffHour < 24) return `${diffHour}j lalu`
+  if (diffDay === 1) return "kemarin"
+  if (diffDay < 7) return `${diffDay} hari lalu`
+  if (diffWeek < 5) return `${diffWeek} mgu lalu`
+  return target.toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+}
+
 const INDONESIAN_MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
   "Jul", "Agu", "Sep", "Okt", "Nov", "Des",

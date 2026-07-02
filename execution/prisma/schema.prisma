@@ -16,13 +16,18 @@ model User {
   isVp                 Boolean              @default(false) @map("is_vp")
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
-  clientsManaged       Client[]
-  clientFieldChanges   ClientFieldHistory[] @relation("ClientFieldChanger")
-  fieldChangesActioned LeadFieldHistory[]
-  stageChangesActioned LeadStageHistory[]
-  leadsAssigned        Lead[]
-  documentsUploaded    PipelineDocument[]
-  targets              Target[]
+  clientsManaged           Client[]
+  clientFieldChanges       ClientFieldHistory[] @relation("ClientFieldChanger")
+  fieldChangesActioned     LeadFieldHistory[]
+  stageChangesActioned     LeadStageHistory[]
+  leadsAssigned            Lead[]
+  documentsUploaded        PipelineDocument[]
+  targets                  Target[]
+  activitiesAssigned       Activity[]          @relation("ActivityAssignee")
+  activitiesCreated        Activity[]          @relation("ActivityCreator")
+  comments                 Comment[]           @relation("CommentAuthor")
+  followings               Follower[]          @relation("FollowerUser")
+  notifications            Notification[]
 
   @@map("users")
 }
@@ -49,6 +54,9 @@ model Client {
   fieldHistory        ClientFieldHistory[]
   leads               Lead[]
   upsellOpportunities UpsellOpportunity[]
+  activities          Activity[]
+  comments            Comment[]
+  followers           Follower[]
 
   @@map("clients")
 }
@@ -117,8 +125,12 @@ model Lead {
   probability          Decimal?           @db.Decimal(5, 2)
   probabilityIsManual  Boolean            @default(false) @map("probability_is_manual")
   lostReason           LostReason?        @map("lost_reason")
+  nextActivityAt       DateTime?          @map("next_activity_at")
   fieldHistory         LeadFieldHistory[]
   stageHistory         LeadStageHistory[]
+  activities           Activity[]
+  comments             Comment[]
+  followers            Follower[]
   client               Client             @relation(fields: [clientId], references: [id])
   sales                User?              @relation(fields: [salesId], references: [id])
   documents            PipelineDocument[]
@@ -266,10 +278,108 @@ enum LostReason {
   other
 }
 
+enum ActivityType {
+  call
+  email
+  meeting
+  todo
+  deadline
+}
+
+enum ActivityStatus {
+  open
+  done
+  canceled
+}
+
+model Activity {
+  id         String         @id @default(uuid())
+  type       ActivityType
+  subject    String
+  note       String?
+  dueDate    DateTime       @map("due_date") @db.Date
+  status     ActivityStatus @default(open)
+  doneAt     DateTime?      @map("done_at")
+  leadId     String?        @map("lead_id")
+  clientId   String?        @map("client_id")
+  assignedTo String         @map("assigned_to")
+  createdBy  String         @map("created_by")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+  lead       Lead?          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  client     Client?        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assignee   User           @relation("ActivityAssignee", fields: [assignedTo], references: [id])
+  creator    User           @relation("ActivityCreator", fields: [createdBy], references: [id])
+
+  @@index([assignedTo, status, dueDate])
+  @@index([leadId, status])
+  @@index([clientId, status])
+  @@map("activities")
+}
+
 model SystemConfig {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("system_config")
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  body      String
+  mentions  String[]  @default([])
+  leadId    String?   @map("lead_id")
+  clientId  String?   @map("client_id")
+  authorId  String    @map("author_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  editedAt  DateTime? @map("edited_at")
+  deletedAt DateTime? @map("deleted_at")
+  author    User      @relation("CommentAuthor", fields: [authorId], references: [id])
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  client    Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([clientId, createdAt])
+  @@map("comments")
+}
+
+model Follower {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  leadId   String?  @map("lead_id")
+  clientId String?  @map("client_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user     User     @relation("FollowerUser", fields: [userId], references: [id])
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  client   Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leadId])
+  @@unique([userId, clientId])
+  @@map("followers")
+}
+
+enum NotificationType {
+  mention
+  lead_assigned
+  activity_due
+  activity_overdue
+  alert
+  stage_change
+}
+
+model Notification {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  type       NotificationType
+  title      String
+  body       String?
+  entityType String?          @map("entity_type")
+  entityId   String?          @map("entity_id")
+  readAt     DateTime?        @map("read_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }

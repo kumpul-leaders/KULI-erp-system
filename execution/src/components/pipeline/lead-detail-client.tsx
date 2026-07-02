@@ -36,15 +36,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { StageHistoryTimeline } from "@/components/pipeline/stage-history-timeline"
-import { FieldHistoryTimeline } from "@/components/pipeline/field-history-timeline"
 import { DocumentUploadZone } from "@/components/pipeline/document-upload-zone"
+import { RecordTimeline } from "@/components/chatter/record-timeline"
 import { PipelineStageBadge } from "@/components/pipeline/pipeline-stage-badge"
 import { SmartButtons, type SmartButtonConfig } from "@/components/shared/smart-buttons"
+import { ActivityPanel } from "@/components/activities/activity-panel"
 import { formatIDR, getInitials } from "@/lib/utils"
 import { LOST_REASON_LABELS } from "@/components/pipeline/pipeline-card"
 import type { PipelineStage, ProductLine, ProjectType, DocumentType, LostReason } from "@/types"
-import { FileText, History, User } from "lucide-react"
+import { FileText, History, User, ClipboardList } from "lucide-react"
 
 // ── Serialized types (Dates as ISO strings, Decimals as numbers) ──────────────
 
@@ -1418,9 +1418,28 @@ const REVENUE_VISIBLE_STAGES: PipelineStage[] = [
 export interface LeadDetailClientProps {
   lead: SerializedLead
   salesOptions: Array<{ id: string; name: string }>
+  currentUserId: string
+  assigneeOptions: Array<{ id: string; name: string }>
+  /** Serialized stage history — passed through to RecordTimeline */
+  stageHistory: Array<{
+    id: string
+    fromStage: PipelineStage
+    toStage: PipelineStage
+    changedAt: string
+    changer?: { id: string; name: string }
+  }>
+  /** Serialized field history — passed through to RecordTimeline */
+  fieldHistory: Array<{
+    id: string
+    field: string
+    oldValue: string | null
+    newValue: string | null
+    changedAt: string
+    changer?: { id: string; name: string }
+  }>
 }
 
-export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) {
+export function LeadDetailClient({ lead, salesOptions, currentUserId, assigneeOptions, stageHistory, fieldHistory }: LeadDetailClientProps) {
   const showActualRevenue = REVENUE_VISIBLE_STAGES.includes(lead.stage)
   const showLostReason = lead.stage === "lost_deal"
 
@@ -1446,6 +1465,13 @@ export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) 
       label: "Riwayat Stage",
       targetId: "section-stage-history",
       title: "Lihat riwayat perubahan stage",
+    },
+    {
+      type: "scroll",
+      icon: <ClipboardList />,
+      label: "Activities",
+      targetId: "section-activities",
+      title: "Lihat planned activities",
     },
     ...(lead.sales
       ? ([
@@ -1578,21 +1604,28 @@ export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) 
 
         {/* Right — col-span-1 */}
         <div className="space-y-6">
-          {/* Stage History */}
-          <div id="section-stage-history" className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-            <h2 className="font-semibold text-neutral-800 mb-4">Stage History</h2>
-            <StageHistoryTimeline history={lead.stageHistory} />
-          </div>
-
-          {/* Change History */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-            <h2 className="font-semibold text-neutral-800 mb-4">Change History</h2>
-            <FieldHistoryTimeline history={lead.fieldHistory} />
-          </div>
-
           {/* AE / Sales */}
           <AeCard leadId={lead.id} sales={lead.sales} salesOptions={salesOptions} />
+
+          {/* Planned Activities */}
+          <div id="section-activities">
+            <ActivityPanel
+              leadId={lead.id}
+              currentUserId={currentUserId}
+              assigneeOptions={assigneeOptions}
+            />
+          </div>
         </div>
+      </div>
+
+      {/* Timeline & Chatter — full-width below the 3-col grid */}
+      <div id="section-stage-history" className="mt-6">
+        <RecordTimeline
+          leadId={lead.id}
+          currentUserId={currentUserId}
+          fieldHistory={fieldHistory}
+          stageHistory={stageHistory}
+        />
       </div>
     </main>
   )

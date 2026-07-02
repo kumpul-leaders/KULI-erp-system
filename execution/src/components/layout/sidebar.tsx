@@ -10,6 +10,7 @@ import {
   BarChart3,
   Settings,
   UserCircle,
+  ClipboardList,
 } from "lucide-react"
 import { cn, getInitials } from "@/lib/utils"
 import type { SessionUser } from "@/types"
@@ -23,6 +24,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
       { href: "/pipeline", icon: KanbanSquare, label: "Pipeline" },
+      { href: "/activities", icon: ClipboardList, label: "Activities" },
       { href: "/clients", icon: Users, label: "Clients" },
     ],
   },
@@ -71,6 +73,7 @@ export function Sidebar({ user }: SidebarProps) {
           const visibleItems = group.items.filter((item) => {
             if (item.href === "/targets" && NON_COMMERCIAL_ROLES.includes(user.role)) return false
             if (item.href === "/pipeline" && NON_COMMERCIAL_ROLES.includes(user.role)) return false
+            if (item.href === "/activities" && NON_COMMERCIAL_ROLES.includes(user.role)) return false
             return true
           })
           if (visibleItems.length === 0) return null

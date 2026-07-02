@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/require-role"
 import { parseBody } from "@/lib/validations/parse"
 import { BulkReassignSchema } from "@/lib/validations/lead"
+import { createNotification } from "@/lib/notifications"
 
 // ── POST /api/leads/bulk-reassign ────────────────────────────────────────────
 // Admin only. Atomically moves all leads and clients from one user to another.
@@ -30,8 +31,8 @@ export async function POST(request: NextRequest) {
 
   // Validate both users exist
   const [fromUser, toUser] = await Promise.all([
-    prisma.user.findUnique({ where: { id: fromUserId }, select: { id: true, isActive: true } }),
-    prisma.user.findUnique({ where: { id: toUserId }, select: { id: true, isActive: true } }),
+    prisma.user.findUnique({ where: { id: fromUserId }, select: { id: true, name: true, isActive: true } }),
+    prisma.user.findUnique({ where: { id: toUserId }, select: { id: true, name: true, isActive: true } }),
   ])
 
   if (!fromUser) {
@@ -59,6 +60,18 @@ export async function POST(request: NextRequest) {
         data: { primaryAe: toUserId },
       }),
     ])
+
+    // lead_assigned: notify toUser once for the bulk reassignment
+    // Anti-noise: skip if admin is reassigning to themselves
+    if (leadsResult.count > 0 && toUserId !== admin.id) {
+      await createNotification({
+        userId: toUserId,
+        type: "lead_assigned",
+        title: `Lu di-assign ${leadsResult.count} lead${leadsResult.count > 1 ? "s" : ""} dari ${fromUser.name ?? "pengguna lain"}`,
+        entityType: "lead",
+        actorId: admin.id,
+      })
+    }
 
     return NextResponse.json({
       leadsReassigned: leadsResult.count,

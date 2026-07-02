@@ -1,3 +1,76 @@
+# WEBO Build Notes — Phase 2 Batch 4C: Notification UI
+**Build Date:** 2026-07-02
+**Status:** Complete. `npx tsc --noEmit`: 0 errors. `npm run test`: 122/122 pass. `npm run build`: clean (32/32 routes, /notifications appears as dynamic server-rendered route).
+
+## File Map
+| File | Action | Notes |
+|------|--------|-------|
+| `src/types/notification.ts` | CREATED | Shared `AppNotification`, `NotificationsResponse` types — client-safe, no Prisma |
+| `src/lib/utils.ts` | MODIFIED | Added `formatRelativeTime(date)` — Indonesian relative time ("baru saja", "5m lalu", "2j lalu", "kemarin", "3 hari lalu", "2 mgu lalu") |
+| `src/components/notifications/notification-bell.tsx` | CREATED | Client component — bell icon with unread badge, Popover preview (10 items), 60s polling + visibilitychange |
+| `src/components/notifications/notifications-view.tsx` | CREATED | Client component — full list, unread filter toggle, simple pagination, read-all |
+| `src/app/(dashboard)/layout.tsx` | MODIFIED | Added NotificationBell import + absolute overlay on topbar right edge |
+| `src/app/(dashboard)/notifications/page.tsx` | CREATED | Server Component page — direct Prisma fetch (no internal HTTP), passes data to NotificationsView |
+
+## Key Decisions
+
+**Bell injection approach — absolute overlay.**
+The topbar is a server component and each page renders its own `<Topbar title="...">`. Rather than modifying every page file, the dashboard layout wraps its right panel in a `relative` div and overlays the bell with `absolute` positioning at h-14 (topbar height). The overlay container is `pointer-events-none`; the bell is `pointer-events-auto` — all topbar content behind it remains clickable.
+
+**Polling: `setInterval(60s)` + `visibilitychange`.**
+A single polling strategy was chosen (not mixed with window-focus listener). `setInterval(60_000)` for background updates. `document.addEventListener("visibilitychange")` refetches immediately when tab becomes visible. The polling-only call fetches `?limit=1` (minimal payload for badge count only). The full list fetches only when the popover opens.
+
+**Separate notification type.**
+Prisma generates its own `NotificationType` enum in `@prisma/client`. A local string union type in `src/types/notification.ts` avoids importing Prisma in client components. The API serializer already outputs plain strings — no runtime conversion needed.
+
+**`/notifications` page uses direct Prisma, not internal fetch.**
+Consistent with other Server Component pages (activities, clients, pipeline). Pagination driven by `?page=` URL param; filter toggle driven by `?unread=1`. Both trigger Next.js server re-render. No useEffect-based data fetching.
+
+**Optimistic updates in NotificationsView.**
+Mark-read and mark-all-read apply optimistically to local state. API call runs concurrently. On failure: silently ignored (badge/list state is non-critical and refreshes on next poll or page navigation). Keeps the UX snappy.
+
+**Navigation on item click.**
+`entityType: "lead"` → `/pipeline/[entityId]`. `entityType: "client"` → `/clients/[entityId]`. Null entity: click marks read but does not navigate. Read items with no entity get `cursor-default` and disabled button state.
+
+---
+
+# WEBO Build Notes — Phase 2 Batch 4B: Chatter UI / RecordTimeline
+
+**Date:** 2026-07-02
+
+## Files Changed
+
+### New
+- `src/components/chatter/record-timeline.tsx`
+
+### Modified
+- `src/components/pipeline/lead-detail-client.tsx`
+- `src/app/(dashboard)/pipeline/[id]/page.tsx`
+- `src/app/(dashboard)/clients/[id]/page.tsx`
+
+### Kept but no longer used in pages
+- `src/components/pipeline/stage-history-timeline.tsx`
+- `src/components/pipeline/field-history-timeline.tsx`
+
+## Key Decisions
+
+**Reuse vs Replace:** Old StageHistoryTimeline/FieldHistoryTimeline kept on disk. RecordTimeline inlines per-kind renderers — required by unified sort.
+
+**Data flow:** fieldHistory + stageHistory from props (server-serialized). Comments/activities/followers fetched client-side on mount.
+
+**Optimistic insert:** Temp comment with `authorId:"__optimistic__"` inserted immediately, replaced on success, rolled back on failure via `deletedAt:"__rollback__"` sentinel.
+
+**Client fieldHistory:** Reshaped `changerName:string` to `changer:{id:"",name}` to match RecordTimeline interface.
+
+**Anchors:** Lead page reuses `id="section-stage-history"` on RecordTimeline wrapper. Client page adds `id="section-client-chatter"` + new Chatter SmartButton.
+
+## Verification
+- `npx tsc --noEmit`: 0 errors
+- `npm run test`: 122/122 passed
+- `npm run build`: clean, 31 pages
+
+---
+
 # WEBO Build Notes — VF ERP Phase 1 Foundation
 **Build Date:** 2026-05-18
 **Agent:** Webo — Web Engineer & Builder Operations
@@ -675,3 +748,268 @@ Applied in: `dashboard/page.tsx`, `targets/page.tsx`.
 ### Stage Config API
 
 Reuses existing `PATCH /api/system-config/[key]` (admin-gated). Body: full `PipelineStageConfig` object as `{ value: {...} }`. Client Zod-validates before send. Server validates on receipt.
+
+---
+
+## Phase 2 — Global Command Palette (Cmd+K)
+**Build Date:** 2026-07-02
+**Status:** Complete. `npx tsc --noEmit`: 0 errors. `npm run build`: clean (25/25 pages).
+
+### Files Created / Modified
+
+| File | Action | Notes |
+|------|--------|-------|
+| `src/app/api/search/route.ts` | CREATED | GET /api/search?q= — parallel Prisma queries, requireAuthenticated |
+| `src/components/shared/command-palette.tsx` | CREATED | Client component — hotkey, debounce, role-gated nav |
+| `src/app/(dashboard)/layout.tsx` | MODIFIED | Added CommandPalette mount + import |
+| `src/components/ui/command.tsx` | UNTOUCHED | Already existed via shadcn — no scaffold needed |
+
+### Key Decisions
+
+**command.tsx — no scaffold needed.**
+`src/components/ui/command.tsx` already existed with full shadcn implementation including `CommandDialog`, `CommandInput`, `CommandList`, `CommandGroup`, `CommandItem`, `CommandSeparator`. No `npx shadcn add` call needed.
+
+**Role-gating mirrors sidebar exactly.**
+Sidebar uses `NON_COMMERCIAL_ROLES = ["operation", "hr", "finance"]` to hide Pipeline and Targets. Command palette uses identical logic — extracted into `getNavItems(role)`. Settings only shown to admin / commercial_director.
+
+**"Client Baru" quick action links to /clients (not /clients?new=1).**
+Verified: clients page has no `?new=1` handler. Only pipeline has this pattern. Brief says "kalau tidak ada, link ke /clients saja" — confirmed and applied.
+
+**API search — no Zod on input.**
+`q` is a plain string from URL search param. `src/lib/validations/` is off-limits per brief. A `q.length < 2` guard on the server is sufficient — no external payload.
+
+**"use client" justification.**
+Three requirements force client-side: (1) `keydown` event listener for Cmd+K, (2) controlled `open` state for CommandDialog, (3) debounced `fetch` to /api/search. Server Component cannot satisfy any of these.
+
+**Mount point: dashboard layout (Server Component).**
+`sessionUser` is already built in layout.tsx. Passed as prop to `<CommandPalette user={sessionUser} />` — clean boundary, no additional auth call.
+
+**Exported extras.**
+`CommandPaletteTrigger` button and `useCommandPaletteOpen` hook are exported from the component file for sidebar/topbar integration if needed.
+
+### Search Behavior
+- Debounce: 250ms
+- Min query length: 2 chars (enforced client + server)
+- Results limit: 5 per entity (Client, Lead, Contact)
+- Mode: Prisma `mode: "insensitive"` (ILIKE)
+- Navigate on select: clients → /clients/[id], leads → /pipeline/[id], contacts → /clients/[clientId]
+
+### NOT touched (per brief)
+- `prisma/schema.prisma`
+- `src/lib/validations/**`
+- Any existing `src/app/api/**` routes
+
+---
+
+## Phase 2 Batch 3A — Chatter Core (Comments + Followers)
+**Build Date:** 2026-07-02
+**Status:** Complete. `npx tsc --noEmit`: 0 errors from authored files. `npm run test`: 109/109 pass (89 pre-existing + 20 new). Build: pre-existing TS failures in other agents' uncommitted files (`activity-panel.tsx`, `pipeline/[id]/page.tsx`) block `npm run build` — not introduced by this batch.
+
+### Migration Name
+`20260702162058_add_comment_follower`
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `prisma/migrations/20260702162058_add_comment_follower/migration.sql` | Applied migration |
+| `src/lib/mention-parser.ts` | Pure `extractMentionIds(body)` — no imports, testable without DB |
+| `src/lib/mentions.ts` | `parseMentions(body)` (async, DB-validates active users); re-exports `extractMentionIds` |
+| `src/lib/validations/comment.ts` | `CreateCommentSchema`, `UpdateCommentSchema` |
+| `src/app/api/comments/route.ts` | GET + POST |
+| `src/app/api/comments/[id]/route.ts` | PATCH + DELETE |
+| `src/app/api/followers/route.ts` | GET + POST + DELETE |
+| `src/lib/validations/__tests__/comment.test.ts` | 20 assertions (schema + pure mention extraction) |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Added `Comment`, `Follower` models + back-relations on `User`, `Lead`, `Client` |
+| `src/app/api/leads/route.ts` | POST wrapped in `$transaction`; auto-follow creator + salesId |
+
+### API Contract
+
+**GET /api/comments?leadId=uuid | ?clientId=uuid**
+Response: `{ comments: Comment[] }`
+
+**POST /api/comments**
+Body: `{ body: string, leadId?: string, clientId?: string }`
+Response: `{ comment: Comment }` 201
+Side effects: author auto-followed; mentioned users auto-followed
+
+**PATCH /api/comments/:id**
+Body: `{ body: string }`
+Response: `{ comment: Comment }` — author only; re-parses mentions; new mentioned users auto-followed
+
+**DELETE /api/comments/:id**
+Response: `{ success: true }` — author or admin; soft delete
+
+**Comment shape:**
+```ts
+{
+  id: string
+  body: string             // may contain @[Name](uuid) tokens
+  mentions: string[]       // validated active user IDs, server-parsed
+  leadId: string | null
+  clientId: string | null
+  authorId: string
+  createdAt: string        // ISO 8601
+  editedAt: string | null
+  deletedAt: string | null // null for non-deleted
+  author: { id: string; name: string }
+}
+```
+
+**GET /api/followers?leadId=uuid | ?clientId=uuid**
+Response: `{ followers: Follower[] }`
+
+**POST /api/followers**
+Body: `{ leadId?: string, clientId?: string }` — user follows themselves (idempotent upsert)
+Response: `{ follower: Follower }` 201
+
+**DELETE /api/followers**
+Body: `{ leadId?: string, clientId?: string }` — user unfollows themselves
+Response: `{ success: true }`
+
+**Follower shape:**
+```ts
+{
+  id: string
+  userId: string
+  leadId: string | null
+  clientId: string | null
+  createdAt: string        // ISO 8601
+  user: { id: string; name: string }
+}
+```
+
+### Mention Format
+`@[Display Name](userId)` — e.g. `@[Alice Tan](550e8400-e29b-41d4-a716-446655440000)`
+Client sends raw body text. Server parses and validates. `mentions[]` in Comment = active user IDs only.
+
+### Key Decisions
+
+**Pure parser in separate file** — `mention-parser.ts` has zero imports. Vitest cannot initialize Prisma (DATABASE_URL absent in test env). Separating the regex extractor lets tests import it without triggering Prisma singleton.
+
+**Follower unique constraint design** — Two separate `@@unique` blocks: `[userId, leadId]` and `[userId, clientId]`. A follower row for a lead is distinct from one for a client. Prisma upsert keys named `userId_leadId` and `userId_clientId` respectively.
+
+**Auto-follow in leads POST** — Wrapped existing `prisma.lead.create` in `$transaction`. Auto-follow upserts are inside the same transaction — atomic with lead creation. Change is minimal: no logic moved, just wrapped.
+
+**Soft delete** — `deletedAt` field only. GET filters `{ deletedAt: null }`. Hard deletes via cascade (when Lead/Client is deleted, comments/followers cascade). No hard delete API for comments.
+
+---
+
+## Phase 2 Batch 4A — Notification Core
+**Build Date:** 2026-07-02
+**Status:** Complete. `npx tsc --noEmit`: 0 errors. `npm run test`: 122/122 pass (+13 new). `npm run build`: clean.
+
+### Migration Name
+`20260702163152_add_notification`
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `prisma/migrations/20260702163152_add_notification/migration.sql` | Applied migration |
+| `src/lib/notifications.ts` | `createNotification` + `createNotifications` helpers with actor-skip guard |
+| `src/lib/validations/notification.ts` | `NotificationTypeSchema`, `CreateNotificationInputSchema`, `MarkReadSchema` |
+| `src/lib/validations/__tests__/notification.test.ts` | 13 assertions |
+| `src/app/api/notifications/route.ts` | GET |
+| `src/app/api/notifications/[id]/route.ts` | PATCH |
+| `src/app/api/notifications/read-all/route.ts` | POST |
+
+### Files Modified (trigger wiring)
+| File | Change |
+|------|--------|
+| `src/app/api/comments/route.ts` | Mention trigger on POST — inside $transaction |
+| `src/app/api/comments/[id]/route.ts` | Mention trigger on PATCH (newly-added mentions only) — refactored to single $transaction |
+| `src/app/api/leads/route.ts` | lead_assigned trigger on POST |
+| `src/app/api/leads/[id]/route.ts` | lead_assigned trigger on PATCH (salesId change only), outside sequential tx |
+| `src/app/api/leads/bulk-reassign/route.ts` | lead_assigned trigger (single bulk notification), added name to user selects |
+
+### Key Decisions
+
+**PATCH comment trigger: newly-added mentions only.** On edit, diff `mentionedUserIds` against `existing.mentions`. Only users newly added get a notification. Prevents re-notifying people who were already mentioned.
+
+**Bulk-reassign: single notification, not per-lead.** `updateMany` doesn't give per-lead client names. One notification with count is accurate and not fabricated.
+
+**lead_assigned on PATCH: outside sequential transaction.** Existing `prisma.$transaction([...])` sequential array form. Notification runs after the array transaction resolves. Safe: if the transaction throws, notification never executes.
+
+**`createNotifications` uses `createMany`.** Batch insert instead of N individual creates.
+
+**`unreadCount` always in GET response.** Even when `unread=1` filter is active, the count reflects total unread. UI bell badge uses this field.
+
+### API Contract for UI Agent (Bell + /notifications page)
+
+**GET /api/notifications**
+```
+Query: unread=1 (optional), limit=N (1–100, default 20)
+Response: { notifications: Notification[], unreadCount: number }
+```
+
+**PATCH /api/notifications/[id]**
+```
+Body: { action: "read" }
+Auth: owner only. Idempotent.
+Response: { notification: Notification }
+Errors: 400 (bad body), 403 (not owner), 404
+```
+
+**POST /api/notifications/read-all**
+```
+Body: (none)
+Response: { markedRead: number }
+```
+
+**Notification shape:**
+```ts
+{
+  id: string
+  userId: string
+  type: "mention" | "lead_assigned" | "activity_due" | "activity_overdue" | "alert" | "stage_change"
+  title: string
+  body: string | null
+  entityType: string | null   // "lead" | "client" | null
+  entityId: string | null     // UUID, or null
+  readAt: string | null       // null = unread
+  createdAt: string           // ISO datetime
+}
+```
+
+---
+
+## Phase 2 Batch 2 — Activity UI
+**Build Date:** 2026-07-02
+**Status:** Complete. `npx tsc --noEmit`: 0 errors. `npm run test`: 109/109 pass. `npm run build`: clean (29/29 routes, /activities appears as dynamic route).
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `src/components/activities/activity-status.ts` | Pure helper: `getActivityStatus(dueDate)` returns upcoming/today/overdue. `ACTIVITY_STATUS_CLASSES` maps status to Tailwind token classes. `formatActivityDate()` for display. No JSX — server+client safe. |
+| `src/components/activities/activity-dot.tsx` | `ActivityDot` — small colored dot with Tooltip. Three states: (1) activity exists — dot colored by status, tooltip shows subject + date. (2) no activity — grey dot, tooltip "Tidak ada activity terjadwal". (3) stale — grey dot + AlertTriangle icon, tooltip "Deal tanpa aktivitas lebih dari 7 hari". |
+| `src/components/activities/activity-panel.tsx` | `ActivityPanel` — full "Planned Activities" card component. Fetches `GET /api/activities?leadId=X&status=open` on mount. Per-row: type icon, subject, colored due date, assignee name, Done/Reschedule/Cancel actions. "+ Activity" button opens Sheet with form. After Done: AlertDialog "Schedule next activity?" with same form (next-activity discipline). |
+| `src/components/activities/activities-view.tsx` | `ActivitiesView` — /activities page client component. Groups activities: Overdue (red header) / Hari Ini (orange) / Mendatang (green). Per row: ActivityDot, type icon, subject, lead/client link, due date, inline Done + Reschedule. "Semua Tim" toggle for admin/commercial_director. Optimistic list update on Done. |
+| `src/app/(dashboard)/activities/page.tsx` | Server Component. Direct Prisma fetch (no internal HTTP). Role-checks `canViewAllTeam`. `?team=1` URL param switches between `fetchMyActivities(userId)` and `fetchAllActivities()`. Passes serialized data + assigneeOptions to ActivitiesView. |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/components/pipeline/pipeline-card.tsx` | Added `nextActivityAt: string | null` to `SerializedLead` interface. Added `isStaleWithoutActivity()` (7-day threshold, open stages only). ActivityDot in card footer (always shown). Stale flag triggers ActivityDot warning icon. |
+| `src/components/pipeline/lead-detail-client.tsx` | Added `currentUserId` + `assigneeOptions` props to `LeadDetailClientProps` / `LeadDetailClient`. ActivityPanel in right column inside `id="section-activities"`. "Activities" smart button (scroll type) added to SmartButtons row. Imported `ClipboardList` from lucide. |
+| `src/app/(dashboard)/pipeline/[id]/page.tsx` | Fetch `currentDbUser.id` (changed select from `{ role }` to `{ id, role }`). Compute `currentUserId`. Pass `currentUserId` and `assigneeOptions={salesOptions}` to `LeadDetailClient`. |
+| `src/app/(dashboard)/clients/[id]/page.tsx` | Fetch `currentDbUser.id`. Compute `currentUserId`. Add ActivityPanel in right column (`id="section-client-activities"`). "Activities" smart button. Imported `ClipboardList` + `ActivityPanel`. |
+| `src/components/layout/sidebar.tsx` | Added `/activities` nav item (ClipboardList icon) under COMMERCIAL group, positioned between Pipeline and Clients. Added `NON_COMMERCIAL_ROLES` filter rule for `/activities` (same restriction as `/pipeline`). |
+
+### Key Decisions
+
+**ActivityPanel uses client-side fetch, not RSC direct query** — The panel is embedded inside `LeadDetailClient` which is already "use client". It needs independent refresh after mutations (Done, Reschedule, Cancel) without re-rendering the entire lead detail. `useEffect` fetch is justified here: browser-initiated, mutation-driven refetch lifecycle.
+
+**`initialFocus` removed from Calendar** — react-day-picker v9 (shadcn v4) dropped this prop. Removed from all three Calendar usages. TypeScript caught this cleanly.
+
+**Stale flag logic** — `nextActivityAt === null AND updatedAt > 7 days AND stage in [leads, pipeline, negotiation, contract_renewal]`. Won/lost/invoiced/no_response excluded — stale flag is only meaningful for open pipeline.
+
+**Color convention matches Odoo pattern** — success-500 (green) = upcoming, warning-500 (orange) = today, danger-500 (red) = overdue, neutral-300 (grey) = none. Uses existing `@theme` tokens from globals.css.
+
+**`/activities` route** — Server Component with direct Prisma (consistent with other detail pages). Role check + dataset selection done server-side. Team toggle updates URL (`?team=1`), Next.js re-renders server component — no client state for data.
+
+**`date-fns` `format` usage** — confirmed available via react-day-picker dependency. Used for `yyyy-MM-dd` serialization and display formatting in Calendar popover triggers.
+
+**Empty state text** — No emoji per design system check (globals.css has no emoji in utility classes; existing codebase uses no emoji in UI text). Empty state: "Pipeline bersih / Tidak ada activity open."

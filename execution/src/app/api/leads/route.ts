@@ -4,6 +4,7 @@ import { requireAuthenticated, requireCanCreateLeads } from "@/lib/require-role"
 import { parseBody } from "@/lib/validations/parse"
 import { PipelineStageSchema, CreateLeadSchema } from "@/lib/validations/lead"
 import { getStageConfig } from "@/lib/stage-config.server"
+import { createNotification } from "@/lib/notifications"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ function serializeLead(lead: {
   closedAt: Date | null
   expectedCloseDate: Date | null
   updatedAt: Date
+  nextActivityAt?: Date | null
   client?: { id: string; name: string; customerCode?: string | null }
   sales?: { id: string; name: string } | null
   documents?: Array<{
@@ -86,6 +88,7 @@ function serializeLead(lead: {
       uploadedAt: d.uploadedAt.toISOString(),
       createdAt: d.createdAt.toISOString(),
     })),
+    nextActivityAt: lead.nextActivityAt?.toISOString() ?? null,
     stageHistory: lead.stageHistory?.map((h) => ({
       ...h,
       changedAt: h.changedAt.toISOString(),
@@ -175,31 +178,61 @@ export async function POST(request: NextRequest) {
   const initialProbability = stageConfig[stage].probability
 
   try {
-    const lead = await prisma.lead.create({
-      data: {
-        clientId: body.clientId,
-        productLine: body.productLine,
-        description: body.description || null,
-        projectType: body.projectType,
-        stage,
-        salesId: body.salesId || null,
-        projectedRevenue: body.projectedRevenue ?? null,
-        billingPlan,
-        quarter,
-        notes: body.notes || null,
-        expectedCloseDate:
-          typeof body.expectedCloseDate === "string" && body.expectedCloseDate
-            ? new Date(body.expectedCloseDate)
-            : null,
-        probability: initialProbability,
-        probabilityIsManual: false,
-      },
-      include: {
-        client: { select: { id: true, name: true, customerCode: true } },
-        sales: { select: { id: true, name: true } },
-        documents: true,
-        stageHistory: true,
-      },
+    const lead = await prisma.$transaction(async (tx) => {
+      const created = await tx.lead.create({
+        data: {
+          clientId: body.clientId,
+          productLine: body.productLine,
+          description: body.description || null,
+          projectType: body.projectType,
+          stage,
+          salesId: body.salesId || null,
+          projectedRevenue: body.projectedRevenue ?? null,
+          billingPlan,
+          quarter,
+          notes: body.notes || null,
+          expectedCloseDate:
+            typeof body.expectedCloseDate === "string" && body.expectedCloseDate
+              ? new Date(body.expectedCloseDate)
+              : null,
+          probability: initialProbability,
+          probabilityIsManual: false,
+        },
+        include: {
+          client: { select: { id: true, name: true, customerCode: true } },
+          sales: { select: { id: true, name: true } },
+          documents: true,
+          stageHistory: true,
+        },
+      })
+
+      // Auto-follow: creator + salesId (if set) become followers of the new lead
+      const autoFollowIds = [...new Set([user.id, body.salesId].filter(Boolean))] as string[]
+      for (const uid of autoFollowIds) {
+        await tx.follower.upsert({
+          where: { userId_leadId: { userId: uid, leadId: created.id } },
+          create: { userId: uid, leadId: created.id },
+          update: {},
+        })
+      }
+
+      // lead_assigned: notify sales if assigned and not the creator
+      if (body.salesId && body.salesId !== user.id) {
+        const clientName = created.client?.name ?? ""
+        await createNotification(
+          {
+            userId: body.salesId,
+            type: "lead_assigned",
+            title: `Lu di-assign lead ${clientName}`,
+            entityType: "lead",
+            entityId: created.id,
+            actorId: user.id,
+          },
+          tx
+        )
+      }
+
+      return created
     })
 
     return NextResponse.json({ lead: serializeLead(lead) }, { status: 201 })

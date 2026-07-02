@@ -81,7 +81,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     supabaseUser?.email
       ? prisma.user.findUnique({
           where: { email: supabaseUser.email },
-          select: { role: true },
+          select: { id: true, role: true },
         })
       : null,
     prisma.user.findMany({
@@ -94,6 +94,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   if (!lead) notFound()
 
   const userRole = currentDbUser?.role === "admin" ? "admin" : "account"
+  const currentUserId = currentDbUser?.id ?? ""
 
   // Serialize: Date → ISO string, Decimal → number
   const serializedLead = {
@@ -161,7 +162,14 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       <Topbar title={lead.client.name}>
         <LeadDetailActions leadId={lead.id} stage={lead.stage} userRole={userRole} />
       </Topbar>
-      <LeadDetailClient lead={serializedLead} salesOptions={salesOptions} />
+      <LeadDetailClient
+        lead={serializedLead}
+        salesOptions={salesOptions}
+        currentUserId={currentUserId}
+        assigneeOptions={salesOptions}
+        stageHistory={serializedLead.stageHistory}
+        fieldHistory={serializedLead.fieldHistory}
+      />
     </>
   )
 }

@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
     // Atomic transaction: reassign leads and clients in one operation
     const [leadsResult, clientsResult] = await prisma.$transaction([
       prisma.lead.updateMany({
-        where: { salesId: fromUserId },
+        where: { salesId: fromUserId, deletedAt: null },
         data: { salesId: toUserId },
       }),
       prisma.client.updateMany({
-        where: { primaryAe: fromUserId },
+        where: { primaryAe: fromUserId, deletedAt: null },
         data: { primaryAe: toUserId },
       }),
     ])

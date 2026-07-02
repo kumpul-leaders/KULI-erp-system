@@ -39,6 +39,8 @@ export interface SerializedLead {
   updatedAt: string
   /** ISO datetime of the earliest open activity, or null if none */
   nextActivityAt: string | null
+  /** ISO datetime string of expected close date, or null */
+  expectedCloseDate: string | null
   client: { id: string; name: string; customerCode: string | null }
   sales: { id: string; name: string } | null
   documents: Array<{

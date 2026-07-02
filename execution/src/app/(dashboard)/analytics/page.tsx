@@ -251,6 +251,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     prisma.lead.groupBy({
       by: ["salesId"],
       where: {
+        deletedAt: null,
         salesId: { not: null },
         ...aeFilter,
         ...createdDateFilter,
@@ -262,6 +263,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     prisma.lead.groupBy({
       by: ["salesId"],
       where: {
+        deletedAt: null,
         salesId: { not: null },
         stage: { in: WON_STAGES },
         ...aeFilter,
@@ -274,6 +276,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     prisma.lead.groupBy({
       by: ["salesId"],
       where: {
+        deletedAt: null,
         salesId: { not: null },
         stage: { in: LOST_STAGES },
         ...aeFilter,
@@ -286,6 +289,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     prisma.lead.groupBy({
       by: ["salesId"],
       where: {
+        deletedAt: null,
         salesId: { not: null },
         stage: { in: WON_STAGES },
         actualRevenue: { not: null },
@@ -295,9 +299,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       _sum: { actualRevenue: true },
     }),
 
-    // 2. All leads with client industry — createdAt filter
+    // 2. All leads with client industry — createdAt filter (active only)
     prisma.lead.findMany({
       where: {
+        deletedAt: null,
         ...aeFilter,
         ...createdDateFilter,
       },
@@ -307,9 +312,10 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
     }),
 
-    // 3. Revenue trend leads — all stages with any revenue value, dynamic year window
+    // 3. Revenue trend leads — all stages with any revenue value, dynamic year window (active only)
     prisma.lead.findMany({
       where: {
+        deletedAt: null,
         billingPlan: { in: RT_MONTHS.map((m) => m.bp) },
         OR: [
           { actualRevenue: { not: null } },
@@ -325,29 +331,32 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
     }),
 
-    // 4. Funnel stage counts — createdAt filter
+    // 4. Funnel stage counts — createdAt filter (active only)
     prisma.lead.groupBy({
       by: ["stage"],
       where: {
+        deletedAt: null,
         ...aeFilter,
         ...createdDateFilter,
       },
       _count: { _all: true },
     }),
 
-    // 4b. Funnel revenue — projected + actual revenue per stage
+    // 4b. Funnel revenue — projected + actual revenue per stage (active only)
     prisma.lead.groupBy({
       by: ["stage"],
       _sum: { projectedRevenue: true, actualRevenue: true },
       where: {
+        deletedAt: null,
         ...aeFilter,
         ...createdDateFilter,
       },
     }),
 
-    // 5a. Renewed client count (distinct clientIds with contract_renewal) — closedAt filter
+    // 5a. Renewed client count — distinct clientIds with contract_renewal (active only)
     prisma.lead.findMany({
       where: {
+        deletedAt: null,
         stage: "contract_renewal",
         ...aeFilter,
         ...closedDateFilter,
@@ -356,8 +365,8 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       distinct: ["clientId"],
     }),
 
-    // 5b. Total client count (unfiltered — retention denominator is always total clients)
-    prisma.client.count(),
+    // 5b. Total client count (active only — retention denominator)
+    prisma.client.count({ where: { deletedAt: null } }),
 
     // AE users for name resolution (account + admin + commercial_director + account_manager can own leads)
     prisma.user.findMany({
@@ -385,20 +394,22 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       },
     }),
 
-    // Overall win rate — stage counts for all pitched leads
+    // Overall win rate — stage counts for all pitched leads (active only)
     prisma.lead.groupBy({
       by: ["stage"],
       where: {
+        deletedAt: null,
         ...aeFilter,
         ...closedDateFilter,
       },
       _count: { _all: true },
     }),
 
-    // Revenue by product line (won deals only)
+    // Revenue by product line (won deals only, active only)
     prisma.lead.groupBy({
       by: ["productLine"],
       where: {
+        deletedAt: null,
         stage: { in: WON_STAGES },
         actualRevenue: { not: null },
         ...aeFilter,
@@ -408,19 +419,21 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
       orderBy: { _sum: { actualRevenue: "desc" } },
     }),
 
-    // Active pipeline value — leads in active (pre-won) stages
+    // Active pipeline value — leads in active (pre-won) stages (active only)
     prisma.lead.aggregate({
       _sum: { projectedRevenue: true },
       where: {
+        deletedAt: null,
         stage: { in: ["leads", "pipeline", "negotiation"] },
         ...aeFilter,
       },
     }),
 
-    // Lost reason distribution — lost_deal leads with lostReason groupBy
+    // Lost reason distribution — lost_deal leads (active only)
     prisma.lead.groupBy({
       by: ["lostReason"],
       where: {
+        deletedAt: null,
         stage: $Enums.PipelineStage.lost_deal,
         ...aeFilter,
         ...createdDateFilter,

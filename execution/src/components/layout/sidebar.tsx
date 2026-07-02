@@ -54,10 +54,10 @@ export function Sidebar({ user }: SidebarProps) {
   }
 
   return (
-    <aside className="flex h-screen w-60 flex-shrink-0 flex-col border-r border-neutral-200 bg-neutral-50 sticky top-0">
+    <aside className="hidden md:flex h-screen w-60 flex-shrink-0 flex-col border-r border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 sticky top-0">
       {/* Brand */}
-      <div className="flex items-center border-b border-neutral-200 px-4 py-3">
-        <span className="text-lg font-bold tracking-tight text-neutral-800">
+      <div className="flex items-center border-b border-neutral-200 dark:border-neutral-700 px-4 py-3">
+        <span className="text-lg font-bold tracking-tight text-neutral-800 dark:text-neutral-100">
           vosFoyer
         </span>
         <span className="ml-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
@@ -92,8 +92,8 @@ export function Sidebar({ user }: SidebarProps) {
                       className={cn(
                         "flex items-center gap-2.5 mx-2 rounded-md px-3 py-2 text-[13px] font-medium transition-colors duration-100",
                         active
-                          ? "bg-accent-50 text-accent-700 font-semibold border-l-2 border-accent-600 pl-[calc(0.75rem_-_2px)]"
-                          : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800"
+                          ? "bg-accent-50 dark:bg-accent-50/10 text-accent-700 dark:text-accent-600 font-semibold border-l-2 border-accent-600 pl-[calc(0.75rem_-_2px)]"
+                          : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-100"
                       )}
                     >
                       <item.icon
@@ -125,8 +125,8 @@ export function Sidebar({ user }: SidebarProps) {
                   className={cn(
                     "flex items-center gap-2.5 mx-2 rounded-md px-3 py-2 text-[13px] font-medium transition-colors duration-100",
                     isActive(ADMIN_NAV_ITEM.href)
-                      ? "bg-accent-50 text-accent-700 font-semibold border-l-2 border-accent-600 pl-[calc(0.75rem_-_2px)]"
-                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800"
+                      ? "bg-accent-50 dark:bg-accent-50/10 text-accent-700 dark:text-accent-600 font-semibold border-l-2 border-accent-600 pl-[calc(0.75rem_-_2px)]"
+                      : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-100"
                   )}
                 >
                   <ADMIN_NAV_ITEM.icon
@@ -156,8 +156,8 @@ export function Sidebar({ user }: SidebarProps) {
                 className={cn(
                   "flex items-center gap-2.5 mx-2 rounded-md px-3 py-2 text-[13px] font-medium transition-colors duration-100",
                   isActive("/account")
-                    ? "bg-accent-50 text-accent-700 font-semibold border-l-2 border-accent-600 pl-[calc(0.75rem_-_2px)]"
-                    : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800"
+                    ? "bg-accent-50 dark:bg-accent-50/10 text-accent-700 dark:text-accent-600 font-semibold border-l-2 border-accent-600 pl-[calc(0.75rem_-_2px)]"
+                    : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-100"
                 )}
               >
                 <UserCircle
@@ -174,13 +174,13 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* User info — bottom */}
-      <div className="mt-auto border-t border-neutral-200 px-4 py-3">
+      <div className="mt-auto border-t border-neutral-200 dark:border-neutral-700 px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-100 text-sm font-semibold text-accent-700">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-100 dark:bg-accent-50 text-sm font-semibold text-accent-700 dark:text-accent-600">
             {getInitials(user.name)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-neutral-700">
+            <p className="truncate text-sm font-medium text-neutral-700 dark:text-neutral-200">
               {user.name}
             </p>
             <p className="text-xs text-neutral-400">
@@ -204,7 +204,7 @@ export function Sidebar({ user }: SidebarProps) {
           {(user.role === "admin" || user.role === "commercial_director") && (
             <Link
               href="/settings"
-              className="ml-auto text-neutral-400 hover:text-neutral-600"
+              className="ml-auto text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
               aria-label="Settings"
             >
               <Settings className="h-4 w-4" />

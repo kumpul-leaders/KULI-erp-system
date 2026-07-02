@@ -633,7 +633,7 @@ export function AnalyticsContent({
         currentUserRole={currentUserRole}
       />
 
-      <main className="flex-1 overflow-y-auto px-8 py-4">
+      <main className="flex-1 overflow-y-auto px-4 md:px-8 py-4">
         {/* Export button row */}
         <div className="flex justify-end mb-4">
           <Button
@@ -689,24 +689,24 @@ export function AnalyticsContent({
                     layout="vertical"
                     margin={{ top: 0, right: 24, bottom: 0, left: 8 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-neutral-200)" />
                     <XAxis
                       type="number"
                       domain={[0, 100]}
                       tickFormatter={(v: number) => `${v}%`}
-                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      tick={{ fontSize: 11, fill: "var(--color-neutral-400)" }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
                       type="category"
                       dataKey="aeName"
-                      tick={{ fontSize: 12, fill: "#374151" }}
+                      tick={{ fontSize: 12, fill: "var(--color-neutral-600)" }}
                       axisLine={false}
                       tickLine={false}
                       width={96}
                     />
-                    <Tooltip content={<WinRateTooltip />} cursor={{ fill: "#f9fafb" }} />
+                    <Tooltip content={<WinRateTooltip />} cursor={{ fill: "var(--color-neutral-50)" }} />
                     <Bar
                       dataKey="winRate"
                       fill="#3B82F6"
@@ -728,24 +728,24 @@ export function AnalyticsContent({
                     layout="vertical"
                     margin={{ top: 0, right: 24, bottom: 0, left: 8 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-neutral-200)" />
                     <XAxis
                       type="number"
                       domain={[0, 100]}
                       tickFormatter={(v: number) => `${v}%`}
-                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      tick={{ fontSize: 11, fill: "var(--color-neutral-400)" }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
                       type="category"
                       dataKey="industry"
-                      tick={{ fontSize: 12, fill: "#374151" }}
+                      tick={{ fontSize: 12, fill: "var(--color-neutral-600)" }}
                       axisLine={false}
                       tickLine={false}
                       width={96}
                     />
-                    <Tooltip content={<WinRateTooltip />} cursor={{ fill: "#f9fafb" }} />
+                    <Tooltip content={<WinRateTooltip />} cursor={{ fill: "var(--color-neutral-50)" }} />
                     <Bar dataKey="winRate" fill="#3B82F6" radius={[0, 3, 3, 0]} maxBarSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -783,21 +783,21 @@ export function AnalyticsContent({
                 data={revenueTrend}
                 margin={{ top: 4, right: 16, bottom: 0, left: 8 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-neutral-200)" />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  tick={{ fontSize: 11, fill: "var(--color-neutral-400)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   tickFormatter={formatRevenueTick}
-                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  tick={{ fontSize: 11, fill: "var(--color-neutral-400)" }}
                   axisLine={false}
                   tickLine={false}
                   width={48}
                 />
-                <Tooltip content={<RevenueTooltip />} cursor={{ stroke: "#e5e7eb" }} />
+                <Tooltip content={<RevenueTooltip />} cursor={{ stroke: "var(--color-neutral-200)" }} />
                 <Line
                   type="monotone"
                   dataKey="won"
@@ -842,7 +842,7 @@ export function AnalyticsContent({
                 }))}
                 margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-neutral-200)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis
                   tickFormatter={(v: number) => `${(v / 1_000_000).toFixed(0)}M`}
@@ -878,23 +878,23 @@ export function AnalyticsContent({
                 layout="vertical"
                 margin={{ top: 0, right: 24, bottom: 0, left: 8 }}
               >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-neutral-200)" />
                 <XAxis
                   type="number"
                   allowDecimals={false}
-                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  tick={{ fontSize: 11, fill: "var(--color-neutral-400)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   type="category"
                   dataKey="reason"
-                  tick={{ fontSize: 11, fill: "#374151" }}
+                  tick={{ fontSize: 11, fill: "var(--color-neutral-600)" }}
                   axisLine={false}
                   tickLine={false}
                   width={160}
                 />
-                <Tooltip content={<LostReasonTooltip />} cursor={{ fill: "#f9fafb" }} />
+                <Tooltip content={<LostReasonTooltip />} cursor={{ fill: "var(--color-neutral-50)" }} />
                 <Bar dataKey="count" fill="#EF4444" radius={[0, 3, 3, 0]} maxBarSize={20} />
               </BarChart>
             </ResponsiveContainer>
@@ -916,10 +916,10 @@ export function AnalyticsContent({
                   layout="vertical"
                   margin={{ top: 0, right: 16, bottom: 0, left: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-neutral-200)" />
                   <XAxis
                     type="number"
-                    tick={{ fontSize: 11, fill: "#9ca3af" }}
+                    tick={{ fontSize: 11, fill: "var(--color-neutral-400)" }}
                     axisLine={false}
                     tickLine={false}
                     allowDecimals={false}
@@ -927,12 +927,12 @@ export function AnalyticsContent({
                   <YAxis
                     type="category"
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: "#374151" }}
+                    tick={{ fontSize: 11, fill: "var(--color-neutral-600)" }}
                     axisLine={false}
                     tickLine={false}
                     width={104}
                   />
-                  <Tooltip content={<FunnelTooltip />} cursor={{ fill: "#f9fafb" }} />
+                  <Tooltip content={<FunnelTooltip />} cursor={{ fill: "var(--color-neutral-50)" }} />
                   <Bar
                     dataKey="count"
                     fill="#6366F1"

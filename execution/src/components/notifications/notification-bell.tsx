@@ -178,17 +178,17 @@ export function NotificationBell() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-80 p-0 shadow-dropdown"
+        className="w-80 p-0 shadow-dropdown bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
-          <span className="text-sm font-semibold text-neutral-800">
+        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700 px-4 py-3">
+          <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
             Notifikasi
           </span>
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}
-              className="text-xs text-accent-600 hover:text-accent-700 hover:underline"
+              className="text-xs text-accent-600 dark:text-accent-500 hover:text-accent-700 hover:underline"
             >
               Tandai semua dibaca
             </button>
@@ -214,8 +214,8 @@ export function NotificationBell() {
                     <button
                       onClick={() => handleItemClick(n)}
                       className={cn(
-                        "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-50",
-                        isUnread && "bg-accent-50"
+                        "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700",
+                        isUnread && "bg-accent-50 dark:bg-accent-50/10"
                       )}
                     >
                       {/* Type icon */}
@@ -227,14 +227,14 @@ export function NotificationBell() {
                           className={cn(
                             "truncate text-sm",
                             isUnread
-                              ? "font-semibold text-neutral-800"
-                              : "font-medium text-neutral-600"
+                              ? "font-semibold text-neutral-800 dark:text-neutral-100"
+                              : "font-medium text-neutral-600 dark:text-neutral-400"
                           )}
                         >
                           {n.title}
                         </p>
                         {n.body && (
-                          <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500">
+                          <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400">
                             {n.body}
                           </p>
                         )}
@@ -245,7 +245,7 @@ export function NotificationBell() {
 
                       {/* Unread dot */}
                       {isUnread && (
-                        <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-accent-600" />
+                        <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-accent-600 dark:bg-accent-500" />
                       )}
                     </button>
                   </li>
@@ -256,13 +256,13 @@ export function NotificationBell() {
         </ScrollArea>
 
         {/* Footer */}
-        <div className="border-t border-neutral-200 px-4 py-2.5">
+        <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-2.5">
           <button
             onClick={() => {
               setOpen(false)
               router.push("/notifications")
             }}
-            className="text-xs font-medium text-accent-600 hover:text-accent-700 hover:underline"
+            className="text-xs font-medium text-accent-600 dark:text-accent-500 hover:text-accent-700 hover:underline"
           >
             Lihat semua notifikasi
           </button>

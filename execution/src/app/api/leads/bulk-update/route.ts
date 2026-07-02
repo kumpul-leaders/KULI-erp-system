@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await prisma.lead.updateMany({
-      where: { id: { in: leadIds } },
+      where: { id: { in: leadIds }, deletedAt: null },
       data: { salesId: salesId ?? null },
     })
 

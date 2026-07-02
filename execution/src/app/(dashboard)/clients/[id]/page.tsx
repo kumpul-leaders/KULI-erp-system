@@ -4,8 +4,10 @@ import { notFound } from "next/navigation"
 import { ChevronLeft } from "lucide-react"
 import { Topbar } from "@/components/layout/topbar"
 import { Badge } from "@/components/ui/badge"
-import { HealthBadge } from "@/components/clients/health-badge"
+import { HealthScorePopover, type HealthSnapshot } from "@/components/clients/health-score-popover"
 import { ClientStatusBadge } from "@/components/clients/client-status-badge"
+import { ClientAlertsBanner } from "@/components/clients/client-alerts-banner"
+import { CreateRenewalButton } from "@/components/pipeline/create-renewal-button"
 import { ContactsCard } from "@/components/clients/contacts-card"
 import { UpsellsCard } from "@/components/clients/upsells-card"
 import { NotesCard } from "@/components/clients/notes-card"
@@ -38,7 +40,7 @@ export async function generateMetadata({
 
 async function fetchClient(id: string) {
   return prisma.client.findUnique({
-    where: { id },
+    where: { id, deletedAt: null },
     include: {
       ae: { select: { id: true, name: true, email: true } },
       contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
@@ -100,13 +102,26 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   const isAdmin = userRole === "admin" || userRole === "commercial_director"
   const canEditStatus = isAdmin || userRole === "account_manager" || userRole === "account"
 
-  const [client, aeOptions, clientLeads] = await Promise.all([
+  const [client, aeOptions, clientLeads, openAlerts, latestSnapshot] = await Promise.all([
     fetchClient(id),
     fetchAeOptions(),
     prisma.lead.findMany({
-      where: { clientId: id },
-      include: { sales: { select: { name: true } } },
+      where: { clientId: id, deletedAt: null },
+      include: {
+        sales: { select: { name: true } },
+        renewedFromLead: { select: { id: true, client: { select: { name: true } } } },
+      },
       orderBy: [{ createdAt: "desc" }],
+    }),
+    // Open alerts for this client
+    prisma.alert.findMany({
+      where: { clientId: id, status: "open" },
+      orderBy: { triggeredAt: "desc" },
+    }),
+    // Latest health snapshot
+    prisma.clientHealthSnapshot.findFirst({
+      where: { clientId: id },
+      orderBy: { computedAt: "desc" },
     }),
   ])
 
@@ -145,6 +160,26 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     changer: { id: "", name: entry.changer.name },
   }))
 
+  // Serialize health snapshot
+  const healthSnapshot: HealthSnapshot | null = latestSnapshot
+    ? {
+        score: latestSnapshot.score,
+        band: latestSnapshot.band,
+        signalActivity: latestSnapshot.signalActivity,
+        signalRenewal: latestSnapshot.signalRenewal,
+        signalRevenue: latestSnapshot.signalRevenue,
+        signalEngagement: latestSnapshot.signalEngagement,
+        computedAt: latestSnapshot.computedAt.toISOString(),
+      }
+    : null
+
+  // Serialize open alerts for banner
+  const serializedAlerts = openAlerts.map((a) => ({
+    id: a.id,
+    type: a.type as "renewal_t60" | "renewal_t30" | "health_drop" | "stale_deal",
+    triggeredAt: a.triggeredAt.toISOString(),
+  }))
+
   // Serialize leads for Linked Projects section
   type SerializedClientLead = {
     id: string
@@ -155,6 +190,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     projectedRevenue: number | null
     salesName: string | null
     createdAt: string
+    renewedFromLead: { id: string; clientName: string } | null
   }
 
   const WON_STAGES_CLIENT = ["closed_won", "invoiced", "contract_renewal"]
@@ -170,6 +206,9 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     projectedRevenue: l.projectedRevenue ? Number(l.projectedRevenue) : null,
     salesName: l.sales?.name ?? null,
     createdAt: l.createdAt.toISOString(),
+    renewedFromLead: l.renewedFromLead
+      ? { id: l.renewedFromLead.id, clientName: l.renewedFromLead.client.name }
+      : null,
   }))
 
   const wonLeads = serializedLeads.filter((l) => WON_STAGES_CLIENT.includes(l.stage))
@@ -213,19 +252,32 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       : null
 
     return (
-      <Link
-        href={`/pipeline/${lead.id}`}
-        className="flex items-center gap-3 rounded-md border border-neutral-100 bg-neutral-50 px-3 py-2 hover:bg-neutral-100 hover:border-neutral-200 transition-colors group"
-      >
-        <Badge variant="outline" className="text-xs shrink-0">{STAGE_LABELS[lead.stage] ?? lead.stage}</Badge>
-        {lead.productLine && (
-          <span className="text-xs text-neutral-600">{PRODUCT_LABELS[lead.productLine] ?? lead.productLine}</span>
+      <div className="rounded-md border border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-700/40">
+        <Link
+          href={`/pipeline/${lead.id}`}
+          className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700/60 transition-colors group rounded-md"
+        >
+          <Badge variant="outline" className="text-xs shrink-0">{STAGE_LABELS[lead.stage] ?? lead.stage}</Badge>
+          {lead.productLine && (
+            <span className="text-xs text-neutral-600 dark:text-neutral-400">{PRODUCT_LABELS[lead.productLine] ?? lead.productLine}</span>
+          )}
+          {quarter && <span className="text-xs text-neutral-400">{quarter}</span>}
+          <span className="ml-auto text-xs font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
+            {lead.actualRevenue ? formatIDR(lead.actualRevenue) : lead.projectedRevenue ? formatIDR(lead.projectedRevenue) : "—"}
+          </span>
+        </Link>
+        {lead.renewedFromLead && (
+          <div className="px-3 pb-2 pt-0">
+            <Link
+              href={`/pipeline/${lead.renewedFromLead.id}`}
+              className="inline-flex items-center gap-1 text-xs text-accent-600 hover:text-accent-700 hover:underline"
+            >
+              <span>&#8635;</span>
+              renewal dari {lead.renewedFromLead.clientName}
+            </Link>
+          </div>
         )}
-        {quarter && <span className="text-xs text-neutral-400">{quarter}</span>}
-        <span className="ml-auto text-xs font-medium tabular-nums text-neutral-700">
-          {lead.actualRevenue ? formatIDR(lead.actualRevenue) : lead.projectedRevenue ? formatIDR(lead.projectedRevenue) : "—"}
-        </span>
-      </Link>
+      </div>
     )
   }
 
@@ -235,7 +287,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         <ClientDetailActions client={clientForEdit} aeOptions={aeOptions} isAdmin={isAdmin} />
       </Topbar>
 
-      <main className="flex-1 overflow-y-auto px-8 py-6">
+      <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
         {/* Back link */}
         <Link
           href="/clients"
@@ -244,6 +296,22 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           <ChevronLeft className="h-4 w-4" />
           Clients
         </Link>
+
+        {/* Alert banner — only when open alerts exist */}
+        {serializedAlerts.length > 0 && (
+          <div className="mb-6 space-y-2">
+            <ClientAlertsBanner alerts={serializedAlerts} />
+            {serializedAlerts.some((a) => a.type === "renewal_t60" || a.type === "renewal_t30") && (
+              <div className="flex justify-end">
+                <CreateRenewalButton
+                  clientId={client.id}
+                  clientName={client.name}
+                  salesOptions={aeOptions}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Smart Buttons row */}
         {(() => {
@@ -309,7 +377,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <h1 className="text-2xl font-bold text-neutral-900">{client.name}</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">{client.name}</h1>
             {client.customerCode && (
               <code className="px-2 py-0.5 rounded text-xs font-mono bg-neutral-100 text-neutral-600 border border-neutral-200 tracking-wider">
                 {client.customerCode}
@@ -318,7 +386,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           </div>
           <div className="flex items-center gap-2 flex-wrap mt-2">
             <ClientStatusBadge status={client.clientStatus} />
-            <HealthBadge status={client.healthStatus} />
+            <HealthScorePopover status={client.healthStatus} snapshot={healthSnapshot} />
             <Badge className="border-transparent bg-accent-100 text-accent-700 hover:bg-accent-100">
               {engagementLabel(client.engagementType)}
             </Badge>
@@ -340,7 +408,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           <div className="flex gap-6 mt-4">
             <div>
               <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Cumulative Value</p>
-              <p className="text-lg font-bold text-neutral-900 tabular-nums">
+              <p className="text-lg font-bold text-neutral-900 dark:text-neutral-50 tabular-nums">
                 {cumulativeValue > 0 ? formatIDR(cumulativeValue) : "—"}
               </p>
               <p className="text-xs text-neutral-400">{wonLeads.length} won project{wonLeads.length !== 1 ? "s" : ""}</p>
@@ -360,14 +428,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           {/* Left — col-span-2 */}
           <div className="col-span-2 space-y-6">
             {/* Contract Details */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-              <h2 className="font-semibold text-neutral-800 mb-4">Contract Details</h2>
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+              <h2 className="font-semibold text-neutral-800 dark:text-neutral-100 mb-4">Contract Details</h2>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 <div>
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Contract Start
                   </p>
-                  <p className="text-sm text-neutral-800">{formatDate(client.contractStart)}</p>
+                  <p className="text-sm text-neutral-800 dark:text-neutral-200">{formatDate(client.contractStart)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
@@ -375,7 +443,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   </p>
                   <p
                     className={`text-sm font-medium ${
-                      isContractUrgent ? "text-danger-600" : "text-neutral-800"
+                      isContractUrgent ? "text-danger-600" : "text-neutral-800 dark:text-neutral-200"
                     }`}
                   >
                     {formatDate(client.contractEnd)}
@@ -390,7 +458,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Monthly Value
                   </p>
-                  <p className="text-sm text-neutral-800 tabular-nums">
+                  <p className="text-sm text-neutral-800 dark:text-neutral-200 tabular-nums">
                     {formatIDR(monthlyValue)}
                   </p>
                 </div>
@@ -398,7 +466,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Annual Value
                   </p>
-                  <p className="text-sm text-neutral-800 tabular-nums">
+                  <p className="text-sm text-neutral-800 dark:text-neutral-200 tabular-nums">
                     {formatIDR(annualValue)}
                   </p>
                 </div>
@@ -406,7 +474,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Engagement Type
                   </p>
-                  <p className="text-sm text-neutral-800">
+                  <p className="text-sm text-neutral-800 dark:text-neutral-200">
                     {engagementLabel(client.engagementType)}
                   </p>
                 </div>
@@ -415,7 +483,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                       Org Size
                     </p>
-                    <p className="text-sm text-neutral-800">{client.orgSize}</p>
+                    <p className="text-sm text-neutral-800 dark:text-neutral-200">{client.orgSize}</p>
                   </div>
                 )}
                 {client.industry && (
@@ -423,7 +491,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                       Industry
                     </p>
-                    <p className="text-sm text-neutral-800">{client.industry}</p>
+                    <p className="text-sm text-neutral-800 dark:text-neutral-200">{client.industry}</p>
                   </div>
                 )}
               </div>
@@ -439,8 +507,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
             {/* Linked Projects (Sprint 6.4) */}
             {serializedLeads.length > 0 && (
-              <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-                <h2 className="font-semibold text-neutral-800 mb-4">Linked Projects</h2>
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+                <h2 className="font-semibold text-neutral-800 dark:text-neutral-100 mb-4">Linked Projects</h2>
 
                 {/* Active — Won */}
                 {wonLeads.length > 0 && (

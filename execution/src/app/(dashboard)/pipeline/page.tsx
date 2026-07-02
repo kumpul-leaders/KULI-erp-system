@@ -57,7 +57,7 @@ export default async function PipelinePage({ searchParams }: PipelinePageProps) 
   return (
     <>
       <Topbar title="Pipeline" />
-      <main className="flex-1 overflow-hidden px-8 py-6 flex flex-col">
+      <main className="flex-1 overflow-hidden px-4 md:px-8 py-4 md:py-6 flex flex-col">
         {/* Suspense required: PipelineKanbanLoader uses useSearchParams() */}
         <Suspense fallback={<KanbanSkeleton />}>
           <PipelineKanbanLoader filterParam={params.filter} />

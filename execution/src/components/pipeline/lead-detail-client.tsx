@@ -1437,9 +1437,13 @@ export interface LeadDetailClientProps {
     changedAt: string
     changer?: { id: string; name: string }
   }>
+  /** Renewal chain — the lead this was renewed from */
+  renewedFromLead?: { id: string; clientName: string } | null
+  /** Child renewals of this lead */
+  renewals?: Array<{ id: string; stage: string; clientName: string; createdAt: string }>
 }
 
-export function LeadDetailClient({ lead, salesOptions, currentUserId, assigneeOptions, stageHistory, fieldHistory }: LeadDetailClientProps) {
+export function LeadDetailClient({ lead, salesOptions, currentUserId, assigneeOptions, stageHistory, fieldHistory, renewedFromLead, renewals }: LeadDetailClientProps) {
   const showActualRevenue = REVENUE_VISIBLE_STAGES.includes(lead.stage)
   const showLostReason = lead.stage === "lost_deal"
 
@@ -1513,6 +1517,35 @@ export function LeadDetailClient({ lead, salesOptions, currentUserId, assigneeOp
           <PipelineStageBadge stage={lead.stage} />
           <span className="text-sm text-neutral-400">{PRODUCT_LINE_LABELS[lead.productLine]}</span>
         </div>
+
+        {/* Renewal chain */}
+        {renewedFromLead && (
+          <div className="mt-2">
+            <Link
+              href={`/pipeline/${renewedFromLead.id}`}
+              className="inline-flex items-center gap-1.5 text-sm text-accent-600 hover:text-accent-700 hover:underline"
+            >
+              <span className="text-base leading-none">&#8635;</span>
+              Renewal of {renewedFromLead.clientName}
+            </Link>
+          </div>
+        )}
+        {renewals && renewals.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            <span className="text-xs text-neutral-400">Renewals:</span>
+            {renewals.map((r) => (
+              <Link
+                key={r.id}
+                href={`/pipeline/${r.id}`}
+                className="inline-flex items-center gap-1 rounded-sm bg-accent-50 px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-100 transition-colors"
+              >
+                {r.clientName}
+                <span className="text-accent-400">&middot;</span>
+                <span className="text-accent-500">{r.stage}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 3-column grid */}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
+import { ThemeProvider } from "@/components/shared/theme-provider"
 import "./globals.css"
 
 const inter = Inter({
@@ -23,10 +24,21 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="id" className={`${inter.variable} h-full`}>
-      <body className="h-full bg-white antialiased">
-        {children}
-        <Toaster position="top-right" richColors />
+    <html
+      lang="id"
+      className={`${inter.variable} h-full`}
+      suppressHydrationWarning
+    >
+      <body className="h-full bg-background antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster position="top-right" richColors />
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -24,7 +24,7 @@ export function LogoutButton() {
       disabled={isLoading}
       className={cn(
         "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors duration-100",
-        "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600",
+        "text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-neutral-200",
         "disabled:pointer-events-none disabled:opacity-50"
       )}
       aria-label="Log out"

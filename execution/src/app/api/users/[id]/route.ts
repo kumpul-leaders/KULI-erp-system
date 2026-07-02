@@ -213,8 +213,8 @@ export async function DELETE(
     }
 
     const [leadCount, clientCount] = await Promise.all([
-      prisma.lead.count({ where: { salesId: id } }),
-      prisma.client.count({ where: { primaryAe: id } }),
+      prisma.lead.count({ where: { salesId: id, deletedAt: null } }),
+      prisma.client.count({ where: { primaryAe: id, deletedAt: null } }),
     ])
 
     if (leadCount > 0 || clientCount > 0) {

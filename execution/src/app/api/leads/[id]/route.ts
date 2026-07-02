@@ -2,11 +2,13 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAuthenticated, requireCanCreateLeads, requireAdmin } from "@/lib/require-role"
 import { syncClientStatus } from "@/lib/client-status"
-import { parseBody } from "@/lib/validations/parse"
 import { UpdateLeadSchema } from "@/lib/validations/lead"
 import { getStageConfig } from "@/lib/stage-config.server"
 import { createNotification } from "@/lib/notifications"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
+
+// ── GET /api/leads/[id] — restore action ────────────────────────────────────
+// PATCH with body { restore: true } — admin only, handled inside main PATCH
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,7 +122,7 @@ export async function GET(
 
   try {
     const lead = await prisma.lead.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       include: {
         client: { select: { id: true, name: true, customerCode: true } },
         sales: { select: { id: true, name: true } },
@@ -136,6 +138,22 @@ export async function GET(
           include: { changer: { select: { id: true, name: true } } },
           orderBy: { changedAt: "desc" },
         },
+        renewedFromLead: {
+          select: {
+            id: true,
+            client: { select: { name: true } },
+          },
+        },
+        renewals: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            stage: true,
+            createdAt: true,
+            client: { select: { name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     })
 
@@ -143,7 +161,23 @@ export async function GET(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ lead: serializeLead(lead) })
+    return NextResponse.json({
+      lead: {
+        ...serializeLead(lead),
+        renewedFromLead: lead.renewedFromLead
+          ? {
+              id: lead.renewedFromLead.id,
+              clientName: lead.renewedFromLead.client.name,
+            }
+          : null,
+        renewals: lead.renewals.map((r) => ({
+          id: r.id,
+          stage: r.stage,
+          clientName: r.client.name,
+          createdAt: r.createdAt.toISOString(),
+        })),
+      },
+    })
   } catch (err) {
     console.error("[GET /api/leads/[id]]", err)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -172,8 +206,42 @@ export async function PATCH(
     }
   }
 
-  const parsed = await parseBody(UpdateLeadSchema, request)
-  if (parsed.error) return parsed.error
+  // ── Restore action (admin only) ──────────────────────────────────────────
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  if (
+    rawBody !== null &&
+    typeof rawBody === "object" &&
+    "restore" in rawBody &&
+    (rawBody as Record<string, unknown>).restore === true
+  ) {
+    const adminUser = await requireAdmin()
+    if (!adminUser) {
+      return NextResponse.json({ error: "Forbidden: admin only" }, { status: 403 })
+    }
+    const lead = await prisma.lead.findUnique({ where: { id } })
+    if (!lead) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 })
+    }
+    if (lead.deletedAt === null) {
+      return NextResponse.json({ error: "Lead is not archived" }, { status: 409 })
+    }
+    await prisma.lead.update({ where: { id }, data: { deletedAt: null } })
+    return NextResponse.json({ success: true })
+  }
+
+  const parsed = UpdateLeadSchema.safeParse(rawBody)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", issues: parsed.error.issues },
+      { status: 422 }
+    )
+  }
 
   const body = parsed.data
 
@@ -189,7 +257,7 @@ export async function PATCH(
   }
 
   try {
-    const existing = await prisma.lead.findUnique({ where: { id } })
+    const existing = await prisma.lead.findUnique({ where: { id, deletedAt: null } })
     if (!existing) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
@@ -327,7 +395,7 @@ export async function PATCH(
 }
 
 // ── DELETE /api/leads/[id] ──────────────────────────────────────────────────
-// Admin only.
+// Admin only. Soft delete — sets deletedAt, does not hard-delete.
 
 export async function DELETE(
   _request: NextRequest,
@@ -341,17 +409,17 @@ export async function DELETE(
   const { id } = await params
 
   try {
-    const existing = await prisma.lead.findUnique({ where: { id } })
+    const existing = await prisma.lead.findUnique({ where: { id, deletedAt: null } })
     if (!existing) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 })
     }
 
-    await prisma.lead.delete({ where: { id } })
+    await prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } })
 
     try {
       await syncClientStatus(existing.clientId)
     } catch (err) {
-      console.error("syncClientStatus failed after lead delete", err)
+      console.error("syncClientStatus failed after lead soft-delete", err)
     }
 
     return NextResponse.json({ success: true })

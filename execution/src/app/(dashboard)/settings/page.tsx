@@ -24,14 +24,16 @@ export default async function SettingsPage() {
           select: { role: true },
         })
       : null,
-    // Count of leads per salesId across all leads (no stage filter — full ownership map)
+    // Count of active leads per salesId (no stage filter — full ownership map)
     prisma.lead.groupBy({
       by: ["salesId"],
+      where: { deletedAt: null },
       _count: { id: true },
     }),
-    // Count of clients per primaryAe across all clients
+    // Count of active clients per primaryAe
     prisma.client.groupBy({
       by: ["primaryAe"],
+      where: { deletedAt: null },
       _count: { id: true },
     }),
 
@@ -72,7 +74,7 @@ export default async function SettingsPage() {
   return (
     <>
       <Topbar title="Settings" />
-      <main className="flex-1 overflow-y-auto px-8 py-6">
+      <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
         <SettingsContent
           users={serializedUsers}
           isAdmin={canManageUsers}

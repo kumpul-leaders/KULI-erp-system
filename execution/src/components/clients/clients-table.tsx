@@ -11,6 +11,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ArchiveRestore,
 } from "lucide-react"
 import {
   Table,
@@ -178,6 +179,65 @@ export function ClientsTable({
   const [deleteTarget, setDeleteTarget] = useState<ClientRow | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Archived view (admin only)
+  const isAdmin = ["admin", "commercial_director"].includes(userRole ?? "")
+  const [showArchived, setShowArchived] = useState(false)
+  const [archivedClients, setArchivedClients] = useState<ClientRow[]>([])
+  const [archivedLoading, setArchivedLoading] = useState(false)
+  const [restoringId, setRestoringId] = useState<string | null>(null)
+
+  async function fetchArchived() {
+    setArchivedLoading(true)
+    try {
+      const res = await fetch("/api/clients?archived=1")
+      if (!res.ok) throw new Error("Failed to fetch archived clients")
+      const data = (await res.json()) as { clients?: ClientRow[] }
+      setArchivedClients(
+        (data.clients ?? []).map((c) => ({
+          ...c,
+          monthlyValue: c.monthlyValue !== null ? Number(c.monthlyValue) : null,
+          annualValue: c.annualValue !== null ? Number(c.annualValue) : null,
+          cumulativeValue: c.cumulativeValue ?? 0,
+          opportunityValue: c.opportunityValue ?? 0,
+        }))
+      )
+    } catch {
+      toast.error("Gagal memuat data arsip")
+    } finally {
+      setArchivedLoading(false)
+    }
+  }
+
+  async function handleRestore(clientId: string, clientName: string) {
+    setRestoringId(clientId)
+    try {
+      const res = await fetch(`/api/clients/${clientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restore: true }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Restore failed")
+      }
+      toast.success(`${clientName} dipulihkan`)
+      setArchivedClients((prev) => prev.filter((c) => c.id !== clientId))
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setRestoringId(null)
+    }
+  }
+
+  function handleToggleArchived() {
+    const next = !showArchived
+    setShowArchived(next)
+    if (next && archivedClients.length === 0) {
+      void fetchArchived()
+    }
+  }
+
   // Filter panel state
   const [conditions, setConditions] = useState<FilterCondition[]>([])
   const [matchMode, setMatchMode] = useState<MatchMode>("all")
@@ -335,11 +395,11 @@ export function ClientsTable({
   return (
     <>
       {/* Filter bar */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="relative">
+      <div className="flex items-center gap-2 md:gap-3 mb-5 flex-wrap">
+        <div className="relative w-full sm:w-auto">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400 pointer-events-none" />
           <Input
-            className="pl-8 h-9 w-80"
+            className="pl-8 h-9 w-full sm:w-72 md:w-80"
             placeholder="Search by name, industry, code, AE..."
             defaultValue={searchQuery}
             onChange={(e) => debouncedSearch(e.target.value)}
@@ -361,6 +421,18 @@ export function ClientsTable({
           )}
         </span>
 
+        {isAdmin && (
+          <Button
+            size="sm"
+            variant={showArchived ? "default" : "outline"}
+            className="gap-1.5"
+            onClick={handleToggleArchived}
+          >
+            <ArchiveRestore className="h-4 w-4" />
+            {showArchived ? "Sembunyikan Arsip" : "Tampilkan Arsip"}
+          </Button>
+        )}
+
         {["admin", "commercial_director", "account_manager", "account"].includes(userRole ?? "") && (
           <Button
             size="sm"
@@ -375,8 +447,8 @@ export function ClientsTable({
 
       {/* Table */}
       {filteredClients.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 rounded-lg border border-neutral-200 bg-white text-center">
-          <p className="text-neutral-500 font-medium mb-1">No clients found</p>
+        <div className="flex flex-col items-center justify-center py-20 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-center">
+          <p className="text-neutral-500 dark:text-neutral-400 font-medium mb-1">No clients found</p>
           <p className="text-sm text-neutral-400">
             {conditions.length > 0 || searchQuery
               ? "Try adjusting your filters."
@@ -384,7 +456,7 @@ export function ClientsTable({
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border border-neutral-200 bg-white shadow-card overflow-x-auto">
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-card overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
           <Table>
             <TableHeader>
               <TableRow className="bg-neutral-50">
@@ -625,6 +697,71 @@ export function ClientsTable({
               </PaginationItem>
             </PaginationContent>
           </Pagination>
+        </div>
+      )}
+
+      {/* Archived Clients Section (admin only) */}
+      {isAdmin && showArchived && (
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-neutral-600 dark:text-neutral-300 mb-3">
+            Klien Diarsipkan ({archivedClients.length})
+          </h3>
+          {archivedLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-md shimmer" />)}
+            </div>
+          ) : archivedClients.length === 0 ? (
+            <p className="text-sm text-neutral-400">Tidak ada klien yang diarsipkan.</p>
+          ) : (
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-card overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-neutral-50 dark:bg-neutral-900/50">
+                    <TableHead className="font-semibold text-neutral-600">Client Name</TableHead>
+                    <TableHead className="font-semibold text-neutral-600">Industry</TableHead>
+                    <TableHead className="font-semibold text-neutral-600">Code</TableHead>
+                    <TableHead className="w-[120px] font-semibold text-neutral-600 text-right">Restore</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {archivedClients.map((client) => (
+                    <TableRow
+                      key={client.id}
+                      className="opacity-60 hover:opacity-80 transition-opacity"
+                    >
+                      <TableCell className="font-medium text-neutral-600 dark:text-neutral-300">
+                        {client.name}
+                      </TableCell>
+                      <TableCell className="text-neutral-500">
+                        {client.industry ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        {client.customerCode ? (
+                          <code className="px-1.5 py-0.5 rounded text-xs font-mono bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600">
+                            {client.customerCode}
+                          </code>
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1.5 text-xs"
+                          disabled={restoringId === client.id}
+                          onClick={() => void handleRestore(client.id, client.name)}
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5" />
+                          {restoringId === client.id ? "Memulihkan..." : "Restore"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       )}
 

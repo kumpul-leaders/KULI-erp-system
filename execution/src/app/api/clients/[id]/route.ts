@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
-import { requireAuthenticated, requireAdminOrDirector, requireCanEditClients } from "@/lib/require-role"
+import { requireAdmin, requireAuthenticated, requireAdminOrDirector, requireCanEditClients } from "@/lib/require-role"
 import { parseBody } from "@/lib/validations/parse"
 import { UpdateClientSchema } from "@/lib/validations/client"
 
@@ -20,7 +20,7 @@ export async function GET(
 
   try {
     const client = await prisma.client.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       include: {
         ae: { select: { id: true, name: true, email: true } },
         contacts: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
@@ -74,10 +74,44 @@ export async function PATCH(
 
   const { id } = await params
 
-  const parsed = await parseBody(UpdateClientSchema, request)
-  if (parsed.error) return parsed.error
+  // ── Restore action (admin only) ────────────────────────────────────────────
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
 
-  const body = parsed.data
+  if (
+    rawBody !== null &&
+    typeof rawBody === "object" &&
+    "restore" in rawBody &&
+    (rawBody as Record<string, unknown>).restore === true
+  ) {
+    const adminUser = await requireAdmin()
+    if (!adminUser) {
+      return NextResponse.json({ error: "Forbidden: admin only" }, { status: 403 })
+    }
+    const client = await prisma.client.findUnique({ where: { id } })
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 })
+    }
+    if (client.deletedAt === null) {
+      return NextResponse.json({ error: "Client is not archived" }, { status: 409 })
+    }
+    await prisma.client.update({ where: { id }, data: { deletedAt: null } })
+    return NextResponse.json({ success: true })
+  }
+
+  const parsedBody = UpdateClientSchema.safeParse(rawBody)
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { error: "Validation failed", issues: parsedBody.error.issues },
+      { status: 422 }
+    )
+  }
+
+  const body = parsedBody.data
 
   // Non-admin/director: can only update healthStatus or clientStatus
   if (!isAdminOrDirector) {
@@ -134,7 +168,7 @@ export async function PATCH(
   }
 
   try {
-    const existing = await prisma.client.findUnique({ where: { id } })
+    const existing = await prisma.client.findUnique({ where: { id, deletedAt: null } })
     if (!existing) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 })
     }
@@ -208,7 +242,7 @@ export async function PATCH(
 }
 
 // ── DELETE /api/clients/[id] ────────────────────────────────────────────────
-// Admin or Commercial Director only.
+// Admin or Commercial Director only. Soft delete — sets deletedAt.
 
 export async function DELETE(
   _request: NextRequest,
@@ -222,7 +256,7 @@ export async function DELETE(
   const { id } = await params
 
   try {
-    const existing = await prisma.client.findUnique({ where: { id } })
+    const existing = await prisma.client.findUnique({ where: { id, deletedAt: null } })
     if (!existing) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 })
     }
@@ -230,6 +264,7 @@ export async function DELETE(
     const activeLeadCount = await prisma.lead.count({
       where: {
         clientId: id,
+        deletedAt: null,
         stage: { notIn: ["lost_deal", "invoiced", "no_response"] },
       },
     })
@@ -240,7 +275,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.client.delete({ where: { id } })
+    await prisma.client.update({ where: { id }, data: { deletedAt: new Date() } })
 
     return NextResponse.json({ success: true })
   } catch (err) {

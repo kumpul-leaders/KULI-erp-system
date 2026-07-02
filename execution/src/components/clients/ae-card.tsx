@@ -57,9 +57,9 @@ export function AeCard({ clientId, ae, aeOptions }: AeCardProps) {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-neutral-800">Busdev/AE Assigned</h2>
+        <h2 className="font-semibold text-neutral-800 dark:text-neutral-100">Busdev/AE Assigned</h2>
         {!editing ? (
           <Button
             size="icon"
@@ -120,10 +120,10 @@ export function AeCard({ clientId, ae, aeOptions }: AeCardProps) {
               {getInitials(ae.name)}
             </AvatarFallback>
           </Avatar>
-          <span className="text-sm font-medium text-neutral-800">{ae.name}</span>
+          <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{ae.name}</span>
         </div>
       ) : (
-        <p className="text-sm text-neutral-400">No AE assigned</p>
+        <p className="text-sm text-neutral-400 dark:text-neutral-500">No AE assigned</p>
       )}
     </div>
   )

@@ -186,9 +186,9 @@ export function EditClientSheet({
         <SheetHeader className="mb-6">
           <SheetTitle>Edit Client</SheetTitle>
           {client.customerCode && (
-            <p className="text-xs text-neutral-500 font-mono mt-1">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono mt-1">
               Code:{" "}
-              <code className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 border border-neutral-200">
+              <code className="px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-600">
                 {client.customerCode}
               </code>
             </p>

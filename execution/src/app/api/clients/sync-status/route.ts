@@ -15,6 +15,7 @@ export async function POST() {
 
   try {
     const clients = await prisma.client.findMany({
+      where: { deletedAt: null },
       select: { id: true },
     })
 

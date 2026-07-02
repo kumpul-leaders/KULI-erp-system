@@ -157,8 +157,8 @@ export function NotificationsView({
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               !unreadOnly
-                ? "bg-neutral-900 text-white"
-                : "text-neutral-600 hover:bg-neutral-100"
+                ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
             )}
           >
             Semua
@@ -168,8 +168,8 @@ export function NotificationsView({
             className={cn(
               "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               unreadOnly
-                ? "bg-neutral-900 text-white"
-                : "text-neutral-600 hover:bg-neutral-100"
+                ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
             )}
           >
             Belum dibaca
@@ -203,11 +203,11 @@ export function NotificationsView({
       </div>
 
       {/* Notification list */}
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-card">
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-card">
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-            <BellOff className="h-10 w-10 text-neutral-300" />
-            <p className="text-sm font-medium text-neutral-500">
+            <BellOff className="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
               {unreadOnly
                 ? "Semua notifikasi sudah dibaca."
                 : "Belum ada notifikasi."}
@@ -215,14 +215,14 @@ export function NotificationsView({
             {unreadOnly && (
               <button
                 onClick={() => handleToggleUnread(false)}
-                className="text-xs text-accent-600 hover:underline"
+                className="text-xs text-accent-600 dark:text-accent-500 hover:underline"
               >
                 Lihat semua notifikasi
               </button>
             )}
           </div>
         ) : (
-          <ul className="divide-y divide-neutral-100">
+          <ul className="divide-y divide-neutral-100 dark:divide-neutral-700">
             {notifications.map((n) => {
               const isUnread = !n.readAt
               const hasEntity =
@@ -235,8 +235,8 @@ export function NotificationsView({
                     disabled={!hasEntity && !!n.readAt}
                     className={cn(
                       "flex w-full items-start gap-3 px-5 py-4 text-left transition-colors",
-                      isUnread && "bg-accent-50",
-                      (hasEntity || isUnread) && "hover:bg-neutral-50 cursor-pointer",
+                      isUnread && "bg-accent-50 dark:bg-accent-50/10",
+                      (hasEntity || isUnread) && "hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-pointer",
                       !hasEntity && !!n.readAt && "cursor-default"
                     )}
                   >
@@ -249,14 +249,14 @@ export function NotificationsView({
                         className={cn(
                           "text-sm",
                           isUnread
-                            ? "font-semibold text-neutral-800"
-                            : "font-medium text-neutral-600"
+                            ? "font-semibold text-neutral-800 dark:text-neutral-100"
+                            : "font-medium text-neutral-600 dark:text-neutral-400"
                         )}
                       >
                         {n.title}
                       </p>
                       {n.body && (
-                        <p className="mt-0.5 text-xs text-neutral-500">
+                        <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                           {n.body}
                         </p>
                       )}
@@ -267,7 +267,7 @@ export function NotificationsView({
 
                     {/* Unread indicator */}
                     {isUnread && (
-                      <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-accent-600" />
+                      <span className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-accent-600 dark:bg-accent-500" />
                     )}
                   </button>
                 </li>

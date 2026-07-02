@@ -22,6 +22,7 @@ import {
   Check,
   RefreshCw,
   CalendarIcon,
+  List,
   Loader2,
 } from "lucide-react"
 import { format } from "date-fns"
@@ -38,6 +39,7 @@ import {
   ACTIVITY_STATUS_CLASSES,
   formatActivityDate,
 } from "@/components/activities/activity-status"
+import { ActivitiesCalendarView } from "@/components/activities/activities-calendar-view"
 import { cn } from "@/lib/utils"
 import type { SerializedPageActivity } from "@/app/(dashboard)/activities/page"
 
@@ -284,6 +286,7 @@ export function ActivitiesView({
 }: ActivitiesViewProps) {
   const router = useRouter()
   const [activities, setActivities] = useState(initialActivities)
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
 
   async function handleMarkDone(id: string) {
     const res = await fetch(`/api/activities/${id}`, {
@@ -314,103 +317,143 @@ export function ActivitiesView({
 
   return (
     <div className="max-w-4xl">
-      {/* Team toggle */}
-      {canViewAllTeam && (
-        <div className="flex items-center gap-3 mb-6">
+      {/* Toolbar: team toggle + view toggle */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        {/* Team toggle */}
+        {canViewAllTeam && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                const params = new URLSearchParams()
+                if (!showAllTeam) params.set("team", "1")
+                router.replace(`/activities?${params.toString()}`)
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors",
+                showAllTeam
+                  ? "bg-accent-600 text-white border-accent-600"
+                  : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
+              )}
+            >
+              {showAllTeam ? "Semua Tim" : "Hanya Saya"}
+            </button>
+            {showAllTeam && (
+              <p className="text-xs text-neutral-500">Menampilkan activities semua anggota tim</p>
+            )}
+          </>
+        )}
+
+        {/* View toggle */}
+        <div className="ml-auto flex items-center rounded-md border border-neutral-200 overflow-hidden">
           <button
             type="button"
-            onClick={() => {
-              const params = new URLSearchParams()
-              if (!showAllTeam) params.set("team", "1")
-              router.replace(`/activities?${params.toString()}`)
-            }}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors",
-              showAllTeam
-                ? "bg-accent-600 text-white border-accent-600"
-                : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
+              "px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors",
+              viewMode === "list"
+                ? "bg-neutral-900 text-white"
+                : "bg-white text-neutral-600 hover:bg-neutral-50"
             )}
+            onClick={() => setViewMode("list")}
           >
-            {showAllTeam ? "Semua Tim" : "Hanya Saya"}
+            <List className="h-3.5 w-3.5" />
+            List
           </button>
-          {showAllTeam && (
-            <p className="text-xs text-neutral-500">Menampilkan activities semua anggota tim</p>
-          )}
+          <button
+            type="button"
+            className={cn(
+              "px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors border-l border-neutral-200",
+              viewMode === "calendar"
+                ? "bg-neutral-900 text-white"
+                : "bg-white text-neutral-600 hover:bg-neutral-50"
+            )}
+            onClick={() => setViewMode("calendar")}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Calendar
+          </button>
         </div>
+      </div>
+
+      {/* Calendar view */}
+      {viewMode === "calendar" && (
+        <ActivitiesCalendarView activities={activities} />
       )}
 
-      {/* Empty state */}
-      {isEmpty ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="h-12 w-12 rounded-full bg-success-50 flex items-center justify-center mb-4">
-            <Check className="h-6 w-6 text-success-500" />
+      {/* List view: empty state + grouped rows */}
+      {viewMode === "list" && (
+        isEmpty ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="h-12 w-12 rounded-full bg-success-50 flex items-center justify-center mb-4">
+              <Check className="h-6 w-6 text-success-500" />
+            </div>
+            <p className="text-base font-medium text-neutral-700 mb-1">
+              Pipeline bersih
+            </p>
+            <p className="text-sm text-neutral-400">
+              Tidak ada activity open{showAllTeam ? " untuk seluruh tim" : ""}.
+            </p>
           </div>
-          <p className="text-base font-medium text-neutral-700 mb-1">
-            Pipeline bersih
-          </p>
-          <p className="text-sm text-neutral-400">
-            Tidak ada activity open{showAllTeam ? " untuk seluruh tim" : ""}.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Overdue */}
-          {overdue.length > 0 && (
-            <section>
-              <div className="mb-3">
-                <GroupHeader label="Terlambat" count={overdue.length} variant="overdue" />
-              </div>
-              <div className="space-y-2">
-                {overdue.map((a) => (
-                  <ActivityRow
-                    key={a.id}
-                    activity={a}
-                    onMarkDone={handleMarkDone}
-                    onRescheduled={handleRescheduled}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+        ) : (
+          <div className="space-y-6">
+            {/* Overdue */}
+            {overdue.length > 0 && (
+              <section>
+                <div className="mb-3">
+                  <GroupHeader label="Terlambat" count={overdue.length} variant="overdue" />
+                </div>
+                <div className="space-y-2">
+                  {overdue.map((a) => (
+                    <ActivityRow
+                      key={a.id}
+                      activity={a}
+                      onMarkDone={handleMarkDone}
+                      onRescheduled={handleRescheduled}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {/* Today */}
-          {today.length > 0 && (
-            <section>
-              <div className="mb-3">
-                <GroupHeader label="Hari Ini" count={today.length} variant="today" />
-              </div>
-              <div className="space-y-2">
-                {today.map((a) => (
-                  <ActivityRow
-                    key={a.id}
-                    activity={a}
-                    onMarkDone={handleMarkDone}
-                    onRescheduled={handleRescheduled}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+            {/* Today */}
+            {today.length > 0 && (
+              <section>
+                <div className="mb-3">
+                  <GroupHeader label="Hari Ini" count={today.length} variant="today" />
+                </div>
+                <div className="space-y-2">
+                  {today.map((a) => (
+                    <ActivityRow
+                      key={a.id}
+                      activity={a}
+                      onMarkDone={handleMarkDone}
+                      onRescheduled={handleRescheduled}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {/* Upcoming */}
-          {upcoming.length > 0 && (
-            <section>
-              <div className="mb-3">
-                <GroupHeader label="Mendatang" count={upcoming.length} variant="upcoming" />
-              </div>
-              <div className="space-y-2">
-                {upcoming.map((a) => (
-                  <ActivityRow
-                    key={a.id}
-                    activity={a}
-                    onMarkDone={handleMarkDone}
-                    onRescheduled={handleRescheduled}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
+            {/* Upcoming */}
+            {upcoming.length > 0 && (
+              <section>
+                <div className="mb-3">
+                  <GroupHeader label="Mendatang" count={upcoming.length} variant="upcoming" />
+                </div>
+                <div className="space-y-2">
+                  {upcoming.map((a) => (
+                    <ActivityRow
+                      key={a.id}
+                      activity={a}
+                      onMarkDone={handleMarkDone}
+                      onRescheduled={handleRescheduled}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )
       )}
     </div>
   )

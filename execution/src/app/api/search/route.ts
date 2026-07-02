@@ -54,9 +54,10 @@ export async function GET(request: NextRequest) {
   }
 
   const [rawClients, rawLeads, rawContacts] = await Promise.all([
-    // Clients: match name or customerCode
+    // Clients: match name or customerCode (active only)
     prisma.client.findMany({
       where: {
+        deletedAt: null,
         OR: [
           { name: { contains: q, mode: "insensitive" } },
           { customerCode: { contains: q, mode: "insensitive" } },
@@ -67,9 +68,10 @@ export async function GET(request: NextRequest) {
       orderBy: { name: "asc" },
     }),
 
-    // Leads: match description or client name via relation
+    // Leads: match description or client name (active only)
     prisma.lead.findMany({
       where: {
+        deletedAt: null,
         OR: [
           { description: { contains: q, mode: "insensitive" } },
           { client: { name: { contains: q, mode: "insensitive" } } },

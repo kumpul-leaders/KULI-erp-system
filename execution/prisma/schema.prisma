@@ -28,6 +28,7 @@ model User {
   comments                 Comment[]           @relation("CommentAuthor")
   followings               Follower[]          @relation("FollowerUser")
   notifications            Notification[]
+  assignedAlerts           Alert[]             @relation("AlertAssignee")
 
   @@map("users")
 }
@@ -49,6 +50,7 @@ model Client {
   customerCode        String?              @unique @map("customer_code")
   orgSize             String?              @map("org_size")
   clientStatus        ClientStatus?        @map("client_status")
+  deletedAt           DateTime?            @map("deleted_at")
   ae                  User?                @relation(fields: [primaryAe], references: [id])
   contacts            Contact[]
   fieldHistory        ClientFieldHistory[]
@@ -57,6 +59,8 @@ model Client {
   activities          Activity[]
   comments            Comment[]
   followers           Follower[]
+  alerts              Alert[]
+  healthSnapshots     ClientHealthSnapshot[]
 
   @@map("clients")
 }
@@ -126,6 +130,8 @@ model Lead {
   probabilityIsManual  Boolean            @default(false) @map("probability_is_manual")
   lostReason           LostReason?        @map("lost_reason")
   nextActivityAt       DateTime?          @map("next_activity_at")
+  deletedAt            DateTime?          @map("deleted_at")
+  renewedFromLeadId    String?            @map("renewed_from_lead_id")
   fieldHistory         LeadFieldHistory[]
   stageHistory         LeadStageHistory[]
   activities           Activity[]
@@ -134,6 +140,9 @@ model Lead {
   client               Client             @relation(fields: [clientId], references: [id])
   sales                User?              @relation(fields: [salesId], references: [id])
   documents            PipelineDocument[]
+  alerts               Alert[]
+  renewedFromLead      Lead?              @relation("LeadRenewal", fields: [renewedFromLeadId], references: [id])
+  renewals             Lead[]             @relation("LeadRenewal")
 
   @@map("leads")
 }
@@ -359,6 +368,19 @@ model Follower {
   @@map("followers")
 }
 
+enum AlertType {
+  renewal_t60
+  renewal_t30
+  health_drop
+  stale_deal
+}
+
+enum AlertStatus {
+  open
+  acknowledged
+  resolved
+}
+
 enum NotificationType {
   mention
   lead_assigned
@@ -366,6 +388,41 @@ enum NotificationType {
   activity_overdue
   alert
   stage_change
+}
+
+model Alert {
+  id          String      @id @default(uuid())
+  type        AlertType
+  clientId    String?     @map("client_id")
+  leadId      String?     @map("lead_id")
+  assignedTo  String?     @map("assigned_to")
+  status      AlertStatus @default(open)
+  triggeredAt DateTime    @default(now()) @map("triggered_at")
+  resolvedAt  DateTime?   @map("resolved_at")
+  dedupeKey   String      @unique @map("dedupe_key")
+  client      Client?     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lead        Lead?       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignee    User?       @relation("AlertAssignee", fields: [assignedTo], references: [id])
+
+  @@index([clientId, status])
+  @@index([status, triggeredAt])
+  @@map("alerts")
+}
+
+model ClientHealthSnapshot {
+  id                String       @id @default(uuid())
+  clientId          String       @map("client_id")
+  score             Int
+  band              HealthStatus
+  signalActivity    Int          @map("signal_activity")
+  signalRenewal     Int          @map("signal_renewal")
+  signalRevenue     Int          @map("signal_revenue")
+  signalEngagement  Int          @map("signal_engagement")
+  computedAt        DateTime     @default(now()) @map("computed_at")
+  client            Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, computedAt])
+  @@map("client_health_snapshots")
 }
 
 model Notification {

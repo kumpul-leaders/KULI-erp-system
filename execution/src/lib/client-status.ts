@@ -103,6 +103,7 @@ export async function syncClientStatus(clientId: string): Promise<void> {
     select: {
       contractEnd: true,
       leads: {
+        where: { deletedAt: null },
         select: {
           stage: true,
           projectType: true,

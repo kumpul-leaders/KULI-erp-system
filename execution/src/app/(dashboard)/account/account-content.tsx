@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, AlertCircle, Pencil } from "lucide-react"
 import { toast } from "sonner"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 import type { Role } from "@/types"
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -71,11 +72,11 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
   return (
     <div className="max-w-xl space-y-6">
       {/* Profile card */}
-      <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-        <h3 className="text-sm font-semibold text-neutral-800 mb-4">Profile</h3>
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-4">Profile</h3>
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between items-center">
-            <dt className="text-neutral-500">Name</dt>
+            <dt className="text-neutral-500 dark:text-neutral-400">Name</dt>
             {editingName ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -120,10 +121,10 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
-                <dd className="font-medium text-neutral-800">{nameValue}</dd>
+                <dd className="font-medium text-neutral-800 dark:text-neutral-100">{nameValue}</dd>
                 <button
                   onClick={() => setEditingName(true)}
-                  className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                  className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
                   aria-label="Edit name"
                 >
                   <Pencil className="h-3 w-3" />
@@ -132,26 +133,33 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
             )}
           </div>
           <div className="flex justify-between">
-            <dt className="text-neutral-500">Email</dt>
-            <dd className="text-neutral-700">{email}</dd>
+            <dt className="text-neutral-500 dark:text-neutral-400">Email</dt>
+            <dd className="text-neutral-700 dark:text-neutral-300">{email}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-neutral-500">Role</dt>
-            <dd className="text-neutral-700">{ROLE_LABEL[role]}</dd>
+            <dt className="text-neutral-500 dark:text-neutral-400">Role</dt>
+            <dd className="text-neutral-700 dark:text-neutral-300">{ROLE_LABEL[role]}</dd>
           </div>
           {division && (
             <div className="flex justify-between">
-              <dt className="text-neutral-500">Division</dt>
-              <dd className="text-neutral-700">{division}</dd>
+              <dt className="text-neutral-500 dark:text-neutral-400">Division</dt>
+              <dd className="text-neutral-700 dark:text-neutral-300">{division}</dd>
             </div>
           )}
         </dl>
       </div>
 
+      {/* Appearance card */}
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-1">Appearance</h3>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">Toggle between light and dark mode.</p>
+        <ThemeToggle variant="full" />
+      </div>
+
       {/* Change password card */}
-      <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-        <h3 className="text-sm font-semibold text-neutral-800 mb-1">Change Password</h3>
-        <p className="text-xs text-neutral-500 mb-4">Set a new password for your account.</p>
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-1">Change Password</h3>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">Set a new password for your account.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -162,7 +170,7 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="new-password" className="text-sm font-medium text-neutral-700">
+            <Label htmlFor="new-password" className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
               New Password <span className="text-danger-500" aria-hidden>*</span>
             </Label>
             <Input
@@ -178,7 +186,7 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="confirm-password" className="text-sm font-medium text-neutral-700">
+            <Label htmlFor="confirm-password" className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
               Confirm Password <span className="text-danger-500" aria-hidden>*</span>
             </Label>
             <Input

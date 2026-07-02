@@ -18,12 +18,20 @@ export async function GET(request: NextRequest) {
   const health = searchParams.get("health") ?? ""
   const industry = searchParams.get("industry") ?? ""
   const status = searchParams.get("status") ?? ""
+  const archived = searchParams.get("archived") === "1"
+
+  // Only admin can view archived records
+  if (archived && user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const parsedHealth = HealthStatusSchema.safeParse(health)
   const parsedStatus = ClientStatusSchema.safeParse(status)
 
   try {
     const where = {
+      // Soft delete filter: default = active only; archived=1 = deleted only
+      deletedAt: archived ? { not: null } : null,
       ...(search
         ? {
             OR: [

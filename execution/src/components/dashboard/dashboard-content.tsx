@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { cn, formatIDR, daysUntil, contractUrgency } from "@/lib/utils"
+import { formatIDR } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import {
   Sheet,
@@ -11,6 +11,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
+import { AlertsPanel } from "@/components/dashboard/alerts-panel"
 
 // ---------------------------------------------------------------------------
 // Shared serialized types (mirrors page.tsx — kept local, no shared file)
@@ -163,23 +164,24 @@ function LeadDrillTable({
       {filtered.length === 0 ? (
         <p className="text-sm text-neutral-400 py-4 text-center">Tidak ada data.</p>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-1">
+        <table className="w-full text-sm min-w-[400px]">
           <thead>
-            <tr className="border-b border-neutral-200">
+            <tr className="border-b border-neutral-200 dark:border-neutral-700">
               <th
-                className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
+                className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 select-none"
                 onClick={() => toggleSort("clientName")}
               >
                 Client{sortIndicator("clientName")}
               </th>
               <th
-                className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
+                className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 select-none"
                 onClick={() => toggleSort("stage")}
               >
                 Stage{sortIndicator("stage")}
               </th>
               <th
-                className="text-right text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
+                className="text-right text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 select-none"
                 onClick={() => toggleSort("revenue")}
               >
                 {showActual ? "Actual Revenue" : "Projected Revenue"}{sortIndicator("revenue")}
@@ -191,8 +193,8 @@ function LeadDrillTable({
           </thead>
           <tbody>
             {filtered.map((lead) => (
-              <tr key={lead.id} className="border-b border-neutral-100 last:border-0">
-                <td className="py-2.5 pr-3 font-medium text-neutral-800">
+              <tr key={lead.id} className="border-b border-neutral-100 dark:border-neutral-700 last:border-0">
+                <td className="py-2.5 pr-3 font-medium text-neutral-800 dark:text-neutral-100">
                   <Link
                     href={`/pipeline/${lead.id}`}
                     className="hover:text-accent-600 hover:underline"
@@ -201,11 +203,11 @@ function LeadDrillTable({
                   </Link>
                 </td>
                 <td className="py-2.5 pr-3">
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
                     {STAGE_LABELS[lead.stage] ?? lead.stage}
                   </span>
                 </td>
-                <td className="py-2.5 pr-3 text-right tabular-nums text-neutral-700">
+                <td className="py-2.5 pr-3 text-right tabular-nums text-neutral-700 dark:text-neutral-300">
                   {formatIDR(showActual ? lead.actualRevenue : lead.projectedRevenue)}
                 </td>
                 <td className="py-2.5 text-xs text-neutral-400">
@@ -215,6 +217,7 @@ function LeadDrillTable({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   )
@@ -422,6 +425,7 @@ interface DashboardContentProps {
   revenueTarget: number
   progressPct: number
   currentMonthLabel: string
+  /** Kept for AlertsPanel fallback when no open alerts exist */
   expiringContracts: { id: string; name: string; contractEnd: string | null; monthlyValue: number | null; annualValue: number | null }[]
   atRiskCount: number
   churnedCount: number
@@ -497,18 +501,18 @@ export function DashboardContent({
 
   return (
     <>
-      <main className="flex-1 overflow-y-auto px-8 py-6">
-        {/* KPI strip — 5 cards */}
-        <div className="grid grid-cols-5 gap-4 mb-8">
+      <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
+        {/* KPI strip — 2 cols mobile, 3 cols sm, 5 cols desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
           {/* Card 1 — Revenue Won MTD */}
           <button
             onClick={() => setActiveDrawer("revenue_won")}
-            className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card text-left w-full hover:border-accent-200 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Revenue Won MTD
             </p>
-            <p className="text-3xl font-bold tabular-nums text-neutral-800 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
               {formatIDR(revenueMTD)}
             </p>
             {revenueMTDPrevMonth > 0 && (
@@ -520,12 +524,12 @@ export function DashboardContent({
           {/* Card 2 — Revenue in Pipeline */}
           <button
             onClick={() => setActiveDrawer("pipeline")}
-            className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card text-left w-full hover:border-accent-200 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Revenue in Pipeline
             </p>
-            <p className="text-3xl font-bold tabular-nums text-neutral-800 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
               {formatIDR(revenueInPipeline)}
             </p>
             <p className="text-xs text-neutral-400">Across active stages</p>
@@ -534,12 +538,12 @@ export function DashboardContent({
           {/* Card 2b — Weighted Forecast */}
           <button
             onClick={() => setActiveDrawer("weighted_forecast")}
-            className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card text-left w-full hover:border-accent-200 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Weighted Forecast
             </p>
-            <p className="text-3xl font-bold tabular-nums text-neutral-800 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
               {formatIDR(weightedForecast)}
             </p>
             <p className="text-xs text-neutral-400">Pipeline × probability</p>
@@ -548,12 +552,12 @@ export function DashboardContent({
           {/* Card 3 — Healthy Clients */}
           <button
             onClick={() => setActiveDrawer("healthy")}
-            className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card text-left w-full hover:border-accent-200 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Healthy Clients
             </p>
-            <p className="text-3xl font-bold tabular-nums text-neutral-800 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
               {healthyCount.toString()}
             </p>
             <p className="text-xs text-neutral-400">Health: healthy</p>
@@ -562,26 +566,26 @@ export function DashboardContent({
           {/* Card 4 — New Leads MTD */}
           <button
             onClick={() => setActiveDrawer("leads_mtd")}
-            className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card text-left w-full hover:border-accent-200 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               New Leads MTD
             </p>
-            <p className="text-3xl font-bold tabular-nums text-neutral-800 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
               {newLeadsCount.toString()}
             </p>
             <p className="text-xs text-neutral-400">{currentMonthLabel}</p>
           </button>
         </div>
 
-        {/* Two-column body */}
-        <div className="grid grid-cols-3 gap-6">
+        {/* Two-column body — stacked on mobile, 3-col on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Left col — col-span-2 */}
-          <div className="col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Revenue vs Target */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-neutral-700">
+                <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
                   Revenue vs Target
                 </h2>
                 <span className="text-xs text-neutral-400">
@@ -602,11 +606,11 @@ export function DashboardContent({
               ) : (
                 <>
                   <div className="mb-3">
-                    <div className="flex justify-between text-xs text-neutral-500 mb-1.5">
+                    <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-1.5">
                       <span>{formatIDR(revenueMTD)}</span>
                       <span>{formatIDR(revenueTarget)}</span>
                     </div>
-                    <div className="h-3 w-full rounded-full bg-neutral-100 overflow-hidden">
+                    <div className="h-3 w-full rounded-full bg-neutral-100 dark:bg-neutral-700 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-accent-500 transition-all"
                         style={{ width: `${progressPct}%` }}
@@ -621,8 +625,8 @@ export function DashboardContent({
             </div>
 
             {/* Recent Pipeline Activity */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-              <h2 className="text-sm font-semibold text-neutral-700 mb-4">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">
                 Recent Pipeline Activity
               </h2>
               {recentActivity.length === 0 ? (
@@ -633,11 +637,11 @@ export function DashboardContent({
                 recentActivity.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-3 py-2.5 border-b border-neutral-100 last:border-0"
+                    className="flex items-start gap-3 py-2.5 border-b border-neutral-100 dark:border-neutral-700 last:border-0"
                   >
                     <div className="mt-0.5 h-2 w-2 rounded-full bg-accent-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-neutral-700 truncate">
+                      <p className="text-sm text-neutral-700 dark:text-neutral-200 truncate">
                         <span className="font-medium">{activity.clientName}</span>
                         {" — "}
                         {STAGE_LABELS[activity.fromStage] ?? activity.fromStage}{" "}
@@ -656,82 +660,25 @@ export function DashboardContent({
           </div>
 
           {/* Right col — col-span-1 */}
-          <div className="col-span-1 space-y-6">
-            {/* Expiring Contracts */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-              <h2 className="text-sm font-semibold text-neutral-700 mb-4">
-                Expiring Contracts
-              </h2>
-              {expiringContracts.length === 0 ? (
-                <p className="text-sm text-neutral-400 py-2">
-                  Tidak ada kontrak yang akan berakhir dalam 90 hari.
-                </p>
-              ) : (
-                expiringContracts.map((client) => {
-                  if (!client.contractEnd) return null
-                  const days = daysUntil(client.contractEnd)
-                  const urgency = contractUrgency(days)
-                  const urgencyClass =
-                    urgency === "critical"
-                      ? "bg-danger-50 text-danger-700"
-                      : urgency === "warning"
-                        ? "bg-warning-50 text-warning-700"
-                        : "bg-info-50 text-info-700"
-
-                  return (
-                    <Link
-                      key={client.id}
-                      href={`/clients/${client.id}`}
-                      className="block mb-2 last:mb-0 rounded-lg bg-neutral-50 p-3 hover:bg-neutral-100 transition-colors"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-neutral-700 truncate">
-                          {client.name}
-                        </p>
-                        <span
-                          className={cn(
-                            "flex-shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                            urgencyClass
-                          )}
-                        >
-                          {days}d
-                        </span>
-                      </div>
-                      <p className="text-xs text-neutral-400 mt-0.5">
-                        Expires{" "}
-                        {new Date(client.contractEnd).toLocaleDateString(
-                          "id-ID",
-                          {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          }
-                        )}
-                      </p>
-                      {(client.monthlyValue || client.annualValue) && (
-                        <p className="text-xs text-neutral-500 mt-0.5 tabular-nums">
-                          {client.monthlyValue
-                            ? `${formatIDR(client.monthlyValue)}/mo`
-                            : client.annualValue
-                              ? `${formatIDR(client.annualValue)}/yr`
-                              : null}
-                        </p>
-                      )}
-                    </Link>
-                  )
-                })
-              )}
-            </div>
+          <div className="lg:col-span-1 space-y-4 md:space-y-6">
+            {/* Alerts — live from /api/alerts?status=open; falls back to expiring contracts */}
+            <AlertsPanel
+              expiringContracts={expiringContracts.map((c) => ({
+                id: c.id,
+                name: c.name,
+                contractEnd: c.contractEnd,
+              }))}
+            />
 
             {/* Client Health */}
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
-              <h2 className="text-sm font-semibold text-neutral-700 mb-4">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">
                 Client Health
               </h2>
               <div className="flex gap-2">
                 <button
                   onClick={() => setActiveDrawer("healthy")}
-                  className="flex-1 rounded-lg bg-success-50 p-3 text-center hover:bg-success-100 transition-colors cursor-pointer focus-visible:outline-none"
+                  className="flex-1 rounded-lg bg-success-50 p-3 text-center hover:opacity-90 transition-opacity cursor-pointer focus-visible:outline-none"
                 >
                   <p className="text-xl font-bold tabular-nums text-success-700">
                     {healthyCount}
@@ -740,7 +687,7 @@ export function DashboardContent({
                 </button>
                 <button
                   onClick={() => setActiveDrawer("at_risk")}
-                  className="flex-1 rounded-lg bg-warning-50 p-3 text-center hover:bg-warning-100 transition-colors cursor-pointer focus-visible:outline-none"
+                  className="flex-1 rounded-lg bg-warning-50 p-3 text-center hover:opacity-90 transition-opacity cursor-pointer focus-visible:outline-none"
                 >
                   <p className="text-xl font-bold tabular-nums text-warning-700">
                     {atRiskCount}
@@ -749,7 +696,7 @@ export function DashboardContent({
                 </button>
                 <button
                   onClick={() => setActiveDrawer("churned")}
-                  className="flex-1 rounded-lg bg-danger-50 p-3 text-center hover:bg-danger-100 transition-colors cursor-pointer focus-visible:outline-none"
+                  className="flex-1 rounded-lg bg-danger-50 p-3 text-center hover:opacity-90 transition-opacity cursor-pointer focus-visible:outline-none"
                 >
                   <p className="text-xl font-bold tabular-nums text-danger-700">
                     {churnedCount}
@@ -762,7 +709,7 @@ export function DashboardContent({
         </div>
       </main>
 
-      {/* Drill-down Sheet */}
+      {/* Drill-down Sheet — full screen on mobile */}
       <Sheet
         open={activeDrawer !== null}
         onOpenChange={(open) => {
@@ -771,10 +718,10 @@ export function DashboardContent({
       >
         <SheetContent
           side="right"
-          className="w-[600px] sm:max-w-[600px] flex flex-col p-0"
+          className="w-full sm:w-[600px] sm:max-w-[600px] flex flex-col p-0 bg-white dark:bg-neutral-800"
         >
-          <SheetHeader className="px-6 py-4 border-b border-neutral-200">
-            <SheetTitle>{drawerMeta.title}</SheetTitle>
+          <SheetHeader className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+            <SheetTitle className="dark:text-neutral-100">{drawerMeta.title}</SheetTitle>
             <SheetDescription className="text-xs text-neutral-400">
               {drawerMeta.description}
             </SheetDescription>

@@ -298,7 +298,7 @@ export function TargetsContent({
   }
 
   return (
-    <main className="flex-1 overflow-y-auto px-8 py-6">
+    <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
       {/* Selectors */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <label className="text-xs font-medium text-neutral-500 shrink-0">View targets for:</label>

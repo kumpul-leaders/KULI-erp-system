@@ -60,6 +60,14 @@ export const CreateLeadSchema = z.object({
 
 export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
 
+// CreateLeadWithRenewalSchema extends CreateLeadSchema with optional renewedFromLeadId
+// Used by POST /api/leads — route handler validates that the source lead exists and is not deleted.
+export const CreateLeadWithRenewalSchema = CreateLeadSchema.extend({
+  renewedFromLeadId: z.string().uuid("renewedFromLeadId must be a valid UUID").optional().nullable(),
+})
+
+export type CreateLeadWithRenewalInput = z.infer<typeof CreateLeadWithRenewalSchema>
+
 // ── PATCH /api/leads/[id] ────────────────────────────────────────────────────
 // All fields optional. "stage" is explicitly rejected by the route handler
 // (must use POST /stage instead) — not included here.

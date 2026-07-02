@@ -118,9 +118,9 @@ export function UpsellsCard({ clientId, upsells }: UpsellsCardProps) {
 
   return (
     <>
-      <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-neutral-800">Upsell Opportunities</h2>
+          <h2 className="font-semibold text-neutral-800 dark:text-neutral-100">Upsell Opportunities</h2>
           <Button size="icon" variant="outline" className="h-7 w-7" onClick={openAdd}>
             <Plus className="h-3.5 w-3.5" />
             <span className="sr-only">Add Upsell</span>
@@ -128,20 +128,20 @@ export function UpsellsCard({ clientId, upsells }: UpsellsCardProps) {
         </div>
 
         {upsells.length === 0 ? (
-          <p className="text-sm text-neutral-400 py-4 text-center">
+          <p className="text-sm text-neutral-400 dark:text-neutral-500 py-4 text-center">
             No upsell opportunities tracked yet.
           </p>
         ) : (
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
             {upsells.map((upsell) => (
               <div key={upsell.id} className="py-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-neutral-800 truncate">
+                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
                       {upsell.service}
                     </p>
                     {upsell.estimatedValue && (
-                      <p className="text-xs text-neutral-500 mt-0.5 tabular-nums">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 tabular-nums">
                         {formatIDR(upsell.estimatedValue)}
                       </p>
                     )}
@@ -164,7 +164,7 @@ export function UpsellsCard({ clientId, upsells }: UpsellsCardProps) {
                   </div>
                 </div>
                 {upsell.notes && (
-                  <p className="text-xs text-neutral-400 mt-1">{upsell.notes}</p>
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">{upsell.notes}</p>
                 )}
               </div>
             ))}

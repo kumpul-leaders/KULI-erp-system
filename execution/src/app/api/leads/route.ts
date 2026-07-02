@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAuthenticated, requireCanCreateLeads } from "@/lib/require-role"
 import { parseBody } from "@/lib/validations/parse"
-import { PipelineStageSchema, CreateLeadSchema } from "@/lib/validations/lead"
+import { PipelineStageSchema, CreateLeadSchema, CreateLeadWithRenewalSchema } from "@/lib/validations/lead"
 import { getStageConfig } from "@/lib/stage-config.server"
 import { createNotification } from "@/lib/notifications"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
@@ -109,11 +109,19 @@ export async function GET(request: NextRequest) {
   const salesId = searchParams.get("salesId") ?? ""
   const clientId = searchParams.get("clientId") ?? ""
   const search = searchParams.get("search") ?? ""
+  const archived = searchParams.get("archived") === "1"
+
+  // Only admin can view archived records
+  if (archived && user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const parsedStage = PipelineStageSchema.safeParse(stage)
 
   try {
     const where: Record<string, unknown> = {}
+    // Soft delete filter: default = active only; archived=1 = deleted only
+    where.deletedAt = archived ? { not: null } : null
     if (parsedStage.success) where.stage = parsedStage.data
     if (salesId) where.salesId = salesId
     if (clientId) where.clientId = clientId
@@ -164,10 +172,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const parsed = await parseBody(CreateLeadSchema, request)
+  const parsed = await parseBody(CreateLeadWithRenewalSchema, request)
   if (parsed.error) return parsed.error
 
   const body = parsed.data
+
+  // Validate renewedFromLeadId if provided
+  if (body.renewedFromLeadId) {
+    const sourceLead = await prisma.lead.findUnique({
+      where: { id: body.renewedFromLeadId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!sourceLead) {
+      return NextResponse.json(
+        { error: "renewedFromLeadId: lead not found or has been archived" },
+        { status: 400 }
+      )
+    }
+  }
 
   const billingPlan = body.billingPlan ?? null
   const quarter = billingPlan ? billingPlanToQuarter(billingPlan) : null
@@ -197,6 +219,7 @@ export async function POST(request: NextRequest) {
               : null,
           probability: initialProbability,
           probabilityIsManual: false,
+          renewedFromLeadId: body.renewedFromLeadId ?? null,
         },
         include: {
           client: { select: { id: true, name: true, customerCode: true } },

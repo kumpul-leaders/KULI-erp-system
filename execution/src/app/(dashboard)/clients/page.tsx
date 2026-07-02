@@ -58,7 +58,7 @@ async function fetchClients(search: string, sort: string, dir: string) {
   const orderBy = buildOrderBy(dbSort, dir)
 
   const clients = await prisma.client.findMany({
-    where,
+    where: { ...where, deletedAt: null },
     include: {
       ae: { select: { id: true, name: true } },
       contacts: { select: { id: true } },
@@ -67,20 +67,22 @@ async function fetchClients(search: string, sort: string, dir: string) {
   })
 
   const [cumulativeGroups, opportunityGroups] = await Promise.all([
-    // Cumulative Value: SUM(actualRevenue) from won leads per client
+    // Cumulative Value: SUM(actualRevenue) from won leads per client (active only)
     prisma.lead.groupBy({
       by: ["clientId"],
       where: {
+        deletedAt: null,
         clientId: { in: clients.map((c) => c.id) },
         stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
         actualRevenue: { not: null },
       },
       _sum: { actualRevenue: true },
     }),
-    // Opportunity Value: SUM(projectedRevenue) from open leads per client
+    // Opportunity Value: SUM(projectedRevenue) from open leads per client (active only)
     prisma.lead.groupBy({
       by: ["clientId"],
       where: {
+        deletedAt: null,
         clientId: { in: clients.map((c) => c.id) },
         stage: { in: ["leads", "pipeline", "negotiation"] },
         projectedRevenue: { not: null },
@@ -229,7 +231,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   return (
     <>
       <Topbar title="Clients" />
-      <main className="flex-1 overflow-y-auto px-8 py-6">
+      <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
         <Suspense
           key={`${search}-${sort}-${dir}`}
           fallback={<ClientsTableSkeleton />}

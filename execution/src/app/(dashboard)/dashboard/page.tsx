@@ -72,6 +72,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     prisma.lead.aggregate({
       where: {
+        deletedAt: null,
         stage: { in: ["closed_won", "invoiced"] },
         billingPlan: currentBillingPlan,
       },
@@ -79,12 +80,14 @@ export default async function DashboardPage() {
     }),
     prisma.lead.aggregate({
       where: {
+        deletedAt: null,
         stage: { in: ["leads", "pipeline", "negotiation"] },
       },
       _sum: { projectedRevenue: true },
     }),
     prisma.lead.aggregate({
       where: {
+        deletedAt: null,
         stage: { in: ["closed_won", "invoiced", "contract_renewal"] },
         closedAt: { gte: prevMonthStart, lte: prevMonthEnd },
         actualRevenue: { not: null },
@@ -92,10 +95,10 @@ export default async function DashboardPage() {
       _sum: { actualRevenue: true },
     }),
     prisma.client.count({
-      where: { healthStatus: "healthy" },
+      where: { deletedAt: null, healthStatus: "healthy" },
     }),
     prisma.lead.count({
-      where: { createdAt: { gte: startOfMonth } },
+      where: { deletedAt: null, createdAt: { gte: startOfMonth } },
     }),
     prisma.target.findFirst({
       where: {
@@ -106,6 +109,7 @@ export default async function DashboardPage() {
     }),
     prisma.client.findMany({
       where: {
+        deletedAt: null,
         contractEnd: { gte: now, lte: in90Days },
       },
       select: {
@@ -119,8 +123,8 @@ export default async function DashboardPage() {
       orderBy: { contractEnd: "asc" },
       take: 8,
     }),
-    prisma.client.count({ where: { healthStatus: "at_risk" } }),
-    prisma.client.count({ where: { healthStatus: "churned" } }),
+    prisma.client.count({ where: { deletedAt: null, healthStatus: "at_risk" } }),
+    prisma.client.count({ where: { deletedAt: null, healthStatus: "churned" } }),
     prisma.leadStageHistory.findMany({
       take: 10,
       orderBy: { changedAt: "desc" },
@@ -132,6 +136,7 @@ export default async function DashboardPage() {
     // Drill-down queries
     prisma.lead.findMany({
       where: {
+        deletedAt: null,
         stage: { in: ["closed_won", "invoiced"] },
         billingPlan: currentBillingPlan,
       },
@@ -149,6 +154,7 @@ export default async function DashboardPage() {
     }),
     prisma.lead.findMany({
       where: {
+        deletedAt: null,
         stage: { in: ["leads", "pipeline", "negotiation"] },
       },
       select: {
@@ -164,7 +170,7 @@ export default async function DashboardPage() {
       take: 100,
     }),
     prisma.client.findMany({
-      where: { healthStatus: "healthy" },
+      where: { deletedAt: null, healthStatus: "healthy" },
       select: {
         id: true,
         name: true,
@@ -177,7 +183,7 @@ export default async function DashboardPage() {
       take: 100,
     }),
     prisma.lead.findMany({
-      where: { createdAt: { gte: startOfMonth } },
+      where: { deletedAt: null, createdAt: { gte: startOfMonth } },
       select: {
         id: true,
         stage: true,
@@ -189,7 +195,7 @@ export default async function DashboardPage() {
       take: 100,
     }),
     prisma.client.findMany({
-      where: { healthStatus: "at_risk" },
+      where: { deletedAt: null, healthStatus: "at_risk" },
       select: {
         id: true,
         name: true,
@@ -202,7 +208,7 @@ export default async function DashboardPage() {
       take: 100,
     }),
     prisma.client.findMany({
-      where: { healthStatus: "churned" },
+      where: { deletedAt: null, healthStatus: "churned" },
       select: {
         id: true,
         name: true,
@@ -217,6 +223,7 @@ export default async function DashboardPage() {
     // Weighted forecast: all leads in forecast-eligible stages with projectedRevenue + probability
     prisma.lead.findMany({
       where: {
+        deletedAt: null,
         stage: forecastStages.length > 0 ? { in: forecastStages as $Enums.PipelineStage[] } : { in: [] as $Enums.PipelineStage[] },
         projectedRevenue: { not: null },
         probability: { not: null },

@@ -2,6 +2,12 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────
+   TAILWIND V4 — DARK VARIANT
+   Activate dark: prefix for .dark class on <html>
+───────────────────────────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─────────────────────────────────────────────
    TAILWIND V4 CSS-FIRST THEME CONFIG
    Maps design system tokens from spec.
 ───────────────────────────────────────────── */
@@ -117,6 +123,87 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* ── Dark mode token overrides ─────────────────
+     Flip the neutral scale. Surface = slate-800/900.
+     Status 50 backgrounds darkened; vivid colors stay.
+     shadcn semantic vars remapped for dark.
+  ─────────────────────────────────────────────── */
+  .dark {
+    /* Page background & default foreground */
+    --color-background: #0f172a;       /* neutral-900 */
+    --color-foreground: #e2e8f0;       /* neutral-200 */
+
+    /* Card / surface */
+    --color-card: #1e293b;             /* neutral-800 */
+    --color-card-foreground: #e2e8f0;
+
+    /* Popover / dropdown */
+    --color-popover: #1e293b;
+    --color-popover-foreground: #e2e8f0;
+
+    /* Primary (indigo) — stays the same, lighter variant */
+    --color-primary: #818cf8;          /* indigo-400 — more visible on dark */
+    --color-primary-foreground: #0f172a;
+
+    /* Secondary surface */
+    --color-secondary: #334155;        /* neutral-700 */
+    --color-secondary-foreground: #e2e8f0;
+
+    /* Muted */
+    --color-muted: #1e293b;
+    --color-muted-foreground: #94a3b8; /* neutral-400 */
+
+    /* Accent tint — dark surface version */
+    --color-accent: #1e1b4b;           /* deep indigo dark */
+    --color-accent-foreground: #a5b4fc; /* indigo-300 */
+
+    /* Destructive */
+    --color-destructive: #f87171;
+    --color-destructive-foreground: #0f172a;
+
+    /* Borders & inputs */
+    --color-border: #334155;           /* neutral-700 */
+    --color-input: #334155;
+    --color-ring: #818cf8;
+
+    /* Neutral scale flip for dark */
+    --color-neutral-50: #1e293b;
+    --color-neutral-100: #334155;
+    --color-neutral-200: #475569;
+    --color-neutral-300: #64748b;
+    --color-neutral-400: #94a3b8;
+    --color-neutral-500: #94a3b8;
+    --color-neutral-600: #cbd5e1;
+    --color-neutral-700: #e2e8f0;
+    --color-neutral-800: #f1f5f9;
+    --color-neutral-900: #f8fafc;
+
+    /* Accent scale dark */
+    --color-accent-50: #1e1b4b;
+    --color-accent-100: #312e81;
+    --color-accent-200: #3730a3;
+    --color-accent-500: #818cf8;
+    --color-accent-600: #a5b4fc;
+    --color-accent-700: #c7d2fe;
+
+    /* Status bg dark: use dark surface + vivid foreground stays readable */
+    --color-success-50: #052e16;
+    --color-success-500: #4ade80;
+    --color-success-700: #86efac;
+
+    --color-warning-50: #1c1400;
+    --color-warning-500: #fbbf24;
+    --color-warning-700: #fcd34d;
+
+    --color-danger-50: #1f0a0a;
+    --color-danger-500: #f87171;
+    --color-danger-700: #fca5a5;
+
+    --color-info-50: #0c1a33;
+    --color-info-500: #60a5fa;
+    --color-info-700: #93c5fd;
+  }
 }
 
 /* ─────────────────────────────────────────────
@@ -133,6 +220,16 @@
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
+  }
+
+  .dark .shimmer {
+    background: linear-gradient(
+      90deg,
+      #1e293b 25%,
+      #334155 50%,
+      #1e293b 75%
+    );
+    background-size: 200% 100%;
   }
 
   /* Tabular numbers for all currency / metrics */

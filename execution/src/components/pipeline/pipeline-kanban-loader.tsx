@@ -7,6 +7,7 @@ import {
   Search,
   LayoutGrid,
   List,
+  CalendarDays,
   SlidersHorizontal,
   ArrowUpDown,
 } from "lucide-react"
@@ -28,6 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { FilterPanel, applyConditions, type FilterCondition, type MatchMode, type FieldConfig } from "@/components/ui/filter-panel"
 import { PipelineKanban, type KanbanSortKey } from "./pipeline-kanban"
 import { PipelineListView } from "./pipeline-list-view"
+import { PipelineCalendarView } from "./pipeline-calendar-view"
 import { LeadFormSheet } from "./lead-form-sheet"
 import { cn } from "@/lib/utils"
 import type { SerializedLead, KanbanField } from "./pipeline-card"
@@ -106,7 +108,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
   const [sheetOpen, setSheetOpen] = useState(searchParams.get("new") === "1")
 
   // View + filter state
-  const [viewMode, setViewMode] = useState<"kanban" | "list">("list")
+  const [viewMode, setViewMode] = useState<"kanban" | "list" | "calendar">("list")
   const [search, setSearch] = useState("")
 
   // Pagination — read from URL
@@ -416,6 +418,18 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
             <List className="h-4 w-4" />
             List
           </button>
+          <button
+            className={cn(
+              "px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-neutral-200",
+              viewMode === "calendar"
+                ? "bg-neutral-900 text-white"
+                : "bg-white text-neutral-600 hover:bg-neutral-50"
+            )}
+            onClick={() => setViewMode("calendar")}
+          >
+            <CalendarDays className="h-4 w-4" />
+            Calendar
+          </button>
         </div>
 
         {/* Add Lead */}
@@ -425,11 +439,15 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
         </Button>
       </div>
 
-      {/* Board / List — Fix 1: conditional overflow based on viewMode */}
+      {/* Board / List / Calendar */}
       <div
         className={cn(
           "flex-1",
-          viewMode === "list" ? "overflow-auto" : "overflow-hidden"
+          viewMode === "list"
+            ? "overflow-auto"
+            : viewMode === "calendar"
+            ? "overflow-y-auto"
+            : "overflow-hidden"
         )}
       >
         {viewMode === "kanban" ? (
@@ -438,6 +456,8 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
             visibleFields={visibleFields}
             sortKey={kanbanSort}
           />
+        ) : viewMode === "calendar" ? (
+          <PipelineCalendarView leads={filteredLeads} />
         ) : (
           <PipelineListView
             leads={filteredLeads}

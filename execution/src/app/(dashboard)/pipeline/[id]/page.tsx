@@ -25,7 +25,7 @@ const PRODUCT_LINE_LABELS: Record<ProductLine, string> = {
 
 async function fetchLead(id: string) {
   return prisma.lead.findUnique({
-    where: { id },
+    where: { id, deletedAt: null },
     include: {
       client: { select: { id: true, name: true, customerCode: true } },
       sales: { select: { id: true, name: true } },
@@ -40,6 +40,15 @@ async function fetchLead(id: string) {
       fieldHistory: {
         include: { changer: { select: { id: true, name: true } } },
         orderBy: { changedAt: "desc" },
+      },
+      // Renewal chain
+      renewedFromLead: {
+        include: { client: { select: { name: true } } },
+      },
+      renewals: {
+        where: { deletedAt: null },
+        select: { id: true, stage: true, client: { select: { name: true } }, createdAt: true },
+        orderBy: { createdAt: "desc" },
       },
     },
   })
@@ -155,6 +164,15 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       changedAt: h.changedAt.toISOString(),
       changer: h.changer ?? undefined,
     })),
+    renewedFromLead: lead.renewedFromLead
+      ? { id: lead.renewedFromLead.id, clientName: lead.renewedFromLead.client.name }
+      : null,
+    renewals: lead.renewals.map((r) => ({
+      id: r.id,
+      stage: r.stage,
+      clientName: r.client.name,
+      createdAt: r.createdAt.toISOString(),
+    })),
   }
 
   return (
@@ -169,6 +187,8 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
         assigneeOptions={salesOptions}
         stageHistory={serializedLead.stageHistory}
         fieldHistory={serializedLead.fieldHistory}
+        renewedFromLead={serializedLead.renewedFromLead}
+        renewals={serializedLead.renewals}
       />
     </>
   )

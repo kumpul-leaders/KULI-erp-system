@@ -44,10 +44,23 @@ interface SalesOption {
   name: string
 }
 
+export interface LeadFormInitialValues {
+  clientId?: string
+  clientName?: string
+  customerCode?: string
+  productLine?: string
+  projectedRevenue?: string
+  stage?: string
+  /** If set, POST body will include renewedFromLeadId */
+  renewedFromLeadId?: string
+}
+
 interface LeadFormSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   salesOptions: SalesOption[]
+  /** Pre-fill form fields — used for renewal flow. Non-breaking: defaults to empty */
+  initialValues?: LeadFormInitialValues
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -209,9 +222,22 @@ export function LeadFormSheet({
   open,
   onOpenChange,
   salesOptions,
+  initialValues,
 }: LeadFormSheetProps) {
   const router = useRouter()
-  const [form, setForm] = useState<FormState>(INITIAL_FORM)
+  const [form, setForm] = useState<FormState>(() => ({
+    ...INITIAL_FORM,
+    ...(initialValues
+      ? {
+          clientId: initialValues.clientId ?? "",
+          clientName: initialValues.clientName ?? "",
+          customerCode: initialValues.customerCode ?? "",
+          productLine: (initialValues.productLine as FormState["productLine"]) ?? "",
+          projectedRevenue: initialValues.projectedRevenue ?? "",
+          stage: (initialValues.stage as FormState["stage"]) ?? "leads",
+        }
+      : {}),
+  }))
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [billingPlanEnd, setBillingPlanEnd] = useState("")
   const [billingPlanEndError, setBillingPlanEndError] = useState("")
@@ -226,12 +252,25 @@ export function LeadFormSheet({
   useEffect(() => {
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setForm(INITIAL_FORM)
+      setForm({
+        ...INITIAL_FORM,
+        ...(initialValues
+          ? {
+              clientId: initialValues.clientId ?? "",
+              clientName: initialValues.clientName ?? "",
+              customerCode: initialValues.customerCode ?? "",
+              productLine: (initialValues.productLine as FormState["productLine"]) ?? "",
+              projectedRevenue: initialValues.projectedRevenue ?? "",
+              stage: (initialValues.stage as FormState["stage"]) ?? "leads",
+            }
+          : {}),
+      })
       setErrors({})
       setBillingPlanEnd("")
       setBillingPlanEndError("")
       setPreviewItems(null)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const quarter = form.billingPlan ? billingPlanToQuarter(form.billingPlan) : null
@@ -315,6 +354,9 @@ export function LeadFormSheet({
           billingPlan: form.billingPlan || null,
           expectedCloseDate: form.expectedCloseDate || null,
           notes: form.notes || null,
+          ...(initialValues?.renewedFromLeadId
+            ? { renewedFromLeadId: initialValues.renewedFromLeadId }
+            : {}),
         }),
       })
 
@@ -416,7 +458,9 @@ export function LeadFormSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[480px] sm:max-w-[480px] overflow-y-auto">
         <SheetHeader className="mb-6">
-          <SheetTitle>New Lead</SheetTitle>
+          <SheetTitle>
+            {initialValues?.renewedFromLeadId ? "Buat Renewal Lead" : "New Lead"}
+          </SheetTitle>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

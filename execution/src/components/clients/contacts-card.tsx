@@ -169,9 +169,9 @@ export function ContactsCard({ clientId, contacts }: ContactsCardProps) {
 
   return (
     <>
-      <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-neutral-800">Contacts</h2>
+          <h2 className="font-semibold text-neutral-800 dark:text-neutral-100">Contacts</h2>
           <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={openAdd}>
             <Plus className="h-3.5 w-3.5" />
             Add Contact
@@ -179,11 +179,11 @@ export function ContactsCard({ clientId, contacts }: ContactsCardProps) {
         </div>
 
         {contacts.length === 0 ? (
-          <p className="text-sm text-neutral-400 py-4 text-center">
+          <p className="text-sm text-neutral-400 dark:text-neutral-500 py-4 text-center">
             No contacts yet. Add the first contact for this client.
           </p>
         ) : (
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-neutral-100 dark:divide-neutral-700">
             {contacts.map((contact) => (
               <div
                 key={contact.id}
@@ -197,7 +197,7 @@ export function ContactsCard({ clientId, contacts }: ContactsCardProps) {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-neutral-800 truncate">
+                    <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
                       {contact.name}
                     </span>
                     {contact.isPrimary && (
@@ -208,11 +208,11 @@ export function ContactsCard({ clientId, contacts }: ContactsCardProps) {
                     )}
                   </div>
                   {contact.role && (
-                    <p className="text-xs text-neutral-500 truncate">{contact.role}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{contact.role}</p>
                   )}
                 </div>
 
-                <div className="text-xs text-neutral-500 hidden sm:block shrink-0">
+                <div className="text-xs text-neutral-500 dark:text-neutral-400 hidden sm:block shrink-0">
                   {contact.email && (
                     <a
                       href={`mailto:${contact.email}`}

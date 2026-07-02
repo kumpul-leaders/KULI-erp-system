@@ -1,13 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
-import type { UpsellStatus } from "@/types"
-
-const UPSELL_STATUSES: UpsellStatus[] = ["identified", "pitched", "won", "lost"]
-
-function isUpsellStatus(v: unknown): v is UpsellStatus {
-  return typeof v === "string" && UPSELL_STATUSES.includes(v as UpsellStatus)
-}
+import { parseBody } from "@/lib/validations/parse"
+import { CreateUpsellSchema } from "@/lib/validations/upsell"
 
 // ── POST /api/clients/[id]/upsells ──────────────────────────────────────────
 // Admin or Commercial Director only.
@@ -23,16 +18,10 @@ export async function POST(
 
   const { id: clientId } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(CreateUpsellSchema, request)
+  if (parsed.error) return parsed.error
 
-  if (!body.service || typeof body.service !== "string" || !body.service.trim()) {
-    return NextResponse.json({ error: "Service name is required" }, { status: 400 })
-  }
+  const body = parsed.data
 
   try {
     const clientExists = await prisma.client.findUnique({ where: { id: clientId } })
@@ -43,11 +32,11 @@ export async function POST(
     const upsell = await prisma.upsellOpportunity.create({
       data: {
         clientId,
-        service: (body.service as string).trim(),
-        status: isUpsellStatus(body.status) ? body.status : "identified",
+        service: body.service.trim(),
+        status: body.status ?? "identified",
         estimatedValue:
           typeof body.estimatedValue === "number" ? body.estimatedValue : null,
-        notes: typeof body.notes === "string" ? body.notes || null : null,
+        notes: body.notes || null,
       },
     })
 

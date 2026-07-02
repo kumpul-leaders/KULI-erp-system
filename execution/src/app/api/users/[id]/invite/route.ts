@@ -59,15 +59,7 @@ export async function POST(
     )
   }
 
-  // Require service role key
   const adminClient = createAdminClient()
-  if (!adminClient) {
-    return NextResponse.json(
-      { error: "Service role key not configured. Set SUPABASE_SERVICE_ROLE_KEY." },
-      { status: 503 }
-    )
-  }
-
   const redirectTo = `${getAppUrl()}/api/auth/callback?next=${encodeURIComponent("/set-password?flow=invite")}`
 
   try {

@@ -109,6 +109,19 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list")
   const [search, setSearch] = useState("")
 
+  // Pagination — read from URL
+  const listPage = Math.max(1, Number(searchParams.get("page") ?? "1") || 1)
+
+  function goToListPage(page: number) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (page <= 1) {
+      params.delete("page")
+    } else {
+      params.set("page", String(page))
+    }
+    router.replace(`/pipeline?${params.toString()}`, { scroll: false })
+  }
+
   const initialConditions = useMemo(() => {
     if (!filterParam) return []
     try {
@@ -171,7 +184,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
     }
   }, [])
 
-  // Sync filter conditions to URL
+  // Sync filter conditions to URL and reset pagination
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
     if (conditions.length > 0) {
@@ -179,6 +192,8 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
     } else {
       params.delete("filter")
     }
+    // Reset to page 1 whenever filter changes
+    params.delete("page")
     router.replace(`/pipeline?${params.toString()}`, { scroll: false })
   }, [conditions, searchParams, router])
 
@@ -405,6 +420,8 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
             leads={filteredLeads}
             salesOptions={salesOptions}
             onRefresh={refetchLeads}
+            currentPage={listPage}
+            onPageChange={goToListPage}
           />
         )}
       </div>

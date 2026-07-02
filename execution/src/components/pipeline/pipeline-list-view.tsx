@@ -22,11 +22,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { toast } from "sonner"
 import { PipelineStageBadge } from "./pipeline-stage-badge"
 import { cn, formatIDR } from "@/lib/utils"
 import type { SerializedLead } from "./pipeline-card"
 import type { ProductLine } from "@/types"
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 25
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +47,8 @@ interface PipelineListViewProps {
   leads: SerializedLead[]
   salesOptions: Array<{ id: string; name: string }>
   onRefresh: () => void
+  currentPage?: number
+  onPageChange?: (page: number) => void
 }
 
 // ── Footer calculator types ───────────────────────────────────────────────────
@@ -307,6 +322,8 @@ export function PipelineListView({
   leads,
   salesOptions,
   onRefresh,
+  currentPage = 1,
+  onPageChange,
 }: PipelineListViewProps) {
   const router = useRouter()
   const [sortCol, setSortCol] = useState<SortCol>("createdAt")
@@ -373,18 +390,38 @@ export function PipelineListView({
     [leads, sortCol, sortDir]
   )
 
-  // effectiveLeads applies optimistic revenue overrides for footer calculations
-  const effectiveLeads = useMemo(
-    () =>
-      sortedLeads.map((l) => ({
-        ...l,
-        actualRevenue:
-          revenueOverrides[l.id] !== undefined
-            ? revenueOverrides[l.id]
-            : l.actualRevenue,
-      })),
-    [sortedLeads, revenueOverrides]
+  // effectiveLeads — full sorted set with optimistic revenue overrides.
+  // Used by footer calcs so counts/sums reflect the entire filtered dataset, not just the current page.
+  const effectiveLeads = sortedLeads.map((l) => ({
+    ...l,
+    actualRevenue:
+      revenueOverrides[l.id] !== undefined
+        ? revenueOverrides[l.id]
+        : l.actualRevenue,
+  }))
+
+  // ── Pagination ──────────────────────────────────────────────────────────────
+
+  const totalPages = Math.max(1, Math.ceil(sortedLeads.length / PAGE_SIZE))
+  const safePage = Math.min(Math.max(1, currentPage), totalPages)
+  const pagedLeads = sortedLeads.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
   )
+
+  function buildPageRange(current: number, total: number): Array<number | "ellipsis"> {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+    const result: Array<number | "ellipsis"> = [1]
+    if (current > 3) result.push("ellipsis")
+    const start = Math.max(2, current - 1)
+    const end = Math.min(total - 1, current + 1)
+    for (let i = start; i <= end; i++) result.push(i)
+    if (current < total - 2) result.push("ellipsis")
+    result.push(total)
+    return result
+  }
+
+  const pageRange = buildPageRange(safePage, totalPages)
 
   if (leads.length === 0) {
     return (
@@ -441,12 +478,17 @@ export function PipelineListView({
       <Table>
         <TableHeader>
           <TableRow className="bg-neutral-50">
-            {/* Select-all checkbox */}
+            {/* Select-all checkbox — selects current page only */}
             <TableHead className="w-[40px]">
               <Checkbox
-                checked={selectedIds.size === sortedLeads.length && sortedLeads.length > 0}
+                checked={pagedLeads.length > 0 && pagedLeads.every((l) => selectedIds.has(l.id))}
                 onCheckedChange={(checked) => {
-                  setSelectedIds(checked ? new Set(sortedLeads.map((l) => l.id)) : new Set())
+                  setSelectedIds((prev) => {
+                    const next = new Set(prev)
+                    if (checked) pagedLeads.forEach((l) => next.add(l.id))
+                    else pagedLeads.forEach((l) => next.delete(l.id))
+                    return next
+                  })
                 }}
               />
             </TableHead>
@@ -542,7 +584,7 @@ export function PipelineListView({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedLeads.map((lead) => (
+          {pagedLeads.map((lead) => (
             <TableRow
               key={lead.id}
               className="cursor-pointer hover:bg-neutral-50 transition-colors"
@@ -832,6 +874,49 @@ export function PipelineListView({
         </TableFooter>
       </Table>
     </div>
+
+    {/* Pagination */}
+    {totalPages > 1 && (
+      <div className="mt-4">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => { e.preventDefault(); if (safePage > 1) onPageChange?.(safePage - 1) }}
+                aria-disabled={safePage <= 1}
+                className={safePage <= 1 ? "pointer-events-none opacity-40" : ""}
+              />
+            </PaginationItem>
+            {pageRange.map((item, idx) =>
+              item === "ellipsis" ? (
+                <PaginationItem key={`ellipsis-${idx}`}>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              ) : (
+                <PaginationItem key={item}>
+                  <PaginationLink
+                    href="#"
+                    isActive={item === safePage}
+                    onClick={(e) => { e.preventDefault(); onPageChange?.(item) }}
+                  >
+                    {item}
+                  </PaginationLink>
+                </PaginationItem>
+              )
+            )}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => { e.preventDefault(); if (safePage < totalPages) onPageChange?.(safePage + 1) }}
+                aria-disabled={safePage >= totalPages}
+                className={safePage >= totalPages ? "pointer-events-none opacity-40" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    )}
     </div>
   )
 }

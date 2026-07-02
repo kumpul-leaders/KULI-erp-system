@@ -2,24 +2,9 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireCanCreateLeads } from "@/lib/require-role"
 import { syncClientStatus } from "@/lib/client-status"
+import { parseBody } from "@/lib/validations/parse"
+import { StageTransitionSchema } from "@/lib/validations/lead"
 import type { PipelineStage } from "@/types"
-
-// ── Validation ──────────────────────────────────────────────────────────────
-
-const PIPELINE_STAGES: PipelineStage[] = [
-  "leads",
-  "pipeline",
-  "negotiation",
-  "closed_won",
-  "lost_deal",
-  "invoiced",
-  "contract_renewal",
-  "no_response",
-]
-
-function isPipelineStage(v: unknown): v is PipelineStage {
-  return typeof v === "string" && PIPELINE_STAGES.includes(v as PipelineStage)
-}
 
 // ── Gate logic ──────────────────────────────────────────────────────────────
 // Server-enforced stage advance requirements.
@@ -95,20 +80,10 @@ export async function POST(
 
   const { id } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(StageTransitionSchema, request)
+  if (parsed.error) return parsed.error
 
-  if (!isPipelineStage(body.toStage)) {
-    return NextResponse.json({ error: "Valid toStage is required" }, { status: 400 })
-  }
-
-  const toStage = body.toStage
-  const lossDealReason =
-    typeof body.lossDealReason === "string" ? body.lossDealReason : null
+  const { toStage, lossDealReason } = parsed.data
 
   try {
     const lead = await prisma.lead.findUnique({ where: { id } })

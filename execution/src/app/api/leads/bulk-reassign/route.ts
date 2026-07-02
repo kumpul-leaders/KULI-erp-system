@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/require-role"
+import { parseBody } from "@/lib/validations/parse"
+import { BulkReassignSchema } from "@/lib/validations/lead"
 
 // ── POST /api/leads/bulk-reassign ────────────────────────────────────────────
 // Admin only. Atomically moves all leads and clients from one user to another.
@@ -14,21 +16,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(BulkReassignSchema, request)
+  if (parsed.error) return parsed.error
 
-  const { fromUserId, toUserId } = body
+  const { fromUserId, toUserId } = parsed.data
 
-  if (!fromUserId || typeof fromUserId !== "string") {
-    return NextResponse.json({ error: "fromUserId is required" }, { status: 400 })
-  }
-  if (!toUserId || typeof toUserId !== "string") {
-    return NextResponse.json({ error: "toUserId is required" }, { status: 400 })
-  }
   if (fromUserId === toUserId) {
     return NextResponse.json(
       { error: "fromUserId and toUserId must be different" },

@@ -10,3 +10,10 @@ Data/
 # Google OAuth (if ever added)
 credentials.json
 token.json
+
+# Vercel local config
+.vercel/
+
+# Playwright artifacts
+execution/test-results/
+execution/playwright-report/

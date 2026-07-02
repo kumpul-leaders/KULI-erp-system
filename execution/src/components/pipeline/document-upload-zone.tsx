@@ -10,6 +10,7 @@ import type { DocumentType } from "@/types"
 interface UploadedDoc {
   id: string
   type: string
+  /** Storage path (new) or legacy public URL — never used directly as href */
   fileUrl: string
   fileName: string | null
   uploadedAt: string
@@ -23,6 +24,27 @@ interface DocumentUploadZoneProps {
   onUploadSuccess: (doc: UploadedDoc) => void
 }
 
+// ── Signed-URL fetch helper ──────────────────────────────────────────────────
+
+async function fetchSignedUrl(documentId: string): Promise<string> {
+  const res = await fetch(`/api/documents/${documentId}/url`)
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string }
+    throw new Error(data.error ?? "Failed to get document URL")
+  }
+  const data = (await res.json()) as { url: string }
+  return data.url
+}
+
+// ── Open document in a new tab via signed URL ────────────────────────────────
+
+async function openDocument(documentId: string): Promise<void> {
+  const url = await fetchSignedUrl(documentId)
+  window.open(url, "_blank", "noopener,noreferrer")
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
 export function DocumentUploadZone({
   leadId,
   type,
@@ -31,6 +53,7 @@ export function DocumentUploadZone({
   onUploadSuccess,
 }: DocumentUploadZoneProps) {
   const [uploading, setUploading] = useState(false)
+  const [opening, setOpening] = useState(false)
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -74,6 +97,17 @@ export function DocumentUploadZone({
 
   const latestDoc = existingDocs.length > 0 ? existingDocs[0] : null
 
+  async function handleOpen(documentId: string) {
+    setOpening(true)
+    try {
+      await openDocument(documentId)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open document")
+    } finally {
+      setOpening(false)
+    }
+  }
+
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide">
@@ -87,14 +121,19 @@ export function DocumentUploadZone({
           <span className="text-xs text-neutral-700 truncate flex-1">
             {latestDoc.fileName ?? "document.pdf"}
           </span>
-          <a
-            href={latestDoc.fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-600 hover:text-accent-700"
+          <button
+            onClick={() => void handleOpen(latestDoc.id)}
+            disabled={opening}
+            className="text-accent-600 hover:text-accent-700 disabled:opacity-50"
+            aria-label="Open document"
+            title="Open document"
           >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+            {opening ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ExternalLink className="h-3.5 w-3.5" />
+            )}
+          </button>
         </div>
       )}
 

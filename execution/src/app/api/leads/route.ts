@@ -1,44 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAuthenticated, requireCanCreateLeads } from "@/lib/require-role"
+import { parseBody } from "@/lib/validations/parse"
+import { PipelineStageSchema, CreateLeadSchema } from "@/lib/validations/lead"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
 
-// ── Validation helpers ──────────────────────────────────────────────────────
-
-const PIPELINE_STAGES: PipelineStage[] = [
-  "leads",
-  "pipeline",
-  "negotiation",
-  "closed_won",
-  "lost_deal",
-  "invoiced",
-  "contract_renewal",
-  "no_response",
-]
-
-const PRODUCT_LINES: ProductLine[] = [
-  "stracomm",
-  "smm",
-  "creative_strategy",
-  "media_buying",
-  "ads_management",
-  "production",
-  "others",
-]
-
-const PROJECT_TYPES: ProjectType[] = ["one_time", "retainer"]
-
-function isPipelineStage(v: unknown): v is PipelineStage {
-  return typeof v === "string" && PIPELINE_STAGES.includes(v as PipelineStage)
-}
-
-function isProductLine(v: unknown): v is ProductLine {
-  return typeof v === "string" && PRODUCT_LINES.includes(v as ProductLine)
-}
-
-function isProjectType(v: unknown): v is ProjectType {
-  return typeof v === "string" && PROJECT_TYPES.includes(v as ProjectType)
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * billingPlan = "YY-MM" e.g. "26-08"
@@ -135,9 +102,11 @@ export async function GET(request: NextRequest) {
   const clientId = searchParams.get("clientId") ?? ""
   const search = searchParams.get("search") ?? ""
 
+  const parsedStage = PipelineStageSchema.safeParse(stage)
+
   try {
     const where: Record<string, unknown> = {}
-    if (isPipelineStage(stage)) where.stage = stage
+    if (parsedStage.success) where.stage = parsedStage.data
     if (salesId) where.salesId = salesId
     if (clientId) where.clientId = clientId
     if (search) {
@@ -187,63 +156,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(CreateLeadSchema, request)
+  if (parsed.error) return parsed.error
 
-  // Required field validation
-  if (!body.clientId || typeof body.clientId !== "string") {
-    return NextResponse.json({ error: "clientId is required" }, { status: 400 })
-  }
-  if (!isProductLine(body.productLine)) {
-    return NextResponse.json({ error: "Valid productLine is required" }, { status: 400 })
-  }
-  if (!isProjectType(body.projectType)) {
-    return NextResponse.json({ error: "Valid projectType is required" }, { status: 400 })
-  }
+  const body = parsed.data
 
-  // billingPlan format validation
-  const billingPlan =
-    typeof body.billingPlan === "string" && body.billingPlan ? body.billingPlan : null
-  if (billingPlan && !/^\d{2}-\d{2}$/.test(billingPlan)) {
-    return NextResponse.json(
-      { error: "billingPlan must be in YY-MM format (e.g. 26-08)" },
-      { status: 400 }
-    )
-  }
-
+  const billingPlan = body.billingPlan ?? null
   const quarter = billingPlan ? billingPlanToQuarter(billingPlan) : null
-
-  // stage defaults to leads
-  const stage: PipelineStage =
-    isPipelineStage(body.stage) ? body.stage : "leads"
+  const stage: PipelineStage = body.stage ?? "leads"
 
   try {
     const lead = await prisma.lead.create({
       data: {
         clientId: body.clientId,
         productLine: body.productLine,
-        description:
-          typeof body.description === "string" && body.description
-            ? body.description
-            : null,
+        description: body.description || null,
         projectType: body.projectType,
         stage,
-        salesId:
-          typeof body.salesId === "string" && body.salesId
-            ? body.salesId
-            : null,
-        projectedRevenue:
-          typeof body.projectedRevenue === "number"
-            ? body.projectedRevenue
-            : null,
+        salesId: body.salesId || null,
+        projectedRevenue: body.projectedRevenue ?? null,
         billingPlan,
         quarter,
-        notes:
-          typeof body.notes === "string" && body.notes ? body.notes : null,
+        notes: body.notes || null,
         expectedCloseDate:
           typeof body.expectedCloseDate === "string" && body.expectedCloseDate
             ? new Date(body.expectedCloseDate)

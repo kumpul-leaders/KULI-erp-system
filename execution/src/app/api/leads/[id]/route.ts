@@ -2,44 +2,11 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAuthenticated, requireCanCreateLeads, requireAdmin } from "@/lib/require-role"
 import { syncClientStatus } from "@/lib/client-status"
+import { parseBody } from "@/lib/validations/parse"
+import { UpdateLeadSchema } from "@/lib/validations/lead"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
 
-// ── Validation helpers ──────────────────────────────────────────────────────
-
-const PIPELINE_STAGES: PipelineStage[] = [
-  "leads",
-  "pipeline",
-  "negotiation",
-  "closed_won",
-  "lost_deal",
-  "invoiced",
-  "contract_renewal",
-  "no_response",
-]
-
-const PRODUCT_LINES: ProductLine[] = [
-  "stracomm",
-  "smm",
-  "creative_strategy",
-  "media_buying",
-  "ads_management",
-  "production",
-  "others",
-]
-
-const PROJECT_TYPES: ProjectType[] = ["one_time", "retainer"]
-
-function isPipelineStage(v: unknown): v is PipelineStage {
-  return typeof v === "string" && PIPELINE_STAGES.includes(v as PipelineStage)
-}
-
-function isProductLine(v: unknown): v is ProductLine {
-  return typeof v === "string" && PRODUCT_LINES.includes(v as ProductLine)
-}
-
-function isProjectType(v: unknown): v is ProjectType {
-  return typeof v === "string" && PROJECT_TYPES.includes(v as ProjectType)
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function billingPlanToQuarter(billingPlan: string): string | null {
   const match = billingPlan.match(/^(\d{2})-(\d{2})$/)
@@ -197,39 +164,20 @@ export async function PATCH(
     }
   }
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(UpdateLeadSchema, request)
+  if (parsed.error) return parsed.error
 
-  if ("stage" in body) {
+  const body = parsed.data
+
+  // "stage" changes must use the dedicated stage endpoint
+  // UpdateLeadSchema doesn't include "stage", but guard against raw keys in body
+  // (handled at schema level — stage not in schema, so Zod strips it with strict or passthrough)
+  // We surface it explicitly to match existing error message
+  if ("stage" in (parsed.data as Record<string, unknown>)) {
     return NextResponse.json(
       { error: "Stage changes must use POST /api/leads/[id]/stage" },
       { status: 400 }
     )
-  }
-
-  // Validate enum fields if provided
-  if ("productLine" in body && !isProductLine(body.productLine)) {
-    return NextResponse.json({ error: "Invalid productLine" }, { status: 400 })
-  }
-  if ("projectType" in body && !isProjectType(body.projectType)) {
-    return NextResponse.json({ error: "Invalid projectType" }, { status: 400 })
-  }
-
-  // billingPlan format validation
-  if ("billingPlan" in body && body.billingPlan !== null) {
-    if (
-      typeof body.billingPlan !== "string" ||
-      !/^\d{2}-\d{2}$/.test(body.billingPlan)
-    ) {
-      return NextResponse.json(
-        { error: "billingPlan must be in YY-MM format (e.g. 26-08)" },
-        { status: 400 }
-      )
-    }
   }
 
   try {
@@ -249,14 +197,14 @@ export async function PATCH(
     if ("billingPlan" in body) {
       updateData.billingPlan = body.billingPlan ?? null
       updateData.quarter = body.billingPlan
-        ? billingPlanToQuarter(body.billingPlan as string)
+        ? billingPlanToQuarter(body.billingPlan)
         : null
     }
     if ("actualRevenue" in body) updateData.actualRevenue = body.actualRevenue ?? null
     if ("lossDealReason" in body) updateData.lossDealReason = body.lossDealReason ?? null
     if ("notes" in body) updateData.notes = body.notes ?? null
     if ("closedAt" in body) {
-      updateData.closedAt = body.closedAt ? new Date(body.closedAt as string) : null
+      updateData.closedAt = body.closedAt ? new Date(body.closedAt) : null
     }
     if ("expectedCloseDate" in body) {
       updateData.expectedCloseDate =
@@ -272,7 +220,6 @@ export async function PATCH(
     function toHistoryString(field: TrackedField, value: unknown): string | null {
       if (value === null || value === undefined) return null
       if (field === "projectedRevenue") {
-        // Prisma Decimal — convert to plain number string
         return String(Number(value))
       }
       return String(value)
@@ -292,7 +239,6 @@ export async function PATCH(
         const newRaw = updateData[field]
         const oldStr = toHistoryString(field, oldRaw)
         const newStr = toHistoryString(field, newRaw)
-        // Only record if value actually changed
         if (oldStr !== newStr) {
           historyEntries.push({
             leadId: id,

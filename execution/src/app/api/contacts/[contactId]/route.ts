@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
+import { parseBody } from "@/lib/validations/parse"
+import { UpdateContactSchema } from "@/lib/validations/contact"
 
 // ── PATCH /api/contacts/[contactId] ─────────────────────────────────────────
 // Admin or Commercial Director only.
@@ -16,23 +18,10 @@ export async function PATCH(
 
   const { contactId } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(UpdateContactSchema, request)
+  if (parsed.error) return parsed.error
 
-  if ("name" in body && (typeof body.name !== "string" || !body.name.trim())) {
-    return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 })
-  }
-
-  const email = "email" in body
-    ? (typeof body.email === "string" ? body.email : null)
-    : undefined
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email address" }, { status: 400 })
-  }
+  const body = parsed.data
 
   try {
     const existing = await prisma.contact.findUnique({ where: { id: contactId } })
@@ -49,9 +38,9 @@ export async function PATCH(
     }
 
     const updateData: Record<string, unknown> = {}
-    if ("name" in body) updateData.name = (body.name as string).trim()
+    if ("name" in body) updateData.name = body.name!.trim()
     if ("role" in body) updateData.role = body.role ?? null
-    if ("email" in body) updateData.email = email || null
+    if ("email" in body) updateData.email = body.email || null
     if ("phone" in body) updateData.phone = body.phone ?? null
     if ("isPrimary" in body) updateData.isPrimary = Boolean(body.isPrimary)
 

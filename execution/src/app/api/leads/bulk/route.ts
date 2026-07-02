@@ -1,44 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireCanCreateLeads } from "@/lib/require-role"
+import { parseBody } from "@/lib/validations/parse"
+import { BulkCreateLeadSchema } from "@/lib/validations/lead"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
 
-// ── Validation helpers ──────────────────────────────────────────────────────
-
-const PIPELINE_STAGES: PipelineStage[] = [
-  "leads",
-  "pipeline",
-  "negotiation",
-  "closed_won",
-  "lost_deal",
-  "invoiced",
-  "contract_renewal",
-  "no_response",
-]
-
-const PRODUCT_LINES: ProductLine[] = [
-  "stracomm",
-  "smm",
-  "creative_strategy",
-  "media_buying",
-  "ads_management",
-  "production",
-  "others",
-]
-
-const PROJECT_TYPES: ProjectType[] = ["one_time", "retainer"]
-
-function isPipelineStage(v: unknown): v is PipelineStage {
-  return typeof v === "string" && PIPELINE_STAGES.includes(v as PipelineStage)
-}
-
-function isProductLine(v: unknown): v is ProductLine {
-  return typeof v === "string" && PRODUCT_LINES.includes(v as ProductLine)
-}
-
-function isProjectType(v: unknown): v is ProjectType {
-  return typeof v === "string" && PROJECT_TYPES.includes(v as ProjectType)
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * billingPlan = "YY-MM" e.g. "26-08"
@@ -129,51 +96,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(BulkCreateLeadSchema, request)
+  if (parsed.error) return parsed.error
 
-  // Required field validation
-  if (!body.clientId || typeof body.clientId !== "string") {
-    return NextResponse.json({ error: "clientId is required" }, { status: 400 })
-  }
-  if (!isProductLine(body.productLine)) {
-    return NextResponse.json(
-      { error: "Valid productLine is required" },
-      { status: 400 }
-    )
-  }
-  if (!isProjectType(body.projectType)) {
-    return NextResponse.json(
-      { error: "Valid projectType is required" },
-      { status: 400 }
-    )
-  }
+  const body = parsed.data
 
-  // billingPlans array validation
-  if (!Array.isArray(body.billingPlans)) {
-    return NextResponse.json(
-      { error: "billingPlans must be an array" },
-      { status: 400 }
-    )
-  }
-  const billingPlans = body.billingPlans as unknown[]
-  if (billingPlans.length < 1 || billingPlans.length > 36) {
-    return NextResponse.json(
-      { error: "billingPlans must contain between 1 and 36 entries" },
-      { status: 400 }
-    )
-  }
-  for (const bp of billingPlans) {
-    if (typeof bp !== "string" || !/^\d{2}-\d{2}$/.test(bp)) {
-      return NextResponse.json(
-        { error: `Invalid billingPlan entry: "${String(bp)}" — must be YY-MM format` },
-        { status: 400 }
-      )
-    }
+  // Additional month validity check per billingPlan entry
+  for (const bp of body.billingPlans) {
     const month = parseInt(bp.split("-")[1], 10)
     if (month < 1 || month > 12) {
       return NextResponse.json(
@@ -183,36 +112,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // stage defaults to leads
-  const stage: PipelineStage = isPipelineStage(body.stage) ? body.stage : "leads"
-
-  // Shared optional fields
-  const description =
-    typeof body.description === "string" && body.description
-      ? body.description
-      : null
-  const salesId =
-    typeof body.salesId === "string" && body.salesId ? body.salesId : null
-  const projectedRevenue =
-    typeof body.projectedRevenue === "number" ? body.projectedRevenue : null
-  const notes =
-    typeof body.notes === "string" && body.notes ? body.notes : null
+  const stage: PipelineStage = body.stage ?? "leads"
 
   try {
-    // Build one create operation per billing plan
-    const creates = (billingPlans as string[]).map((bp) =>
+    const creates = body.billingPlans.map((bp) =>
       prisma.lead.create({
         data: {
-          clientId: body.clientId as string,
-          productLine: body.productLine as ProductLine,
-          description,
-          projectType: body.projectType as ProjectType,
+          clientId: body.clientId,
+          productLine: body.productLine,
+          description: body.description || null,
+          projectType: body.projectType,
           stage,
-          salesId,
-          projectedRevenue,
+          salesId: body.salesId || null,
+          projectedRevenue: body.projectedRevenue ?? null,
           billingPlan: bp,
           quarter: billingPlanToQuarter(bp),
-          notes,
+          notes: body.notes || null,
           expectedCloseDate:
             typeof body.expectedCloseDate === "string" && body.expectedCloseDate
               ? new Date(body.expectedCloseDate)

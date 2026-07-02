@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireCanCreateLeads } from "@/lib/require-role"
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin-client"
 import type { DocumentType } from "@/types"
 
 // ── Validation ──────────────────────────────────────────────────────────────
@@ -17,22 +17,13 @@ function isDocumentType(v: unknown): v is DocumentType {
   return typeof v === "string" && DOCUMENT_TYPES.includes(v as DocumentType)
 }
 
-// ── Storage client ──────────────────────────────────────────────────────────
-// Uses service role key if available, falls back to anon key.
-// Note: with anon key, the 'pipeline-docs' bucket must be public.
-
-function getStorageClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  return createSupabaseClient(url, key)
-}
-
 // ── POST /api/leads/[id]/documents ──────────────────────────────────────────
-// Upload a PDF to Supabase Storage and create a PipelineDocument record.
-// Admin/Director/Account can upload. Account: own leads only.
-// Body: FormData with { file: File, type: DocumentType }
+// Upload a PDF to Supabase Storage (private bucket, service-role key).
+// Stores the storage path — NOT a public URL — in the database.
+// Signed URLs are generated on-demand via GET /api/documents/[id]/url.
+//
+// Auth: Admin / Commercial Director / Account Manager / Account (own leads only)
+// Body: FormData { file: File, type: DocumentType }
 
 export async function POST(
   request: NextRequest,
@@ -60,18 +51,27 @@ export async function POST(
     return NextResponse.json({ error: "file is required" }, { status: 400 })
   }
   if (!isDocumentType(type)) {
-    return NextResponse.json({ error: "Valid document type is required" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Valid document type is required" },
+      { status: 400 }
+    )
   }
 
   // Validate file type
   if (file.type !== "application/pdf") {
-    return NextResponse.json({ error: "Only PDF files are accepted" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Only PDF files are accepted" },
+      { status: 400 }
+    )
   }
 
   // Validate file size (max 20MB)
   const MAX_SIZE_BYTES = 20 * 1024 * 1024
   if (file.size > MAX_SIZE_BYTES) {
-    return NextResponse.json({ error: "File size must not exceed 20MB" }, { status: 400 })
+    return NextResponse.json(
+      { error: "File size must not exceed 20MB" },
+      { status: 400 }
+    )
   }
 
   try {
@@ -85,14 +85,14 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage via service-role key (private bucket)
     const timestamp = Date.now()
     const storagePath = `leads/${id}/${type}-${timestamp}.pdf`
 
-    const storageClient = getStorageClient()
+    const adminClient = createAdminClient()
     const fileBuffer = await file.arrayBuffer()
 
-    const { error: uploadError } = await storageClient.storage
+    const { error: uploadError } = await adminClient.storage
       .from("pipeline-docs")
       .upload(storagePath, fileBuffer, {
         contentType: "application/pdf",
@@ -107,19 +107,13 @@ export async function POST(
       )
     }
 
-    // Get public URL
-    const { data: publicUrlData } = storageClient.storage
-      .from("pipeline-docs")
-      .getPublicUrl(storagePath)
-
-    const fileUrl = publicUrlData.publicUrl
-
-    // Create PipelineDocument record
+    // Store the storage path (not a public URL) — signed URLs are generated
+    // on-demand via GET /api/documents/[id]/url
     const document = await prisma.pipelineDocument.create({
       data: {
         leadId: id,
         type,
-        fileUrl,
+        fileUrl: storagePath,
         fileName: file.name,
         uploadedBy: authUser.id,
       },

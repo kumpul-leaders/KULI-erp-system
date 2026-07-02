@@ -1,13 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
-import type { UpsellStatus } from "@/types"
-
-const UPSELL_STATUSES: UpsellStatus[] = ["identified", "pitched", "won", "lost"]
-
-function isUpsellStatus(v: unknown): v is UpsellStatus {
-  return typeof v === "string" && UPSELL_STATUSES.includes(v as UpsellStatus)
-}
+import { parseBody } from "@/lib/validations/parse"
+import { UpdateUpsellSchema } from "@/lib/validations/upsell"
 
 // ── PATCH /api/upsells/[upsellId] ──────────────────────────────────────────
 // Admin or Commercial Director only.
@@ -23,23 +18,10 @@ export async function PATCH(
 
   const { upsellId } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(UpdateUpsellSchema, request)
+  if (parsed.error) return parsed.error
 
-  if (
-    "service" in body &&
-    (typeof body.service !== "string" || !body.service.trim())
-  ) {
-    return NextResponse.json({ error: "Service name cannot be empty" }, { status: 400 })
-  }
-
-  if ("status" in body && !isUpsellStatus(body.status)) {
-    return NextResponse.json({ error: "Invalid status value" }, { status: 400 })
-  }
+  const body = parsed.data
 
   try {
     const existing = await prisma.upsellOpportunity.findUnique({
@@ -53,7 +35,7 @@ export async function PATCH(
     }
 
     const updateData: Record<string, unknown> = {}
-    if ("service" in body) updateData.service = (body.service as string).trim()
+    if ("service" in body) updateData.service = body.service!.trim()
     if ("status" in body) updateData.status = body.status
     if ("estimatedValue" in body) updateData.estimatedValue = body.estimatedValue ?? null
     if ("notes" in body) updateData.notes = body.notes ?? null

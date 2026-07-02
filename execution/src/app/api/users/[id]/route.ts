@@ -2,17 +2,9 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector, requireAuthenticated } from "@/lib/require-role"
 import { createAdminClient } from "@/lib/supabase/admin-client"
+import { parseBody } from "@/lib/validations/parse"
+import { UpdateUserSchema } from "@/lib/validations/user"
 import type { Role } from "@/types"
-
-// ── Validation helpers ───────────────────────────────────────────────────────
-
-const VALID_ROLES: Role[] = ["admin", "commercial_director", "account_manager", "account", "operation", "hr", "finance"]
-
-function isRole(v: unknown): v is Role {
-  return typeof v === "string" && VALID_ROLES.includes(v as Role)
-}
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // ── GET /api/users/[id] ──────────────────────────────────────────────────────
 // Any authenticated user can fetch their own record. Admin/Director can fetch any.
@@ -83,23 +75,39 @@ export async function PATCH(
 
   const isAdmin = authUser.role === "admin" || authUser.role === "commercial_director"
 
-  let body: Record<string, unknown>
+  // Non-admins can only update their own name — enforce before Zod parse
+  // so we can inspect the raw key set without consuming the body twice.
+  // We read the raw body first, then run Zod on it.
+  let raw: Record<string, unknown>
   try {
-    body = (await request.json()) as Record<string, unknown>
+    raw = (await request.json()) as Record<string, unknown>
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  // Non-admins can only update their own name
   if (!isAdmin) {
     if (authUser.id !== id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
-    const forbidden = Object.keys(body).filter((k) => k !== "name")
+    const forbidden = Object.keys(raw).filter((k) => k !== "name")
     if (forbidden.length > 0) {
       return NextResponse.json({ error: "Forbidden: can only update name" }, { status: 403 })
     }
   }
+
+  // Run Zod against the already-parsed raw object
+  const result = UpdateUserSchema.safeParse(raw)
+  if (!result.success) {
+    const message = result.error.issues
+      .map((issue) => {
+        const path = issue.path.length > 0 ? `${issue.path.join(".")}: ` : ""
+        return `${path}${issue.message}`
+      })
+      .join("; ")
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
+
+  const body = result.data
 
   // Build update payload — only include fields present in body
   const updateData: {
@@ -111,17 +119,8 @@ export async function PATCH(
     isActive?: boolean
   } = {}
 
-  if ("name" in body) {
-    if (typeof body.name !== "string" || !body.name.trim()) {
-      return NextResponse.json({ error: "name must be a non-empty string" }, { status: 400 })
-    }
-    updateData.name = body.name.trim()
-  }
-
-  if ("email" in body) {
-    if (typeof body.email !== "string" || !EMAIL_REGEX.test(body.email)) {
-      return NextResponse.json({ error: "Valid email is required" }, { status: 400 })
-    }
+  if ("name" in body && body.name !== undefined) updateData.name = body.name.trim()
+  if ("email" in body && body.email !== undefined) {
     const email = body.email.toLowerCase().trim()
     // Uniqueness check excluding the current user
     const conflict = await prisma.user.findFirst({
@@ -133,37 +132,15 @@ export async function PATCH(
     }
     updateData.email = email
   }
-
-  if ("role" in body) {
-    if (!isRole(body.role)) {
-      return NextResponse.json(
-        { error: `role must be one of: ${VALID_ROLES.join(", ")}` },
-        { status: 400 }
-      )
-    }
-    updateData.role = body.role
-  }
-
+  if ("role" in body && body.role !== undefined) updateData.role = body.role
   if ("division" in body) {
     updateData.division =
       typeof body.division === "string" && body.division.trim()
         ? body.division.trim()
         : null
   }
-
-  if ("isVp" in body) {
-    if (typeof body.isVp !== "boolean") {
-      return NextResponse.json({ error: "isVp must be a boolean" }, { status: 400 })
-    }
-    updateData.isVp = body.isVp
-  }
-
-  if ("isActive" in body) {
-    if (typeof body.isActive !== "boolean") {
-      return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 })
-    }
-    updateData.isActive = body.isActive
-  }
+  if ("isVp" in body && body.isVp !== undefined) updateData.isVp = body.isVp
+  if ("isActive" in body && body.isActive !== undefined) updateData.isActive = body.isActive
 
   try {
     // Capture old email before update (needed for Supabase Auth sync)
@@ -176,16 +153,14 @@ export async function PATCH(
       data: updateData,
     })
 
-    // Sync email change to Supabase Auth — non-fatal (follows same pattern as DELETE handler)
+    // Sync email change to Supabase Auth — non-fatal
     if (updateData.email && existingEmail && updateData.email !== existingEmail) {
       try {
         const adminClient = createAdminClient()
-        if (adminClient) {
-          const { data: { users } } = await adminClient.auth.admin.listUsers()
-          const supaUser = users?.find((u) => u.email === existingEmail)
-          if (supaUser) {
-            await adminClient.auth.admin.updateUserById(supaUser.id, { email: updateData.email })
-          }
+        const { data: { users } } = await adminClient.auth.admin.listUsers()
+        const supaUser = users?.find((u) => u.email === existingEmail)
+        if (supaUser) {
+          await adminClient.auth.admin.updateUserById(supaUser.id, { email: updateData.email })
         }
       } catch (syncErr) {
         console.error("[PATCH /api/users/[id]] Supabase email sync failed (non-fatal):", syncErr)
@@ -252,13 +227,15 @@ export async function DELETE(
     await prisma.user.delete({ where: { id } })
 
     // Remove from Supabase Auth — non-fatal
-    const adminClient = createAdminClient()
-    if (adminClient) {
+    try {
+      const adminClient = createAdminClient()
       const { data: supaUsers } = await adminClient.auth.admin.listUsers()
       const supaUser = supaUsers?.users?.find((u) => u.email === user.email)
       if (supaUser) {
         await adminClient.auth.admin.deleteUser(supaUser.id)
       }
+    } catch (authErr) {
+      console.error("[DELETE /api/users/[id]] Supabase auth delete failed (non-fatal):", authErr)
     }
 
     return NextResponse.json({ success: true })

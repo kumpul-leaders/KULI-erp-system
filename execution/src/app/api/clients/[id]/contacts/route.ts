@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
+import { parseBody } from "@/lib/validations/parse"
+import { CreateContactSchema } from "@/lib/validations/contact"
 
 // ── POST /api/clients/[id]/contacts ─────────────────────────────────────────
 // Admin or Commercial Director only (contacts are client data).
@@ -16,21 +18,10 @@ export async function POST(
 
   const { id: clientId } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(CreateContactSchema, request)
+  if (parsed.error) return parsed.error
 
-  if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
-    return NextResponse.json({ error: "Contact name is required" }, { status: 400 })
-  }
-
-  const email = typeof body.email === "string" ? body.email : null
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email address" }, { status: 400 })
-  }
+  const body = parsed.data
 
   try {
     const clientExists = await prisma.client.findUnique({ where: { id: clientId } })
@@ -51,10 +42,10 @@ export async function POST(
     const contact = await prisma.contact.create({
       data: {
         clientId,
-        name: (body.name as string).trim(),
-        role: typeof body.role === "string" ? body.role || null : null,
-        email: email || null,
-        phone: typeof body.phone === "string" ? body.phone || null : null,
+        name: body.name.trim(),
+        role: body.role || null,
+        email: body.email || null,
+        phone: body.phone || null,
         isPrimary,
       },
     })

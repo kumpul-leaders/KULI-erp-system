@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
+import { parseBody } from "@/lib/validations/parse"
+import { UpdateSystemConfigSchema } from "@/lib/validations/system-config"
 
 // ── Allowlist ────────────────────────────────────────────────────────────────
 
@@ -33,19 +35,17 @@ export async function PATCH(
     )
   }
 
-  let body: { value: unknown }
-  try {
-    body = (await request.json()) as { value: unknown }
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(UpdateSystemConfigSchema, request)
+  if (parsed.error) return parsed.error
 
-  if (!("value" in body)) {
+  const { value } = parsed.data
+
+  if (value === undefined) {
     return NextResponse.json({ error: "Body must contain a 'value' field" }, { status: 400 })
   }
 
   try {
-    const jsonValue = body.value as Prisma.InputJsonValue
+    const jsonValue = value as Prisma.InputJsonValue
     await prisma.systemConfig.upsert({
       where: { key },
       update: { value: jsonValue },

@@ -2,23 +2,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { requireAuthenticated, requireAdminOrDirector, requireCanEditClients } from "@/lib/require-role"
-import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
-
-const ENGAGEMENT_TYPES: EngagementType[] = ["retainer", "project", "both"]
-const HEALTH_STATUSES: HealthStatus[] = ["healthy", "at_risk", "churned"]
-const CLIENT_STATUSES: ClientStatus[] = ["active", "inactive", "lead"]
-
-function isEngagementType(v: unknown): v is EngagementType {
-  return typeof v === "string" && ENGAGEMENT_TYPES.includes(v as EngagementType)
-}
-
-function isHealthStatus(v: unknown): v is HealthStatus {
-  return typeof v === "string" && HEALTH_STATUSES.includes(v as HealthStatus)
-}
-
-function isClientStatus(v: unknown): v is ClientStatus {
-  return typeof v === "string" && CLIENT_STATUSES.includes(v as ClientStatus)
-}
+import { parseBody } from "@/lib/validations/parse"
+import { UpdateClientSchema } from "@/lib/validations/client"
 
 // ── GET /api/clients/[id] ───────────────────────────────────────────────────
 
@@ -89,12 +74,10 @@ export async function PATCH(
 
   const { id } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(UpdateClientSchema, request)
+  if (parsed.error) return parsed.error
+
+  const body = parsed.data
 
   // Non-admin/director: can only update healthStatus or clientStatus
   if (!isAdminOrDirector) {
@@ -106,28 +89,14 @@ export async function PATCH(
     }
   }
 
-  // Validate name if provided
-  if ("name" in body && (typeof body.name !== "string" || !body.name.trim())) {
-    return NextResponse.json({ error: "Client name cannot be empty" }, { status: 400 })
-  }
-  // Validate engagementType if provided
-  if ("engagementType" in body && !isEngagementType(body.engagementType)) {
-    return NextResponse.json({ error: "Invalid engagement type" }, { status: 400 })
-  }
-  // Validate healthStatus if provided
-  if ("healthStatus" in body && !isHealthStatus(body.healthStatus)) {
-    return NextResponse.json({ error: "Invalid health status" }, { status: 400 })
-  }
-  // Validate clientStatus if provided
-  if ("clientStatus" in body && !isClientStatus(body.clientStatus)) {
-    return NextResponse.json({ error: "Invalid client status" }, { status: 400 })
-  }
-
   // Build update payload — only include fields that were sent
   const updateData: Record<string, unknown> = {}
-  if ("name" in body) updateData.name = (body.name as string).trim()
+  if ("name" in body) updateData.name = body.name!.trim()
   if ("customerCode" in body) {
-    updateData.customerCode = typeof body.customerCode === "string" && body.customerCode.trim() ? body.customerCode.trim() : null
+    updateData.customerCode =
+      typeof body.customerCode === "string" && body.customerCode.trim()
+        ? body.customerCode.trim()
+        : null
   }
   if ("industry" in body) updateData.industry = body.industry ?? null
   if ("orgSize" in body) updateData.orgSize = body.orgSize ?? null

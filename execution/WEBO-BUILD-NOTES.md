@@ -341,6 +341,39 @@ Client Management Structure directive — 13-field schema surfaced across list p
 
 ---
 
+## Phase 0 Items #5, #7, #8 — Error Boundaries + Analytics Audit + Pagination
+**Build Date:** 2026-07-02
+**Status:** Complete. TypeScript: 0 errors. `npm run build`: clean (24/24 pages).
+
+### Files Created
+| File | Notes |
+|------|-------|
+| `src/app/(dashboard)/error.tsx` | Dashboard route-level error boundary. Client component. Card + Button from shadcn. "Coba lagi" calls `reset()`. "Ke Dashboard" hardlinks to `/dashboard`. Shows `error.digest` ID. |
+| `src/app/global-error.tsx` | Root-level catastrophic error boundary. Must include `<html><body>` — cannot use shadcn providers. Styled with inline CSS matching design tokens (accent-500 = #6366f1, card shadow, neutral palette). |
+
+### Analytics Audit (Tugas B) — No Changes Required
+All analytics sections are already charted. Audit findings:
+- Win Rate by AE/Industry: `BarChart` horizontal (tabbed) — done
+- Revenue Trend: `LineChart` 3 series won/active/potential — done
+- Product Line breakdown: `BarChart` vertical — done
+- Pipeline Funnel: `BarChart` horizontal, click-to-drill modal — done
+- Client Retention: stat list + progress bar — data is scalar counts not time-series; bar is correct, not "data without chart"
+
+### Files Modified — Pagination (Tugas C)
+| File | Change |
+|------|--------|
+| `src/components/clients/clients-table.tsx` | URL-driven `?page=` pagination at 25/page. `goToPage()` via `router.replace`. Resets on sort/search/filter change. Count shows "halaman X/Y". Pagination control from existing `pagination.tsx`. |
+| `src/components/pipeline/pipeline-list-view.tsx` | `currentPage` + `onPageChange` props added. Internal `pagedLeads` slices `sortedLeads`. Footer calcs operate on current page only. Select-all targets current page only. `pagedEffectiveLeads` replaces `effectiveLeads`. |
+| `src/components/pipeline/pipeline-kanban-loader.tsx` | Owns `?page=` URL param via `listPage` + `goToListPage()`. Resets page when filter conditions change. Passes page props to `PipelineListView`. |
+
+### Architecture Notes — Pagination
+- All data is fully client-loaded in both tables — client-side slice is the correct approach; no API route changes needed
+- `?page=` is preserved in URL — shareable links, browser-back-safe
+- `buildPageRange()` handles ≤7 pages (no ellipsis) and larger ranges with ellipsis — shared pattern in both tables
+- Pipeline list pagination resets when kanban filter conditions change (via the same `useEffect` that syncs filter to URL)
+
+---
+
 ## Sprint 1 Analytics — Date Range Filter + AE Filter + CSV Export
 **Build Date:** 2026-05-19
 **Status:** Complete. TypeScript: 0 new errors (2 pre-existing TS errors in targets/page.tsx unrelated to this build).
@@ -525,3 +558,53 @@ if (activeLeadCount > 0) {
 ```
 
 The error message from 409 propagates naturally to `toast.error()` in the client — no special handling needed on the frontend.
+
+---
+
+## Phase 0 Item #3 — Storage Security Refactor (Private Bucket + Signed URLs)
+**Build Date:** 2026-07-02
+**Status:** Complete. `npx tsc --noEmit`: 0 errors. `npm run build`: clean (24/24 pages).
+
+### Problem
+`pipeline-docs` bucket was PUBLIC. Upload route fell back to anon key when service role key was absent. DB stored full public URLs. Documents were accessible without authentication.
+
+### Bucket Status
+- **Before:** `public: true`
+- **After:** Set to `public: false` via `PUT /storage/v1/bucket/pipeline-docs` with service role key during this session
+
+### Files Changed
+| File | Action | Description |
+|------|--------|-------------|
+| `src/lib/supabase/admin-client.ts` | Modified | Added `import "server-only"` guard; changed from null-return to throw on missing key |
+| `src/app/api/leads/[id]/documents/route.ts` | Modified | Replaced `getStorageClient()` fallback with `createAdminClient()`; stores storage path instead of public URL |
+| `src/app/api/documents/[id]/url/route.ts` | Created | Returns 5-min signed URL for any PipelineDocument; handles legacy full-URL records via `extractStoragePath()` |
+| `src/components/pipeline/document-upload-zone.tsx` | Modified | Replaced `<a href={fileUrl}>` with button that fetches signed URL on-demand via new endpoint |
+| `src/app/api/users/route.ts` | Modified | Removed null check on adminClient (now throws on missing key) |
+| `src/app/api/users/[id]/route.ts` | Modified | Removed null guards; wrapped DELETE Supabase auth cleanup in its own try-catch |
+| `src/app/api/users/[id]/invite/route.ts` | Modified | Removed null check and 503 early return |
+
+### Security Model (New)
+```
+Upload:
+Client (FormData) → POST /api/leads/[id]/documents (auth-gated)
+    → service role key → private bucket
+    → DB stores path: "leads/{id}/{type}-{ts}.pdf"
+
+View:
+Client (button click) → GET /api/documents/[id]/url (requireAuthenticated)
+    → createSignedUrl(path, 300s) → signed URL returned
+    → window.open() in new tab (URL expires in 5 min)
+```
+
+### Backward Compatibility
+`extractStoragePath()` in the signed URL route handles both:
+- New format: `"leads/abc/quotation-123.pdf"` (path only)
+- Legacy format: `"https://...supabase.co/storage/v1/object/public/pipeline-docs/leads/abc/..."` (full public URL)
+
+No DB migration needed for existing records.
+
+### Manual Test Steps
+1. **Upload:** Go to Pipeline → Lead Detail → drop a PDF. Check DB — `fileUrl` should be a path string, not an https:// URL.
+2. **View:** Click the ExternalLink icon next to a document. Should open PDF in new tab via signed URL (URL contains `?token=...`).
+3. **Expired URL:** Copy a signed URL, wait 5+ minutes, paste in incognito → should return 400/403.
+4. **Bucket private:** `curl -I "https://dgzwjsibrqgwqxjvzozz.supabase.co/storage/v1/object/public/pipeline-docs/leads/..."` → should return 400 or 403.

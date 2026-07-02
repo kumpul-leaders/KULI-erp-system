@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAdminOrDirector } from "@/lib/require-role"
 import { $Enums } from "@prisma/client"
+import { parseBody } from "@/lib/validations/parse"
+import { UpdateTargetSchema } from "@/lib/validations/target"
 
 // ── Serializer ──────────────────────────────────────────────────────────────
 
@@ -43,29 +45,10 @@ export async function PATCH(
 
   const { id } = await params
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(UpdateTargetSchema, request)
+  if (parsed.error) return parsed.error
 
-  // Validate optional fields when present
-  if ("revenueTarget" in body) {
-    if (typeof body.revenueTarget !== "number" || body.revenueTarget < 0) {
-      return NextResponse.json({ error: "revenueTarget must be a non-negative number" }, { status: 400 })
-    }
-  }
-  if ("newClientTarget" in body) {
-    if (typeof body.newClientTarget !== "number" || body.newClientTarget < 0) {
-      return NextResponse.json({ error: "newClientTarget must be a non-negative number" }, { status: 400 })
-    }
-  }
-  if ("salesId" in body) {
-    if (body.salesId !== null && typeof body.salesId !== "string") {
-      return NextResponse.json({ error: "salesId must be a string UUID or null" }, { status: 400 })
-    }
-  }
+  const body = parsed.data
 
   try {
     const existing = await prisma.target.findUnique({ where: { id } })

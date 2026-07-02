@@ -2,25 +2,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { requireAuthenticated, requireCanEditClients } from "@/lib/require-role"
-import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
-
-// ── Validation helpers ──────────────────────────────────────────────────────
-
-const ENGAGEMENT_TYPES: EngagementType[] = ["retainer", "project", "both"]
-const HEALTH_STATUSES: HealthStatus[] = ["healthy", "at_risk", "churned"]
-const CLIENT_STATUSES: ClientStatus[] = ["active", "inactive", "lead"]
-
-function isEngagementType(v: unknown): v is EngagementType {
-  return typeof v === "string" && ENGAGEMENT_TYPES.includes(v as EngagementType)
-}
-
-function isHealthStatus(v: unknown): v is HealthStatus {
-  return typeof v === "string" && HEALTH_STATUSES.includes(v as HealthStatus)
-}
-
-function isClientStatus(v: unknown): v is ClientStatus {
-  return typeof v === "string" && CLIENT_STATUSES.includes(v as ClientStatus)
-}
+import { parseBody } from "@/lib/validations/parse"
+import { CreateClientSchema, HealthStatusSchema, ClientStatusSchema } from "@/lib/validations/client"
 
 // ── GET /api/clients ────────────────────────────────────────────────────────
 
@@ -36,6 +19,9 @@ export async function GET(request: NextRequest) {
   const industry = searchParams.get("industry") ?? ""
   const status = searchParams.get("status") ?? ""
 
+  const parsedHealth = HealthStatusSchema.safeParse(health)
+  const parsedStatus = ClientStatusSchema.safeParse(status)
+
   try {
     const where = {
       ...(search
@@ -48,12 +34,8 @@ export async function GET(request: NextRequest) {
             ],
           }
         : {}),
-      ...(isHealthStatus(health)
-        ? { healthStatus: health }
-        : {}),
-      ...(isClientStatus(status)
-        ? { clientStatus: status }
-        : {}),
+      ...(parsedHealth.success ? { healthStatus: parsedHealth.data } : {}),
+      ...(parsedStatus.success ? { clientStatus: parsedStatus.data } : {}),
       ...(industry
         ? { industry: { contains: industry, mode: "insensitive" as const } }
         : {}),
@@ -98,24 +80,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(CreateClientSchema, request)
+  if (parsed.error) return parsed.error
 
-  // Validate required fields
-  if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
-    return NextResponse.json({ error: "Client name is required" }, { status: 400 })
-  }
-  if (!isEngagementType(body.engagementType)) {
-    return NextResponse.json({ error: "Valid engagement type is required" }, { status: 400 })
-  }
+  const body = parsed.data
 
   // Validate contract dates
   if (body.contractStart && body.contractEnd) {
-    if (new Date(body.contractEnd as string) <= new Date(body.contractStart as string)) {
+    if (new Date(body.contractEnd) <= new Date(body.contractStart)) {
       return NextResponse.json(
         { error: "Contract end must be after contract start" },
         { status: 400 }
@@ -126,9 +98,9 @@ export async function POST(request: NextRequest) {
   try {
     const client = await prisma.client.create({
       data: {
-        name: (body.name as string).trim(),
-        industry: typeof body.industry === "string" && body.industry ? body.industry : null,
-        orgSize: typeof body.orgSize === "string" && body.orgSize ? body.orgSize : null,
+        name: body.name.trim(),
+        industry: body.industry || null,
+        orgSize: body.orgSize || null,
         engagementType: body.engagementType,
         contractStart:
           typeof body.contractStart === "string" && body.contractStart
@@ -138,25 +110,16 @@ export async function POST(request: NextRequest) {
           typeof body.contractEnd === "string" && body.contractEnd
             ? new Date(body.contractEnd)
             : null,
-        monthlyValue:
-          typeof body.monthlyValue === "number" ? body.monthlyValue : null,
-        annualValue:
-          typeof body.annualValue === "number" ? body.annualValue : null,
-        healthStatus: isHealthStatus(body.healthStatus)
-          ? body.healthStatus
-          : "healthy",
-        clientStatus: isClientStatus(body.clientStatus)
-          ? body.clientStatus
-          : "lead",
-        primaryAe:
-          typeof body.primaryAe === "string" && body.primaryAe
-            ? body.primaryAe
+        monthlyValue: typeof body.monthlyValue === "number" ? body.monthlyValue : null,
+        annualValue: typeof body.annualValue === "number" ? body.annualValue : null,
+        healthStatus: body.healthStatus ?? "healthy",
+        clientStatus: body.clientStatus ?? "lead",
+        primaryAe: body.primaryAe || null,
+        customerCode:
+          typeof body.customerCode === "string" && body.customerCode.trim()
+            ? body.customerCode.trim()
             : null,
-        customerCode: typeof body.customerCode === "string" && body.customerCode.trim() ? body.customerCode.trim() : null,
-        notes:
-          typeof body.notes === "string" && body.notes
-            ? body.notes
-            : null,
+        notes: body.notes || null,
       },
       include: {
         ae: { select: { id: true, name: true } },

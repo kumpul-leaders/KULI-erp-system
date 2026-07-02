@@ -2,14 +2,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireAuthenticated, requireAdminOrDirector } from "@/lib/require-role"
 import { $Enums } from "@prisma/client"
-
-// ── Validation helpers ──────────────────────────────────────────────────────
-
-const TARGET_TYPES: $Enums.TargetType[] = ["monthly", "quarterly"]
-
-function isTargetType(v: unknown): v is $Enums.TargetType {
-  return typeof v === "string" && TARGET_TYPES.includes(v as $Enums.TargetType)
-}
+import { parseBody } from "@/lib/validations/parse"
+import { CreateTargetSchema } from "@/lib/validations/target"
 
 // ── Serializer ──────────────────────────────────────────────────────────────
 
@@ -55,7 +49,6 @@ export async function GET(request: NextRequest) {
     let targets
 
     if (aeId) {
-      // Return this AE's targets + company-wide targets (salesId = null)
       targets = await prisma.target.findMany({
         where: {
           OR: [
@@ -93,40 +86,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
-  }
+  const parsed = await parseBody(CreateTargetSchema, request)
+  if (parsed.error) return parsed.error
 
-  // Required field validation
-  if (typeof body.periodYear !== "number" || body.periodYear < 2020 || body.periodYear > 2100) {
-    return NextResponse.json({ error: "periodYear must be a valid year" }, { status: 400 })
-  }
-  if (typeof body.revenueTarget !== "number" || body.revenueTarget < 0) {
-    return NextResponse.json({ error: "revenueTarget must be a non-negative number" }, { status: 400 })
-  }
-  if (!isTargetType(body.type)) {
-    return NextResponse.json({ error: "type must be 'monthly' or 'quarterly'" }, { status: 400 })
-  }
-  if (typeof body.periodMonth !== "number") {
-    return NextResponse.json({ error: "periodMonth must be a number" }, { status: 400 })
-  }
-  const maxMonth = body.type === "quarterly" ? 4 : 12
-  if (body.periodMonth < 1 || body.periodMonth > maxMonth) {
-    return NextResponse.json(
-      {
-        error:
-          body.type === "quarterly"
-            ? "periodMonth must be 1-4 for quarterly targets"
-            : "periodMonth must be 1-12 for monthly targets",
-      },
-      { status: 400 }
-    )
-  }
+  const body = parsed.data
 
-  // Optional salesId — null = company-wide
   const salesId: string | null =
     typeof body.salesId === "string" && body.salesId.length > 0 ? body.salesId : null
 
@@ -140,10 +104,6 @@ export async function POST(request: NextRequest) {
   const type = body.type
 
   try {
-    // If salesId is provided (non-null), we can use the named unique index.
-    // If salesId is null, PostgreSQL treats NULLs as distinct in unique indexes,
-    // so we fall back to findFirst + update/create to enforce uniqueness correctly.
-
     let target
 
     if (salesId !== null) {

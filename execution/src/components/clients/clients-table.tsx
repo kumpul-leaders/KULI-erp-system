@@ -36,6 +36,15 @@ import { FilterPanel, applyConditions, type FilterCondition, type MatchMode, typ
 import { ClientStatusBadge } from "@/components/clients/client-status-badge"
 import { AddClientSheet } from "@/components/clients/add-client-sheet"
 import { EditClientSheet } from "@/components/clients/edit-client-sheet"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { formatIDR, cn } from "@/lib/utils"
 import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
 
@@ -78,6 +87,10 @@ interface ClientsTableProps {
   sortDir: string
   userRole: string | null
 }
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 25
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -169,6 +182,9 @@ export function ClientsTable({
   const [conditions, setConditions] = useState<FilterCondition[]>([])
   const [matchMode, setMatchMode] = useState<MatchMode>("all")
 
+  // Pagination — read current page from URL
+  const currentPage = Math.max(1, Number(searchParams.get("page") ?? "1") || 1)
+
   // ── URL-driven sort updates ─────────────────────────────────────────────────
 
   function updateParam(key: string, value: string) {
@@ -178,6 +194,8 @@ export function ClientsTable({
     } else {
       params.delete(key)
     }
+    // Reset pagination on any filter/search change
+    params.delete("page")
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`)
     })
@@ -192,6 +210,20 @@ export function ClientsTable({
     } else {
       params.set("sort", col)
       params.delete("dir")
+    }
+    // Reset to page 1 on sort change
+    params.delete("page")
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`)
+    })
+  }
+
+  function goToPage(page: number) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (page <= 1) {
+      params.delete("page")
+    } else {
+      params.set("page", String(page))
     }
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`)
@@ -273,6 +305,31 @@ export function ClientsTable({
     )
   }, [initialClients, conditions, matchMode])
 
+  // ── Pagination ──────────────────────────────────────────────────────────────
+
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE))
+  // Clamp current page to valid range (e.g. after filter narrows results)
+  const safePage = Math.min(currentPage, totalPages)
+  const pagedClients = filteredClients.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  )
+
+  // Page numbers to render in pagination control (show at most 7 items with ellipsis)
+  function buildPageRange(current: number, total: number): Array<number | "ellipsis"> {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+    const result: Array<number | "ellipsis"> = [1]
+    if (current > 3) result.push("ellipsis")
+    const start = Math.max(2, current - 1)
+    const end = Math.min(total - 1, current + 1)
+    for (let i = start; i <= end; i++) result.push(i)
+    if (current < total - 2) result.push("ellipsis")
+    result.push(total)
+    return result
+  }
+
+  const pageRange = buildPageRange(safePage, totalPages)
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -293,12 +350,15 @@ export function ClientsTable({
           fields={clientFieldConfigs}
           conditions={conditions}
           matchMode={matchMode}
-          onChange={(c, m) => { setConditions(c); setMatchMode(m) }}
+          onChange={(c, m) => { setConditions(c); setMatchMode(m); goToPage(1) }}
         />
 
         <span className="ml-auto text-sm text-neutral-500 tabular-nums">
           {filteredClients.length}{" "}
           {filteredClients.length === 1 ? "client" : "clients"}
+          {totalPages > 1 && (
+            <span className="text-neutral-400"> &middot; halaman {safePage}/{totalPages}</span>
+          )}
         </span>
 
         {["admin", "commercial_director", "account_manager", "account"].includes(userRole ?? "") && (
@@ -405,7 +465,7 @@ export function ClientsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClients.map((client) => {
+              {pagedClients.map((client) => {
                 return (
                   <TableRow
                     key={client.id}
@@ -522,6 +582,49 @@ export function ClientsTable({
               })}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); if (safePage > 1) goToPage(safePage - 1) }}
+                  aria-disabled={safePage <= 1}
+                  className={safePage <= 1 ? "pointer-events-none opacity-40" : ""}
+                />
+              </PaginationItem>
+              {pageRange.map((item, idx) =>
+                item === "ellipsis" ? (
+                  <PaginationItem key={`ellipsis-${idx}`}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={item}>
+                    <PaginationLink
+                      href="#"
+                      isActive={item === safePage}
+                      onClick={(e) => { e.preventDefault(); goToPage(item) }}
+                    >
+                      {item}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); if (safePage < totalPages) goToPage(safePage + 1) }}
+                  aria-disabled={safePage >= totalPages}
+                  className={safePage >= totalPages ? "pointer-events-none opacity-40" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
 

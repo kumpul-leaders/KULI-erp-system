@@ -3,9 +3,15 @@
 import { useRouter } from "next/navigation"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { AlertTriangle, User } from "lucide-react"
+import { AlertTriangle, User, Pencil } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { formatIDR, cn } from "@/lib/utils"
-import type { PipelineStage, ProductLine } from "@/types"
+import type { PipelineStage, ProductLine, LostReason } from "@/types"
 
 // ── Serialized lead shape passed from server ────────────────────────────────
 
@@ -21,6 +27,9 @@ export interface SerializedLead {
   billingPlan: string | null
   quarter: string | null
   actualRevenue: number | null
+  probability: number | null
+  probabilityIsManual: boolean
+  lostReason: LostReason | null
   lossDealReason: string | null
   invoiceRequestedAt: string | null
   notes: string | null
@@ -57,6 +66,15 @@ const PRODUCT_LINE_LABELS: Record<ProductLine, string> = {
   ads_management: "Ads Management",
   production: "Production",
   others: "Others",
+}
+
+export const LOST_REASON_LABELS: Record<LostReason, string> = {
+  budget: "Budget",
+  competitor: "Kompetitor",
+  timing: "Timing",
+  no_decision: "Tidak Ada Keputusan",
+  requirements_mismatch: "Requirement Tidak Cocok",
+  other: "Lainnya",
 }
 
 // Default fields shown when no visibleFields prop is passed (legacy / DragOverlay use)
@@ -143,12 +161,41 @@ export function PipelineCard({
         </div>
       )}
 
-      {/* Revenue + Billing Plan + Quarter — conditional */}
+      {/* Revenue + Probability + Billing Plan + Quarter — conditional */}
       {visibleFields.has("revenue") && (
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-neutral-800 tabular-nums">
-            {lead.projectedRevenue ? formatIDR(lead.projectedRevenue) : "—"}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-semibold text-neutral-800 tabular-nums">
+              {lead.projectedRevenue ? formatIDR(lead.projectedRevenue) : "—"}
+            </span>
+            {/* Probability badge */}
+            {lead.probability !== null && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium tabular-nums",
+                        lead.probabilityIsManual
+                          ? "bg-warning-100 text-warning-700"
+                          : "bg-neutral-100 text-neutral-500"
+                      )}
+                    >
+                      {lead.probabilityIsManual && (
+                        <Pencil className="h-2.5 w-2.5 flex-shrink-0" />
+                      )}
+                      {Math.round(lead.probability)}%
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {lead.probabilityIsManual
+                      ? "Probabilitas manual (dikunci)"
+                      : "Probabilitas otomatis berdasarkan stage"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
           <div className="flex items-center gap-1.5">
             {lead.billingPlan && (
               <span className="text-xs text-neutral-500 truncate max-w-[80px]">
@@ -186,6 +233,15 @@ export function PipelineCard({
         <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-neutral-100">
           <AlertTriangle className="h-3.5 w-3.5 text-warning-500 flex-shrink-0" />
           <span className="text-xs text-warning-700">{missingDoc}</span>
+        </div>
+      )}
+
+      {/* Lost reason badge — shown on lost_deal cards */}
+      {lead.stage === "lost_deal" && lead.lostReason && (
+        <div className="mt-2 pt-2 border-t border-neutral-100">
+          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-danger-50 text-danger-700 border border-danger-200">
+            {LOST_REASON_LABELS[lead.lostReason]}
+          </span>
         </div>
       )}
     </div>

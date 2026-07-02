@@ -72,6 +72,11 @@ export type PipelineValueStat = {
   total: number
 }
 
+export type LostReasonDist = {
+  reason: string   // human-readable Indonesian label, "(belum dikategorikan)" for null
+  count: number
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -240,6 +245,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     overallStageGroups,
     revenueByProductLineGroups,
     pipelineValueAgg,
+    lostReasonGroups,
   ] = await Promise.all([
     // 1a. All leads per AE (has salesId) — funnel filter = createdAt
     prisma.lead.groupBy({
@@ -409,6 +415,18 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         stage: { in: ["leads", "pipeline", "negotiation"] },
         ...aeFilter,
       },
+    }),
+
+    // Lost reason distribution — lost_deal leads with lostReason groupBy
+    prisma.lead.groupBy({
+      by: ["lostReason"],
+      where: {
+        stage: $Enums.PipelineStage.lost_deal,
+        ...aeFilter,
+        ...createdDateFilter,
+      },
+      _count: { _all: true },
+      orderBy: { _count: { lostReason: "desc" } },
     }),
   ])
 
@@ -615,6 +633,23 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     winLossRate: overallDenominator > 0 ? Math.round((overallLost / overallDenominator) * 100) : 0,
   }
 
+  // ---------------------------------------------------------------------------
+  // Lost Reason Distribution
+  // ---------------------------------------------------------------------------
+  const LOST_REASON_LABELS: Record<string, string> = {
+    budget: "Budget Tidak Cocok",
+    competitor: "Kalah dari Kompetitor",
+    timing: "Timing Tidak Tepat",
+    no_decision: "Tidak Ada Keputusan",
+    requirements_mismatch: "Kebutuhan Tidak Cocok",
+    other: "Lainnya",
+  }
+
+  const lostReasonDist: LostReasonDist[] = lostReasonGroups.map((g) => ({
+    reason: g.lostReason ? (LOST_REASON_LABELS[g.lostReason] ?? g.lostReason) : "(belum dikategorikan)",
+    count: g._count._all,
+  })).sort((a, b) => b.count - a.count)
+
   return (
     <>
       <Topbar title="Analytics" />
@@ -634,6 +669,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         rtYear={rtYear}
         revenueByProductLine={revenueByProductLine}
         pipelineValue={pipelineValue}
+        lostReasonDist={lostReasonDist}
       />
     </>
   )

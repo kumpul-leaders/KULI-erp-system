@@ -217,10 +217,24 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
     }
   }
 
-  // ── Pipeline field configs (dynamic — depends on salesOptions) ──────────────
+  // ── Unique client options derived from loaded leads ──────────────────────────
+
+  const clientOptions = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const l of leads) {
+      if (!seen.has(l.clientId)) seen.set(l.clientId, l.client.name)
+    }
+    return Array.from(seen.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [leads])
+
+  // ── Pipeline field configs (dynamic — depends on salesOptions + clientOptions) ─
 
   const pipelineFieldConfigs = useMemo((): FieldConfig[] => [
     { key: "clientName",       label: "Client Name",       type: "text" },
+    { key: "clientId",         label: "Client",            type: "enum",
+      options: clientOptions },
     { key: "stage",            label: "Stage",             type: "enum", options: STAGE_OPTIONS },
     { key: "productLine",      label: "Product Line",      type: "enum", options: PRODUCT_LINE_OPTIONS },
     { key: "projectType",      label: "Project Type",      type: "enum",
@@ -231,7 +245,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
     { key: "actualRevenue",    label: "Actual Revenue",    type: "numeric" },
     { key: "quarter",          label: "Quarter",           type: "text" },
     { key: "billingPlan",      label: "Billing Plan",      type: "text" },
-  ], [salesOptions])
+  ], [salesOptions, clientOptions])
 
   // ── Computed filtered leads ─────────────────────────────────────────────────
 

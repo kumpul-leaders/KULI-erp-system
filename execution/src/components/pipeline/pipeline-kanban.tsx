@@ -16,8 +16,16 @@ import {
 } from "@dnd-kit/sortable"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { PipelineCard, type SerializedLead, type KanbanField } from "./pipeline-card"
-import type { PipelineStage } from "@/types"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { PipelineCard, type SerializedLead, type KanbanField, LOST_REASON_LABELS } from "./pipeline-card"
+import { formatIDRCompact } from "@/lib/utils"
+import type { PipelineStage, LostReason } from "@/types"
 
 // ── Column config ────────────────────────────────────────────────────────────
 
@@ -94,6 +102,13 @@ function KanbanColumn({
 
   const leadIds = leads.map((l) => l.id)
 
+  // Column stats — computed client-side from loaded leads
+  const totalRevenue = leads.reduce((sum, l) => sum + (l.projectedRevenue ?? 0), 0)
+  const weightedRevenue = leads.reduce(
+    (sum, l) => sum + (l.projectedRevenue ?? 0) * ((l.probability ?? 0) / 100),
+    0
+  )
+
   return (
     <div
       ref={setNodeRef}
@@ -102,16 +117,34 @@ function KanbanColumn({
       }`}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-neutral-200">
-        <div className="flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${column.colorClass}`} />
-          <span className="text-sm font-semibold text-neutral-700">
-            {column.label}
+      <div className="flex flex-col gap-1 px-3 py-2.5 border-b border-neutral-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${column.colorClass}`} />
+            <span className="text-sm font-semibold text-neutral-700">
+              {column.label}
+            </span>
+          </div>
+          <span className="text-xs font-medium text-neutral-400 tabular-nums">
+            {leads.length}
           </span>
         </div>
-        <span className="text-xs font-medium text-neutral-400 tabular-nums">
-          {leads.length}
-        </span>
+        {/* Revenue stats row */}
+        {leads.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap pl-4">
+            <span className="text-xs text-neutral-500 tabular-nums">
+              {formatIDRCompact(totalRevenue)}
+            </span>
+            {weightedRevenue > 0 && (
+              <>
+                <span className="text-xs text-neutral-300">·</span>
+                <span className="text-xs text-neutral-400 tabular-nums" title="Weighted (probability-adjusted)">
+                  ~{formatIDRCompact(weightedRevenue)}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Closed Won info note */}
@@ -143,13 +176,23 @@ function KanbanColumn({
 // ── Lost Deal Reason Dialog ──────────────────────────────────────────────────
 // Simple inline dialog — not using shadcn Dialog to avoid nesting DndContext.
 
+const LOST_REASON_OPTIONS: Array<{ value: LostReason; label: string }> = [
+  { value: "budget", label: "Budget" },
+  { value: "competitor", label: "Kompetitor" },
+  { value: "timing", label: "Timing" },
+  { value: "no_decision", label: "Tidak Ada Keputusan" },
+  { value: "requirements_mismatch", label: "Requirement Tidak Cocok" },
+  { value: "other", label: "Lainnya" },
+]
+
 interface LostDealDialogProps {
-  onConfirm: (reason: string) => void
+  onConfirm: (lostReason: LostReason, note: string) => void
   onCancel: () => void
 }
 
 function LostDealDialog({ onConfirm, onCancel }: LostDealDialogProps) {
-  const [reason, setReason] = useState("")
+  const [lostReason, setLostReason] = useState<LostReason | "">("")
+  const [note, setNote] = useState("")
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -158,17 +201,46 @@ function LostDealDialog({ onConfirm, onCancel }: LostDealDialogProps) {
           Mark as Lost Deal
         </h2>
         <p className="text-sm text-neutral-500 mb-4">
-          Please provide a reason for losing this deal.
+          Pilih alasan utama kehilangan deal ini.
         </p>
-        <textarea
-          autoFocus
-          className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-800 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
-          rows={3}
-          placeholder="e.g. Budget constraints, chose competitor..."
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <div className="flex justify-end gap-2 mt-4">
+
+        {/* Structured reason — required */}
+        <div className="mb-3">
+          <label className="block text-xs font-semibold text-neutral-600 uppercase tracking-wide mb-1.5">
+            Alasan <span className="text-danger-500">*</span>
+          </label>
+          <Select
+            value={lostReason}
+            onValueChange={(v) => setLostReason(v as LostReason)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Pilih alasan..." />
+            </SelectTrigger>
+            <SelectContent>
+              {LOST_REASON_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Free-text note — optional */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-neutral-600 uppercase tracking-wide mb-1.5">
+            Catatan tambahan <span className="text-neutral-400 font-normal">(opsional)</span>
+          </label>
+          <textarea
+            className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-800 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+            rows={2}
+            placeholder="Detail tambahan..."
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2">
           <button
             className="px-4 py-2 rounded-md border border-neutral-200 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
             onClick={onCancel}
@@ -176,10 +248,10 @@ function LostDealDialog({ onConfirm, onCancel }: LostDealDialogProps) {
             Cancel
           </button>
           <button
-            disabled={!reason.trim()}
+            disabled={!lostReason}
             className="px-4 py-2 rounded-md bg-danger-500 text-sm font-medium text-white hover:bg-danger-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => {
-              if (reason.trim()) onConfirm(reason.trim())
+              if (lostReason) onConfirm(lostReason, note.trim())
             }}
           >
             Confirm Lost
@@ -242,7 +314,7 @@ export function PipelineKanban({
   async function performStageChange(
     leadId: string,
     toStage: PipelineStage,
-    lossDealReason?: string
+    lostPayload?: { lostReason: LostReason; lossDealReason: string }
   ) {
     const lead = leads.find((l) => l.id === leadId)
     if (!lead) return
@@ -256,7 +328,10 @@ export function PipelineKanban({
 
     try {
       const body: Record<string, unknown> = { toStage }
-      if (lossDealReason) body.lossDealReason = lossDealReason
+      if (lostPayload) {
+        body.lostReason = lostPayload.lostReason
+        body.lossDealReason = lostPayload.lossDealReason || lostPayload.lostReason
+      }
 
       const res = await fetch(`/api/leads/${leadId}/stage`, {
         method: "POST",
@@ -358,12 +433,11 @@ export function PipelineKanban({
       {/* Lost deal reason dialog */}
       {lostDealPending && (
         <LostDealDialog
-          onConfirm={(reason) => {
-            void performStageChange(
-              lostDealPending.leadId,
-              "lost_deal",
-              reason
-            )
+          onConfirm={(lostReason, note) => {
+            void performStageChange(lostDealPending.leadId, "lost_deal", {
+              lostReason,
+              lossDealReason: note || LOST_REASON_LABELS[lostReason],
+            })
             setLostDealPending(null)
           }}
           onCancel={() => {

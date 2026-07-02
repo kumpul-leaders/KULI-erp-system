@@ -27,6 +27,16 @@ type SerializedLead = {
   date: string // ISO string
 }
 
+type WeightedForecastLead = {
+  id: string
+  clientId: string
+  clientName: string
+  stage: string
+  projectedRevenue: number | null
+  probability: number
+  quarter: string | null
+}
+
 type SerializedClient = {
   id: string
   name: string
@@ -47,6 +57,7 @@ type DrawerType =
   | "leads_mtd"
   | "at_risk"
   | "churned"
+  | "weighted_forecast"
   | null
 
 const DRAWER_META: Record<
@@ -76,6 +87,10 @@ const DRAWER_META: Record<
   churned: {
     title: "Churned Clients",
     description: "Klien dengan health status Churned",
+  },
+  weighted_forecast: {
+    title: "Weighted Forecast",
+    description: "Proyeksi revenue weighted by probability — hanya stages aktif (countsAsForecast)",
   },
 }
 
@@ -293,6 +308,97 @@ function ClientDrillTable({ clients }: { clients: SerializedClient[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Weighted Forecast drill table
+// ---------------------------------------------------------------------------
+
+function WeightedForecastDrillTable({ leads }: { leads: WeightedForecastLead[] }) {
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<{ col: "clientName" | "weighted" | "stage"; dir: "asc" | "desc" }>({ col: "weighted", dir: "desc" })
+
+  const filtered = leads
+    .filter((l) => l.clientName.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const dir = sort.dir === "asc" ? 1 : -1
+      if (sort.col === "clientName") return a.clientName.localeCompare(b.clientName) * dir
+      if (sort.col === "stage") return a.stage.localeCompare(b.stage) * dir
+      const aW = (a.projectedRevenue ?? 0) * (a.probability / 100)
+      const bW = (b.projectedRevenue ?? 0) * (b.probability / 100)
+      return (aW - bW) * dir
+    })
+
+  function toggleSort(col: typeof sort.col) {
+    setSort((prev) => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "desc" })
+  }
+
+  function sortIndicator(col: typeof sort.col) {
+    if (sort.col !== col) return null
+    return sort.dir === "asc" ? " ↑" : " ↓"
+  }
+
+  return (
+    <>
+      <Input
+        placeholder="Cari client..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mb-3 h-8 text-sm"
+      />
+      {filtered.length === 0 ? (
+        <p className="text-sm text-neutral-400 py-4 text-center">Tidak ada data.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-200">
+              <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none" onClick={() => toggleSort("clientName")}>
+                Client{sortIndicator("clientName")}
+              </th>
+              <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none" onClick={() => toggleSort("stage")}>
+                Stage{sortIndicator("stage")}
+              </th>
+              <th className="text-right text-xs font-medium text-neutral-400 pb-2 pr-3">
+                Projected
+              </th>
+              <th className="text-right text-xs font-medium text-neutral-400 pb-2 pr-3">
+                Prob.
+              </th>
+              <th className="text-right text-xs font-medium text-neutral-400 pb-2 cursor-pointer hover:text-neutral-600 select-none" onClick={() => toggleSort("weighted")}>
+                Weighted{sortIndicator("weighted")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((lead) => {
+              const weighted = (lead.projectedRevenue ?? 0) * (lead.probability / 100)
+              return (
+                <tr key={lead.id} className="border-b border-neutral-100 last:border-0">
+                  <td className="py-2.5 pr-3 font-medium text-neutral-800">
+                    <a href={`/pipeline/${lead.id}`} className="hover:text-accent-600 hover:underline">
+                      {lead.clientName}
+                    </a>
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <span className="text-xs text-neutral-500">{STAGE_LABELS[lead.stage] ?? lead.stage}</span>
+                  </td>
+                  <td className="py-2.5 pr-3 text-right tabular-nums text-neutral-500 text-xs">
+                    {lead.projectedRevenue != null ? formatIDR(lead.projectedRevenue) : "—"}
+                  </td>
+                  <td className="py-2.5 pr-3 text-right tabular-nums text-neutral-500 text-xs">
+                    {lead.probability}%
+                  </td>
+                  <td className="py-2.5 text-right tabular-nums text-neutral-700 font-medium">
+                    {formatIDR(Math.round(weighted))}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -310,6 +416,7 @@ interface DashboardContentProps {
   revenueMTD: number
   revenueMTDPrevMonth: number
   revenueInPipeline: number
+  weightedForecast: number
   healthyCount: number
   newLeadsCount: number
   revenueTarget: number
@@ -333,6 +440,7 @@ interface DashboardContentProps {
   newLeadsDrillDown: SerializedLead[]
   atRiskDrillDown: SerializedClient[]
   churnedDrillDown: SerializedClient[]
+  weightedForecastDrillDown: WeightedForecastLead[]
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +451,7 @@ export function DashboardContent({
   revenueMTD,
   revenueMTDPrevMonth,
   revenueInPipeline,
+  weightedForecast,
   healthyCount,
   newLeadsCount,
   revenueTarget,
@@ -358,6 +467,7 @@ export function DashboardContent({
   newLeadsDrillDown,
   atRiskDrillDown,
   churnedDrillDown,
+  weightedForecastDrillDown,
 }: DashboardContentProps) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerType>(null)
 
@@ -375,6 +485,8 @@ export function DashboardContent({
         return <ClientDrillTable clients={atRiskDrillDown} />
       case "churned":
         return <ClientDrillTable clients={churnedDrillDown} />
+      case "weighted_forecast":
+        return <WeightedForecastDrillTable leads={weightedForecastDrillDown} />
       default:
         return null
     }
@@ -386,8 +498,8 @@ export function DashboardContent({
   return (
     <>
       <main className="flex-1 overflow-y-auto px-8 py-6">
-        {/* KPI strip — 4 cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        {/* KPI strip — 5 cards */}
+        <div className="grid grid-cols-5 gap-4 mb-8">
           {/* Card 1 — Revenue Won MTD */}
           <button
             onClick={() => setActiveDrawer("revenue_won")}
@@ -417,6 +529,20 @@ export function DashboardContent({
               {formatIDR(revenueInPipeline)}
             </p>
             <p className="text-xs text-neutral-400">Across active stages</p>
+          </button>
+
+          {/* Card 2b — Weighted Forecast */}
+          <button
+            onClick={() => setActiveDrawer("weighted_forecast")}
+            className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card text-left w-full hover:border-accent-200 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+          >
+            <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
+              Weighted Forecast
+            </p>
+            <p className="text-3xl font-bold tabular-nums text-neutral-800 mb-1">
+              {formatIDR(weightedForecast)}
+            </p>
+            <p className="text-xs text-neutral-400">Pipeline × probability</p>
           </button>
 
           {/* Card 3 — Healthy Clients */}

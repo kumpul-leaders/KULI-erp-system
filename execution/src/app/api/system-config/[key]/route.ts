@@ -7,7 +7,7 @@ import { UpdateSystemConfigSchema } from "@/lib/validations/system-config"
 
 // ── Allowlist ────────────────────────────────────────────────────────────────
 
-const ALLOWED_KEYS = ["stage_gates", "product_line_labels"] as const
+const ALLOWED_KEYS = ["stage_gates", "product_line_labels", "pipeline_stage_config"] as const
 type AllowedKey = (typeof ALLOWED_KEYS)[number]
 
 function isAllowedKey(v: unknown): v is AllowedKey {

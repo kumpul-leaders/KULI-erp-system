@@ -12,9 +12,11 @@ import { NotesCard } from "@/components/clients/notes-card"
 import { AeCard } from "@/components/clients/ae-card"
 import { ClientDetailActions } from "@/components/clients/client-detail-actions"
 import { EditStatusButton } from "@/components/clients/edit-status-button"
+import { SmartButtons, type SmartButtonConfig } from "@/components/shared/smart-buttons"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { formatIDR, daysUntil, contractUrgency } from "@/lib/utils"
+import { Layers, Users, TrendingUp, DollarSign } from "lucide-react"
 // ── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -240,6 +242,53 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           Clients
         </Link>
 
+        {/* Smart Buttons row */}
+        {(() => {
+          // Build pipeline filter URL — clientId enum condition encoded as base64 FilterCondition[]
+          const clientFilterConditions = [
+            { id: "client-filter", field: "clientId", operator: "is", value: id },
+          ]
+          const clientFilterParam = Buffer.from(JSON.stringify(clientFilterConditions)).toString("base64")
+
+          const clientSmartButtons: SmartButtonConfig[] = [
+            {
+              type: "link",
+              icon: <Layers />,
+              count: serializedLeads.length,
+              label: serializedLeads.length === 1 ? "Lead" : "Leads",
+              href: `/pipeline?filter=${clientFilterParam}`,
+              title: `Lihat semua leads dari ${client.name} di Pipeline`,
+            },
+            {
+              type: "scroll",
+              icon: <Users />,
+              count: client.contacts.length,
+              label: client.contacts.length === 1 ? "Contact" : "Contacts",
+              targetId: "section-contacts",
+              title: "Lihat daftar contacts",
+            },
+            {
+              type: "scroll",
+              icon: <TrendingUp />,
+              count: client.upsellOpportunities.length,
+              label: "Upsells",
+              targetId: "section-upsells",
+              title: "Lihat upsell opportunities",
+            },
+            ...(cumulativeValue > 0
+              ? ([
+                  {
+                    type: "badge",
+                    icon: <DollarSign />,
+                    label: `Cumulative: ${formatIDR(cumulativeValue)}`,
+                    title: "Total actual revenue dari won projects",
+                  },
+                ] satisfies SmartButtonConfig[])
+              : []),
+          ]
+          return <SmartButtons buttons={clientSmartButtons} className="mb-6" />
+        })()}
+
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-1 flex-wrap">
@@ -364,7 +413,9 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
             </div>
 
             {/* Contacts */}
-            <ContactsCard clientId={client.id} contacts={contacts} />
+            <div id="section-contacts">
+              <ContactsCard clientId={client.id} contacts={contacts} />
+            </div>
 
             {/* Notes */}
             <NotesCard clientId={client.id} notes={client.notes} />
@@ -423,7 +474,9 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
             />
 
             {/* Upsell Opportunities */}
-            <UpsellsCard clientId={client.id} upsells={upsells} />
+            <div id="section-upsells">
+              <UpsellsCard clientId={client.id} upsells={upsells} />
+            </div>
 
             {/* Field History */}
             {fieldHistory.length > 0 && (

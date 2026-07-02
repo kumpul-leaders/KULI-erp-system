@@ -88,6 +88,55 @@ function KpiCard({ label, value, sub, color }: {
   )
 }
 
+// Pipeline Coverage ratio row
+// ratio = weightedPipeline / remainingTarget (target − actual, floor 0)
+// green ≥3x, amber 1.5–3x, red <1.5x
+function PipelineCoverageRow({ weightedPipeline, actual, target }: { weightedPipeline: number; actual: number; target: number }) {
+  if (target <= 0) return null
+
+  const remaining = Math.max(0, target - actual)
+
+  let ratioDisplay: string
+  let colorClass: string
+
+  if (remaining <= 0) {
+    // Target already met — infinite coverage
+    ratioDisplay = "∞x"
+    colorClass = "text-emerald-600 bg-emerald-50"
+  } else {
+    const ratio = weightedPipeline / remaining
+    ratioDisplay = `${ratio.toFixed(1)}x`
+    if (ratio >= 3) {
+      colorClass = "text-emerald-600 bg-emerald-50"
+    } else if (ratio >= 1.5) {
+      colorClass = "text-amber-600 bg-amber-50"
+    } else {
+      colorClass = "text-danger-600 bg-danger-50"
+    }
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2 flex-wrap">
+      <span className="text-xs text-neutral-500">Pipeline Coverage:</span>
+      <span
+        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold tabular-nums ${colorClass}`}
+        title={`Weighted pipeline ${formatIDR(weightedPipeline)} ÷ sisa target ${formatIDR(remaining)}. Pipeline sehat = 3–5x sisa target.`}
+      >
+        {ratioDisplay}
+      </span>
+      <span className="text-xs text-neutral-400">
+        ({formatIDR(weightedPipeline)} weighted ÷ {formatIDR(remaining)} sisa target)
+      </span>
+      <span
+        className="text-xs text-neutral-300 cursor-help"
+        title="Pipeline Coverage = weighted open pipeline ÷ sisa target. Pipeline sehat = 3–5x sisa target."
+      >
+        [?]
+      </span>
+    </div>
+  )
+}
+
 // Stacked bar: actual (solid) + forecast (lighter amber), both relative to target
 function ForecastBar({ actual, forecast, max }: { actual: number; forecast: number; max: number }) {
   if (max <= 0) return null
@@ -396,6 +445,13 @@ export function TargetsContent({
                     {q.revenueTarget > 0 && (
                       <ForecastBar actual={q.actual} forecast={q.forecast} max={q.revenueTarget} />
                     )}
+                  {q.status !== "closed" && q.revenueTarget > 0 && (
+                    <PipelineCoverageRow
+                      weightedPipeline={q.weightedPipeline}
+                      actual={q.actual}
+                      target={q.revenueTarget}
+                    />
+                  )}
                   </div>
 
                   {/* Actions — admin can edit any quarter including closed */}

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { SettingsContent } from "@/components/settings/settings-content"
 import type { SerializedUser } from "@/components/settings/settings-content"
+import { getStageConfig } from "@/lib/stage-config.server"
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -15,7 +16,7 @@ export default async function SettingsPage() {
     data: { user: supabaseUser },
   } = await supabase.auth.getUser()
 
-  const [allUsers, currentDbUser, leadGroups, clientGroups] = await Promise.all([
+  const [allUsers, currentDbUser, leadGroups, clientGroups, initialStageConfig] = await Promise.all([
     prisma.user.findMany({ orderBy: { name: "asc" } }),
     supabaseUser?.email
       ? prisma.user.findUnique({
@@ -33,6 +34,9 @@ export default async function SettingsPage() {
       by: ["primaryAe"],
       _count: { id: true },
     }),
+
+    // Pipeline stage config for the Pipeline tab
+    getStageConfig(),
   ])
 
   const serializedUsers: SerializedUser[] = allUsers.map((u) => ({
@@ -74,6 +78,7 @@ export default async function SettingsPage() {
           isAdmin={canManageUsers}
           leadCountMap={leadCountMap}
           clientCountMap={clientCountMap}
+          initialStageConfig={initialStageConfig}
         />
       </main>
     </>

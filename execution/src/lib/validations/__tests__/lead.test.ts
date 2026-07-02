@@ -5,6 +5,7 @@ import {
   StageTransitionSchema,
   BulkCreateLeadSchema,
   BulkReassignSchema,
+  LostReasonSchema,
 } from "@/lib/validations/lead"
 
 describe("CreateLeadSchema", () => {
@@ -137,5 +138,82 @@ describe("BulkReassignSchema", () => {
       toUserId: "user-b",
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe("LostReasonSchema", () => {
+  it("accepts all valid LostReason values", () => {
+    const values = ["budget", "competitor", "timing", "no_decision", "requirements_mismatch", "other"]
+    for (const v of values) {
+      expect(LostReasonSchema.safeParse(v).success).toBe(true)
+    }
+  })
+
+  it("rejects invalid LostReason value", () => {
+    expect(LostReasonSchema.safeParse("price_too_high").success).toBe(false)
+  })
+})
+
+describe("UpdateLeadSchema — probability fields", () => {
+  it("accepts probability as number 0-100", () => {
+    expect(UpdateLeadSchema.safeParse({ probability: 75 }).success).toBe(true)
+    expect(UpdateLeadSchema.safeParse({ probability: 0 }).success).toBe(true)
+    expect(UpdateLeadSchema.safeParse({ probability: 100 }).success).toBe(true)
+  })
+
+  it("rejects probability above 100", () => {
+    expect(UpdateLeadSchema.safeParse({ probability: 101 }).success).toBe(false)
+  })
+
+  it("rejects probability below 0", () => {
+    expect(UpdateLeadSchema.safeParse({ probability: -1 }).success).toBe(false)
+  })
+
+  it("accepts probabilityIsManual as boolean", () => {
+    expect(UpdateLeadSchema.safeParse({ probabilityIsManual: true }).success).toBe(true)
+    expect(UpdateLeadSchema.safeParse({ probabilityIsManual: false }).success).toBe(true)
+  })
+
+  it("accepts lostReason as valid enum value", () => {
+    expect(UpdateLeadSchema.safeParse({ lostReason: "budget" }).success).toBe(true)
+    expect(UpdateLeadSchema.safeParse({ lostReason: "competitor" }).success).toBe(true)
+  })
+
+  it("rejects lostReason with invalid value", () => {
+    expect(UpdateLeadSchema.safeParse({ lostReason: "too_expensive" }).success).toBe(false)
+  })
+
+  it("accepts lostReason as null (explicit clear)", () => {
+    expect(UpdateLeadSchema.safeParse({ lostReason: null }).success).toBe(true)
+  })
+
+  it("strips unknown keys alongside new probability fields", () => {
+    const result = UpdateLeadSchema.safeParse({ probability: 50, rogue: "xyz" })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data).not.toHaveProperty("rogue")
+      expect(result.data.probability).toBe(50)
+    }
+  })
+})
+
+describe("CreateLeadSchema — lostReason field", () => {
+  it("accepts lostReason as optional", () => {
+    const result = CreateLeadSchema.safeParse({
+      clientId: "client-uuid-001",
+      productLine: "smm",
+      projectType: "retainer",
+      lostReason: "timing",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts without lostReason (backwards compatible)", () => {
+    const result = CreateLeadSchema.safeParse({
+      clientId: "client-uuid-001",
+      productLine: "smm",
+      projectType: "retainer",
+    })
+    expect(result.success).toBe(true)
   })
 })

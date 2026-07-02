@@ -4,6 +4,7 @@ import { requireAuthenticated, requireCanCreateLeads, requireAdmin } from "@/lib
 import { syncClientStatus } from "@/lib/client-status"
 import { parseBody } from "@/lib/validations/parse"
 import { UpdateLeadSchema } from "@/lib/validations/lead"
+import { getStageConfig } from "@/lib/stage-config.server"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -32,6 +33,9 @@ function serializeLead(lead: {
   billingPlan: string | null
   quarter: string | null
   actualRevenue: { toNumber?: () => number } | null
+  probability: { toNumber?: () => number } | null
+  probabilityIsManual: boolean
+  lostReason: string | null
   lossDealReason: string | null
   invoiceRequestedAt: Date | null
   notes: string | null
@@ -76,6 +80,7 @@ function serializeLead(lead: {
     ...lead,
     projectedRevenue: lead.projectedRevenue ? Number(lead.projectedRevenue) : null,
     actualRevenue: lead.actualRevenue ? Number(lead.actualRevenue) : null,
+    probability: lead.probability != null ? Number(lead.probability) : null,
     invoiceRequestedAt: lead.invoiceRequestedAt?.toISOString() ?? null,
     createdAt: lead.createdAt.toISOString(),
     closedAt: lead.closedAt?.toISOString() ?? null,
@@ -202,6 +207,7 @@ export async function PATCH(
     }
     if ("actualRevenue" in body) updateData.actualRevenue = body.actualRevenue ?? null
     if ("lossDealReason" in body) updateData.lossDealReason = body.lossDealReason ?? null
+    if ("lostReason" in body) updateData.lostReason = body.lostReason ?? null
     if ("notes" in body) updateData.notes = body.notes ?? null
     if ("closedAt" in body) {
       updateData.closedAt = body.closedAt ? new Date(body.closedAt) : null
@@ -211,6 +217,22 @@ export async function PATCH(
         typeof body.expectedCloseDate === "string" && body.expectedCloseDate
           ? new Date(body.expectedCloseDate)
           : null
+    }
+
+    // ── Probability manual override / reset ─────────────────────────────────
+    // Case 1: probabilityIsManual: false  → reset to auto, re-apply stage default
+    // Case 2: probability provided (number)  → set value + mark as manual
+    // Case 3: probabilityIsManual: true without probability  → just flag, keep value
+    if ("probabilityIsManual" in body && body.probabilityIsManual === false) {
+      // Reset to auto — look up current stage default
+      const stageConfig = await getStageConfig()
+      updateData.probability = stageConfig[existing.stage].probability
+      updateData.probabilityIsManual = false
+    } else if ("probability" in body && body.probability !== undefined && body.probability !== null) {
+      updateData.probability = body.probability
+      updateData.probabilityIsManual = true
+    } else if ("probabilityIsManual" in body && body.probabilityIsManual === true) {
+      updateData.probabilityIsManual = true
     }
 
     // ── Detect field changes for history ────────────────────────────────────

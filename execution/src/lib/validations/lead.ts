@@ -13,6 +13,15 @@ export const PipelineStageSchema = z.enum([
   "no_response",
 ])
 
+export const LostReasonSchema = z.enum([
+  "budget",
+  "competitor",
+  "timing",
+  "no_decision",
+  "requirements_mismatch",
+  "other",
+])
+
 export const ProductLineSchema = z.enum([
   "stracomm",
   "smm",
@@ -46,6 +55,7 @@ export const CreateLeadSchema = z.object({
   description: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   expectedCloseDate: z.string().optional().nullable(),
+  lostReason: LostReasonSchema.optional().nullable(),
 })
 
 export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
@@ -67,17 +77,23 @@ export const UpdateLeadSchema = z.object({
   notes: z.string().optional().nullable(),
   closedAt: z.string().optional().nullable(),
   expectedCloseDate: z.string().optional().nullable(),
+  // probability: manual override (0–100) or null to reset to auto
+  probability: z.number().min(0).max(100).optional().nullable(),
+  // probabilityIsManual: explicit false = reset to auto (re-applies stage default)
+  probabilityIsManual: z.boolean().optional(),
+  lostReason: LostReasonSchema.optional().nullable(),
 })
 
 export type UpdateLeadInput = z.infer<typeof UpdateLeadSchema>
 
 // ── POST /api/leads/[id]/stage ───────────────────────────────────────────────
 // Required: toStage
-// Optional: lossDealReason
+// Optional: lossDealReason (free text note), lostReason (structured enum)
 
 export const StageTransitionSchema = z.object({
   toStage: PipelineStageSchema,
   lossDealReason: z.string().optional().nullable(),
+  lostReason: LostReasonSchema.optional().nullable(),
 })
 
 export type StageTransitionInput = z.infer<typeof StageTransitionSchema>

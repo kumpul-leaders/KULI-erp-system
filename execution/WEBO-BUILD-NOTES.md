@@ -608,3 +608,70 @@ No DB migration needed for existing records.
 2. **View:** Click the ExternalLink icon next to a document. Should open PDF in new tab via signed URL (URL contains `?token=...`).
 3. **Expired URL:** Copy a signed URL, wait 5+ minutes, paste in incognito → should return 400/403.
 4. **Bucket private:** `curl -I "https://dgzwjsibrqgwqxjvzozz.supabase.co/storage/v1/object/public/pipeline-docs/leads/..."` → should return 400 or 403.
+
+---
+
+## Phase 1 Batch 2B — Weighted Forecast, Coverage Ratio, Lost Reason, Stage Config Editor
+**Build Date:** 2026-07-02
+**Status:** Complete. `npx tsc --noEmit`: 0 errors. `npm run test`: 69/69 pass. `npm run build`: clean (24/24 pages).
+
+### Files Changed
+
+| File | Action | Notes |
+|------|--------|-------|
+| `src/lib/stage-config.ts` | Modified | Stripped Prisma import — now client-safe only. Exports: Zod schemas, `PipelineStageConfig` type, `DEFAULT_STAGE_CONFIG`, `stageProbability()`. |
+| `src/lib/stage-config.server.ts` | Created | `import "server-only"` guard. Re-exports client-safe items. Adds `getStageConfig()` with Prisma. All server callers import from here. |
+| `src/app/(dashboard)/dashboard/page.tsx` | Modified | Reads stageConfig, extracts forecastStages. 17th Promise.all query: weighted forecast leads. Computes `weightedForecast`. Passes `weightedForecast` + `weightedForecastDrillDown` to DashboardContent. |
+| `src/components/dashboard/dashboard-content.tsx` | Modified | Added `WeightedForecastLead` type, `"weighted_forecast"` DrawerType, drawer meta, `WeightedForecastDrillTable`. KPI grid: 4-col to 5-col. Added 5th card "Weighted Forecast". |
+| `src/app/(dashboard)/targets/page.tsx` | Modified | Reads stageConfig, extracts forecastStages. `weightedPipelineLeads` query. `bpWeightedMap` per billingPlan. `weightedPipeline: Math.round(...)` in each `QuarterData`. |
+| `src/components/targets/targets-content.tsx` | Modified | Added `PipelineCoverageRow` sub-component. Renders after ForecastBar for non-closed quarters with `revenueTarget > 0`. |
+| `src/app/(dashboard)/analytics/page.tsx` | Modified | `lostReasonGroups` groupBy query (lost_deal stage, date-filtered). `LOST_REASON_LABELS` Indonesian map. Null reason maps to "(belum dikategorikan)". Passes `lostReasonDist` to AnalyticsContent. |
+| `src/components/analytics/analytics-content.tsx` | Modified | Added `LostReasonDist` import, `lostReasonDist` prop, `LostReasonTooltip`, "Alasan Deal Hilang" horizontal BarChart section (red fill). |
+| `src/components/settings/settings-pipeline-tab.tsx` | Created | Client component. Admin + commercial_director only (read-only for others). Table: 8 stages x probability input x countsAsForecast Switch. Save: Zod-validates, PATCHes `/api/system-config/pipeline_stage_config`. Reset: restores DEFAULT_STAGE_CONFIG. Warning banner about manual probability. |
+| `src/app/(dashboard)/settings/page.tsx` | Modified | Reads `getStageConfig()` in Promise.all. Passes `initialStageConfig` to SettingsContent. |
+| `src/components/settings/settings-content.tsx` | Modified | Imports `SettingsPipelineTab` + `PipelineStageConfig`. Renders "Pipeline Configuration" card (4th card). |
+
+### Key Decision: Server/Client Module Split
+
+**Problem:** `stage-config.ts` had Zod schemas AND `getStageConfig()` (Prisma) in one file. When `settings-pipeline-tab.tsx` (client component) imported schemas, Next.js bundled Prisma for browser — Node.js `tls` module missing — build failure.
+
+**Solution:** Split into two files.
+- `stage-config.ts` — client-safe: Zod, types, defaults. No Prisma.
+- `stage-config.server.ts` — `import "server-only"` guard + `getStageConfig()`.
+
+**Rule:** Any server-only Prisma accessor must live in a `.server.ts` file with the `server-only` import guard. Client components import schemas/types from the base file only.
+
+### Weighted Forecast Formula
+
+```
+weightedForecast = SUM(projectedRevenue x probability / 100)
+                   for all leads where stage.countsAsForecast = true
+                   AND projectedRevenue IS NOT NULL
+                   AND probability IS NOT NULL
+```
+
+`countsAsForecast` is config-driven (stored in `SystemConfig.pipeline_stage_config`), not hardcoded. Default forecast stages: `pipeline`, `negotiation`, `contract_renewal`.
+
+### Pipeline Coverage Ratio (Targets)
+
+```
+remaining = max(0, target - actual)    // clamp at 0 on over-achievement
+ratio = weightedPipeline / remaining   // summed across all billingPlans in the quarter
+```
+
+Color thresholds: green >= 3x, amber 1.5-3x, red < 1.5x. `remaining = 0` shows "x" green. `revenueTarget = 0` (no target set): component returns null.
+
+### Prisma Enum Cast Pattern
+
+`getStageConfig()` keys are `string[]` after `Object.entries()`. Prisma requires `$Enums.PipelineStage[]`.
+
+```ts
+import { $Enums } from "@prisma/client"
+forecastStages as $Enums.PipelineStage[]
+```
+
+Applied in: `dashboard/page.tsx`, `targets/page.tsx`.
+
+### Stage Config API
+
+Reuses existing `PATCH /api/system-config/[key]` (admin-gated). Body: full `PipelineStageConfig` object as `{ value: {...} }`. Client Zod-validates before send. Server validates on receipt.

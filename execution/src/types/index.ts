@@ -38,6 +38,14 @@ export type ProductLine =
 
 export type DocumentType = "quotation" | "quotation_signed" | "contract" | "other"
 
+export type LostReason =
+  | "budget"
+  | "competitor"
+  | "timing"
+  | "no_decision"
+  | "requirements_mismatch"
+  | "other"
+
 export type TargetType = "monthly" | "quarterly"
 
 export type ContractUrgency = "critical" | "warning" | "notice" | "none"
@@ -114,10 +122,14 @@ export interface Lead {
   quarter?: string | null
   actualRevenue?: number | null
   lossDealReason?: string | null
+  probability?: number | null
+  probabilityIsManual?: boolean
+  lostReason?: LostReason | null
   invoiceRequestedAt?: Date | null
   notes?: string | null
   createdAt: Date
   closedAt?: Date | null
+  expectedCloseDate?: Date | null
   updatedAt: Date
   client?: Pick<Client, "id" | "name" | "customerCode">
   sales?: Pick<User, "id" | "name"> | null

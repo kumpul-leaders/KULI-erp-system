@@ -4,6 +4,7 @@ import { requireCanCreateLeads } from "@/lib/require-role"
 import { syncClientStatus } from "@/lib/client-status"
 import { parseBody } from "@/lib/validations/parse"
 import { StageTransitionSchema } from "@/lib/validations/lead"
+import { getStageConfig } from "@/lib/stage-config.server"
 import type { PipelineStage } from "@/types"
 
 // ── Gate logic ──────────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ export async function POST(
   const parsed = await parseBody(StageTransitionSchema, request)
   if (parsed.error) return parsed.error
 
-  const { toStage, lossDealReason } = parsed.data
+  const { toStage, lossDealReason, lostReason } = parsed.data
 
   try {
     const lead = await prisma.lead.findUnique({ where: { id } })
@@ -103,7 +104,7 @@ export async function POST(
     }
 
     // Run gate check
-    const gate = await checkGate({ fromStage, toStage, leadId: id, lossDealReason })
+    const gate = await checkGate({ fromStage, toStage, leadId: id, lossDealReason: lossDealReason ?? lostReason })
     if (!gate.allowed) {
       return NextResponse.json({ error: gate.reason }, { status: 422 })
     }
@@ -111,11 +112,18 @@ export async function POST(
     // Build lead update payload
     const updateData: Record<string, unknown> = { stage: toStage }
     if (toStage === "lost_deal") {
-      updateData.lossDealReason = lossDealReason
+      updateData.lossDealReason = lossDealReason ?? (lostReason ?? null)
+      updateData.lostReason = lostReason ?? null
       updateData.closedAt = new Date()
     }
     if (toStage === "closed_won") {
       updateData.closedAt = new Date()
+    }
+
+    // Auto-set probability from stage config unless manually overridden
+    if (!lead.probabilityIsManual) {
+      const stageConfig = await getStageConfig()
+      updateData.probability = stageConfig[toStage].probability
     }
 
     // Atomic: update lead stage + create history record
@@ -155,6 +163,9 @@ export async function POST(
           : null,
         actualRevenue: updatedLead.actualRevenue
           ? Number(updatedLead.actualRevenue)
+          : null,
+        probability: updatedLead.probability != null
+          ? Number(updatedLead.probability)
           : null,
         invoiceRequestedAt:
           updatedLead.invoiceRequestedAt?.toISOString() ?? null,

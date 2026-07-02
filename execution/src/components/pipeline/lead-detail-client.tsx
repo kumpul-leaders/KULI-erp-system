@@ -14,6 +14,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
@@ -33,8 +40,11 @@ import { StageHistoryTimeline } from "@/components/pipeline/stage-history-timeli
 import { FieldHistoryTimeline } from "@/components/pipeline/field-history-timeline"
 import { DocumentUploadZone } from "@/components/pipeline/document-upload-zone"
 import { PipelineStageBadge } from "@/components/pipeline/pipeline-stage-badge"
+import { SmartButtons, type SmartButtonConfig } from "@/components/shared/smart-buttons"
 import { formatIDR, getInitials } from "@/lib/utils"
-import type { PipelineStage, ProductLine, ProjectType, DocumentType } from "@/types"
+import { LOST_REASON_LABELS } from "@/components/pipeline/pipeline-card"
+import type { PipelineStage, ProductLine, ProjectType, DocumentType, LostReason } from "@/types"
+import { FileText, History, User } from "lucide-react"
 
 // ── Serialized types (Dates as ISO strings, Decimals as numbers) ──────────────
 
@@ -83,6 +93,9 @@ interface SerializedLead {
   billingPlan: string | null
   quarter: string | null
   actualRevenue: number | null
+  probability: number | null
+  probabilityIsManual: boolean
+  lostReason: LostReason | null
   lossDealReason: string | null
   invoiceRequestedAt: string | null
   notes: string | null
@@ -139,11 +152,21 @@ interface StageActionsProps {
   stage: PipelineStage
 }
 
+const LOST_REASON_OPTIONS_ACTION: Array<{ value: LostReason; label: string }> = [
+  { value: "budget", label: "Budget" },
+  { value: "competitor", label: "Kompetitor" },
+  { value: "timing", label: "Timing" },
+  { value: "no_decision", label: "Tidak Ada Keputusan" },
+  { value: "requirements_mismatch", label: "Requirement Tidak Cocok" },
+  { value: "other", label: "Lainnya" },
+]
+
 function StageActions({ leadId, stage }: StageActionsProps) {
   const router = useRouter()
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [lostDealOpen, setLostDealOpen] = useState(false)
-  const [lostDealReason, setLostDealReason] = useState("")
+  const [lostReason, setLostReason] = useState<LostReason | "">("")
+  const [lostDealNote, setLostDealNote] = useState("")
   const [advancing, setAdvancing] = useState(false)
   const [invoicing, setInvoicing] = useState(false)
 
@@ -201,8 +224,8 @@ function StageActions({ leadId, stage }: StageActionsProps) {
   }
 
   async function handleLostDealConfirm() {
-    if (!lostDealReason.trim()) {
-      toast.error("Loss reason is required")
+    if (!lostReason) {
+      toast.error("Pilih alasan utama")
       return
     }
     setAdvancing(true)
@@ -211,7 +234,11 @@ function StageActions({ leadId, stage }: StageActionsProps) {
       const res = await fetch(`/api/leads/${leadId}/stage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toStage: "lost_deal", lossDealReason: lostDealReason.trim() }),
+        body: JSON.stringify({
+          toStage: "lost_deal",
+          lostReason,
+          lossDealReason: lostDealNote.trim() || LOST_REASON_LABELS[lostReason],
+        }),
       })
       if (!res.ok) {
         const data = (await res.json()) as { error?: string }
@@ -223,7 +250,8 @@ function StageActions({ leadId, stage }: StageActionsProps) {
       toast.error(err instanceof Error ? err.message : "Something went wrong")
     } finally {
       setAdvancing(false)
-      setLostDealReason("")
+      setLostReason("")
+      setLostDealNote("")
     }
   }
 
@@ -305,27 +333,51 @@ function StageActions({ leadId, stage }: StageActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Mark as Lost Deal</AlertDialogTitle>
             <AlertDialogDescription>
-              Provide a reason for losing this deal. This cannot be undone without admin access.
+              Pilih alasan utama kehilangan deal ini. Tidak dapat dibatalkan tanpa akses admin.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-2">
-            <Textarea
-              placeholder="e.g. Budget constraints, competitor selected, no response..."
-              value={lostDealReason}
-              onChange={(e) => setLostDealReason(e.target.value)}
-              rows={3}
-              className="resize-none"
-              autoFocus
-            />
+          <div className="py-2 space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 uppercase tracking-wide mb-1.5">
+                Alasan <span className="text-danger-500">*</span>
+              </label>
+              <Select
+                value={lostReason}
+                onValueChange={(v) => setLostReason(v as LostReason)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Pilih alasan..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOST_REASON_OPTIONS_ACTION.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 uppercase tracking-wide mb-1.5">
+                Catatan tambahan <span className="text-neutral-400 font-normal">(opsional)</span>
+              </label>
+              <Textarea
+                placeholder="Detail tambahan..."
+                value={lostDealNote}
+                onChange={(e) => setLostDealNote(e.target.value)}
+                rows={2}
+                className="resize-none"
+              />
+            </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setLostDealReason("")}>
+            <AlertDialogCancel onClick={() => { setLostReason(""); setLostDealNote("") }}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-danger-500 hover:bg-danger-700 text-white"
               onClick={() => void handleLostDealConfirm()}
-              disabled={!lostDealReason.trim()}
+              disabled={!lostReason}
             >
               Confirm Lost Deal
             </AlertDialogAction>
@@ -877,6 +929,308 @@ function BillingPlanInline({ leadId, initialValue }: BillingPlanInlineProps) {
   )
 }
 
+// ── Inline: Probability ──────────────────────────────────────────────────────
+
+interface ProbabilityInlineProps {
+  leadId: string
+  initialValue: number | null
+  initialIsManual: boolean
+}
+
+function ProbabilityInline({ leadId, initialValue, initialIsManual }: ProbabilityInlineProps) {
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState<string>(initialValue !== null ? String(Math.round(initialValue)) : "")
+  const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
+
+  async function handleSave() {
+    const num = Number(value)
+    if (value === "" || isNaN(num) || num < 0 || num > 100) {
+      toast.error("Probability harus angka 0–100")
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ probability: num }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to update")
+      }
+      toast.success("Probability diperbarui (manual)")
+      setEditing(false)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleReset() {
+    setResetting(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ probabilityIsManual: false }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to reset")
+      }
+      toast.success("Probability direset ke otomatis")
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  function handleCancel() {
+    setValue(initialValue !== null ? String(Math.round(initialValue)) : "")
+    setEditing(false)
+  }
+
+  const displayValue = initialValue !== null
+    ? `${Math.round(initialValue)}%`
+    : "—"
+
+  return (
+    <InlineField
+      label="Probability"
+      display={
+        <span className="tabular-nums flex items-center gap-1.5">
+          {displayValue}
+          {initialIsManual && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-xs font-medium bg-warning-100 text-warning-700">
+                    <Pencil className="h-2.5 w-2.5" />
+                    Manual
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  Probability dikunci secara manual
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </span>
+      }
+      editing={editing}
+      saving={saving}
+      onEdit={() => setEditing(true)}
+      onSave={() => void handleSave()}
+      onCancel={handleCancel}
+    >
+      <input
+        type="number"
+        min={0}
+        max={100}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="0–100"
+        autoFocus
+        className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
+      />
+    </InlineField>
+  )
+  // Reset button rendered outside InlineField — shown only when manual and not editing
+  // We return a wrapper div that includes the reset button below
+}
+
+// Wrapper that adds reset button below the inline field
+function ProbabilityField({ leadId, initialValue, initialIsManual }: ProbabilityInlineProps) {
+  const router = useRouter()
+  const [resetting, setResetting] = useState(false)
+
+  async function handleReset() {
+    setResetting(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ probabilityIsManual: false }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to reset")
+      }
+      toast.success("Probability direset ke otomatis")
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  return (
+    <div>
+      <ProbabilityInline leadId={leadId} initialValue={initialValue} initialIsManual={initialIsManual} />
+      {initialIsManual && (
+        <button
+          onClick={() => void handleReset()}
+          disabled={resetting}
+          className="mt-1 text-xs text-neutral-400 hover:text-accent-600 transition-colors disabled:opacity-50"
+        >
+          {resetting ? "Mereset..." : "Reset ke otomatis"}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Inline: Lost Reason (display only in lead detail) ────────────────────────
+
+const LOST_REASON_OPTIONS_DETAIL: Array<{ value: LostReason; label: string }> = [
+  { value: "budget", label: "Budget" },
+  { value: "competitor", label: "Kompetitor" },
+  { value: "timing", label: "Timing" },
+  { value: "no_decision", label: "Tidak Ada Keputusan" },
+  { value: "requirements_mismatch", label: "Requirement Tidak Cocok" },
+  { value: "other", label: "Lainnya" },
+]
+
+interface LostReasonFieldProps {
+  leadId: string
+  initialLostReason: LostReason | null
+  initialLossDealReason: string | null
+}
+
+function LostReasonField({ leadId, initialLostReason, initialLossDealReason }: LostReasonFieldProps) {
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [lostReason, setLostReason] = useState<LostReason | "">(initialLostReason ?? "")
+  const [note, setNote] = useState(initialLossDealReason ?? "")
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    if (!lostReason) {
+      toast.error("Pilih alasan utama")
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lostReason,
+          lossDealReason: note.trim() || LOST_REASON_LABELS[lostReason],
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        throw new Error(data.error ?? "Failed to update")
+      }
+      toast.success("Loss reason diperbarui")
+      setEditing(false)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleCancel() {
+    setLostReason(initialLostReason ?? "")
+    setNote(initialLossDealReason ?? "")
+    setEditing(false)
+  }
+
+  return (
+    <div className="col-span-2">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+          Loss Reason
+        </p>
+        {!editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="rounded p-0.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+            aria-label="Edit loss reason"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          <Select
+            value={lostReason}
+            onValueChange={(v) => setLostReason(v as LostReason)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Pilih alasan..." />
+            </SelectTrigger>
+            <SelectContent>
+              {LOST_REASON_OPTIONS_DETAIL.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="Catatan tambahan (opsional)"
+            className="resize-none text-sm"
+          />
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={saving}
+              className="gap-1 h-7 px-2 text-xs"
+            >
+              <X className="h-3 w-3" />
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void handleSave()}
+              disabled={saving || !lostReason}
+              className="gap-1 h-7 px-2 text-xs"
+            >
+              <Check className="h-3 w-3" />
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="flex items-start gap-2 cursor-pointer rounded-md p-2 -m-2 hover:bg-neutral-50 transition-colors min-h-[32px]"
+          onClick={() => setEditing(true)}
+        >
+          {initialLostReason ? (
+            <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-danger-50 text-danger-700 border border-danger-200">
+              {LOST_REASON_LABELS[initialLostReason]}
+            </span>
+          ) : (
+            <span className="text-sm text-neutral-400 italic">Belum diset. Klik untuk menambahkan...</span>
+          )}
+          {initialLossDealReason && (
+            <span className="text-sm text-neutral-600 mt-px">{initialLossDealReason}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Documents card ────────────────────────────────────────────────────────────
 
 type UploadedDoc = {
@@ -1068,7 +1422,42 @@ export interface LeadDetailClientProps {
 
 export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) {
   const showActualRevenue = REVENUE_VISIBLE_STAGES.includes(lead.stage)
-  const showLossDealReason = lead.stage === "lost_deal"
+  const showLostReason = lead.stage === "lost_deal"
+
+  const smartButtons: SmartButtonConfig[] = [
+    {
+      type: "scroll",
+      icon: <FileText />,
+      count: lead.documents.length,
+      label: lead.documents.length === 1 ? "Dokumen" : "Dokumen",
+      targetId: "section-documents",
+      title: "Lihat dokumen lead ini",
+    },
+    {
+      type: "link",
+      label: `Client: ${lead.client.name}`,
+      href: `/clients/${lead.clientId}`,
+      title: "Buka halaman client",
+    },
+    {
+      type: "scroll",
+      icon: <History />,
+      count: lead.stageHistory.length,
+      label: "Riwayat Stage",
+      targetId: "section-stage-history",
+      title: "Lihat riwayat perubahan stage",
+    },
+    ...(lead.sales
+      ? ([
+          {
+            type: "badge",
+            icon: <User />,
+            label: `Sales: ${lead.sales.name}`,
+            title: "Busdev/AE assigned",
+          },
+        ] satisfies SmartButtonConfig[])
+      : []),
+  ]
 
   return (
     <main className="flex-1 overflow-y-auto px-8 py-6">
@@ -1080,6 +1469,9 @@ export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) 
         <span className="text-base leading-none">&lsaquo;</span>
         Pipeline
       </Link>
+
+      {/* Smart Buttons row */}
+      <SmartButtons buttons={smartButtons} className="mb-6" />
 
       {/* Header */}
       <div className="mb-8">
@@ -1139,17 +1531,22 @@ export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) 
                 <p className="text-sm text-neutral-800">{lead.quarter ?? "—"}</p>
               </div>
 
+              <ProbabilityField
+                leadId={lead.id}
+                initialValue={lead.probability}
+                initialIsManual={lead.probabilityIsManual}
+              />
+
               {showActualRevenue && (
                 <ActualRevenueInline leadId={lead.id} initialValue={lead.actualRevenue} />
               )}
 
-              {showLossDealReason && lead.lossDealReason && (
-                <div className="col-span-2">
-                  <p className="text-xs font-semibold text-neutral-600 uppercase tracking-wide mb-1">
-                    Loss Deal Reason
-                  </p>
-                  <p className="text-sm text-neutral-800">{lead.lossDealReason}</p>
-                </div>
+              {showLostReason && (
+                <LostReasonField
+                  leadId={lead.id}
+                  initialLostReason={lead.lostReason}
+                  initialLossDealReason={lead.lossDealReason}
+                />
               )}
 
               <div>
@@ -1171,7 +1568,9 @@ export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) 
           </div>
 
           {/* Documents */}
-          <DocumentsCard leadId={lead.id} initialDocuments={lead.documents} />
+          <div id="section-documents">
+            <DocumentsCard leadId={lead.id} initialDocuments={lead.documents} />
+          </div>
 
           {/* Notes */}
           <NotesInline leadId={lead.id} initialNotes={lead.notes} />
@@ -1180,7 +1579,7 @@ export function LeadDetailClient({ lead, salesOptions }: LeadDetailClientProps) 
         {/* Right — col-span-1 */}
         <div className="space-y-6">
           {/* Stage History */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <div id="section-stage-history" className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
             <h2 className="font-semibold text-neutral-800 mb-4">Stage History</h2>
             <StageHistoryTimeline history={lead.stageHistory} />
           </div>

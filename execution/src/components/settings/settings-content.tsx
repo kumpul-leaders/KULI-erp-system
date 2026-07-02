@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { SettingsPipelineTab } from "@/components/settings/settings-pipeline-tab"
+import type { PipelineStageConfig } from "@/lib/stage-config"
 import {
   Sheet,
   SheetContent,
@@ -59,6 +61,7 @@ interface SettingsContentProps {
   isAdmin: boolean
   leadCountMap: Record<string, number>
   clientCountMap: Record<string, number>
+  initialStageConfig: PipelineStageConfig
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -138,6 +141,7 @@ export function SettingsContent({
   isAdmin,
   leadCountMap,
   clientCountMap,
+  initialStageConfig,
 }: SettingsContentProps) {
   const router = useRouter()
   const [users, setUsers] = useState<SerializedUser[]>(initialUsers)
@@ -1163,6 +1167,9 @@ export function SettingsContent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Card 4: Pipeline Stage Config ───────────────────────────────── */}
+      <SettingsPipelineTab isAdmin={isAdmin} initialStageConfig={initialStageConfig} />
 
       {/* ── Bulk Reassign Confirm Dialog ─────────────────────────────────── */}
       <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>

@@ -22,6 +22,29 @@ export function formatIDR(value: number | string | null | undefined): string {
 }
 
 /**
+ * Format currency as compact IDR — shortened for dense UI like kanban column headers.
+ * Output: "Rp 847jt" | "Rp 1,2M" | "Rp 500rb"
+ */
+export function formatIDRCompact(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—"
+  const num = typeof value === "string" ? parseFloat(value) : value
+  if (isNaN(num)) return "—"
+  if (num === 0) return "Rp 0"
+  const abs = Math.abs(num)
+  const sign = num < 0 ? "-" : ""
+  if (abs >= 1_000_000_000) {
+    return `${sign}Rp ${(abs / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}M`
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}Rp ${(abs / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}jt`
+  }
+  if (abs >= 1_000) {
+    return `${sign}Rp ${(abs / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })}rb`
+  }
+  return `${sign}Rp ${abs.toLocaleString("id-ID")}`
+}
+
+/**
  * Returns days remaining from today to a given date.
  * Negative means already past.
  */

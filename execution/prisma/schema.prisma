@@ -96,29 +96,32 @@ model UpsellOpportunity {
 }
 
 model Lead {
-  id                 String             @id @default(uuid())
-  stage              PipelineStage      @default(leads)
-  projectType        ProjectType        @map("project_type")
-  billingPlan        String?            @map("billing_plan")
-  notes              String?
-  createdAt          DateTime           @default(now()) @map("created_at")
-  closedAt           DateTime?          @map("closed_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
-  actualRevenue      Decimal?           @map("actual_revenue") @db.Decimal(15, 2)
-  clientId           String             @map("client_id")
-  description        String?
-  invoiceRequestedAt DateTime?          @map("invoice_requested_at")
-  lossDealReason     String?            @map("loss_deal_reason")
-  productLine        ProductLine        @map("product_line")
-  projectedRevenue   Decimal?           @map("projected_revenue") @db.Decimal(15, 2)
-  salesId            String?            @map("sales_id")
-  quarter            String?
-  expectedCloseDate  DateTime?          @map("expected_close_date")
-  fieldHistory       LeadFieldHistory[]
-  stageHistory       LeadStageHistory[]
-  client             Client             @relation(fields: [clientId], references: [id])
-  sales              User?              @relation(fields: [salesId], references: [id])
-  documents          PipelineDocument[]
+  id                   String             @id @default(uuid())
+  stage                PipelineStage      @default(leads)
+  projectType          ProjectType        @map("project_type")
+  billingPlan          String?            @map("billing_plan")
+  notes                String?
+  createdAt            DateTime           @default(now()) @map("created_at")
+  closedAt             DateTime?          @map("closed_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  actualRevenue        Decimal?           @map("actual_revenue") @db.Decimal(15, 2)
+  clientId             String             @map("client_id")
+  description          String?
+  invoiceRequestedAt   DateTime?          @map("invoice_requested_at")
+  lossDealReason       String?            @map("loss_deal_reason")
+  productLine          ProductLine        @map("product_line")
+  projectedRevenue     Decimal?           @map("projected_revenue") @db.Decimal(15, 2)
+  salesId              String?            @map("sales_id")
+  quarter              String?
+  expectedCloseDate    DateTime?          @map("expected_close_date")
+  probability          Decimal?           @db.Decimal(5, 2)
+  probabilityIsManual  Boolean            @default(false) @map("probability_is_manual")
+  lostReason           LostReason?        @map("lost_reason")
+  fieldHistory         LeadFieldHistory[]
+  stageHistory         LeadStageHistory[]
+  client               Client             @relation(fields: [clientId], references: [id])
+  sales                User?              @relation(fields: [salesId], references: [id])
+  documents            PipelineDocument[]
 
   @@map("leads")
 }
@@ -252,6 +255,15 @@ enum DocumentType {
 enum TargetType {
   monthly
   quarterly
+}
+
+enum LostReason {
+  budget
+  competitor
+  timing
+  no_decision
+  requirements_mismatch
+  other
 }
 
 model SystemConfig {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { requireAuthenticated, requireCanCreateLeads } from "@/lib/require-role"
 import { parseBody } from "@/lib/validations/parse"
 import { PipelineStageSchema, CreateLeadSchema } from "@/lib/validations/lead"
+import { getStageConfig } from "@/lib/stage-config.server"
 import type { PipelineStage, ProductLine, ProjectType } from "@/types"
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -35,6 +36,9 @@ function serializeLead(lead: {
   billingPlan: string | null
   quarter: string | null
   actualRevenue: { toNumber?: () => number } | null
+  probability: { toNumber?: () => number } | null
+  probabilityIsManual: boolean
+  lostReason: string | null
   lossDealReason: string | null
   invoiceRequestedAt: Date | null
   notes: string | null
@@ -71,6 +75,7 @@ function serializeLead(lead: {
       ? Number(lead.projectedRevenue)
       : null,
     actualRevenue: lead.actualRevenue ? Number(lead.actualRevenue) : null,
+    probability: lead.probability != null ? Number(lead.probability) : null,
     invoiceRequestedAt: lead.invoiceRequestedAt?.toISOString() ?? null,
     createdAt: lead.createdAt.toISOString(),
     closedAt: lead.closedAt?.toISOString() ?? null,
@@ -165,6 +170,10 @@ export async function POST(request: NextRequest) {
   const quarter = billingPlan ? billingPlanToQuarter(billingPlan) : null
   const stage: PipelineStage = body.stage ?? "leads"
 
+  // Resolve initial probability from stage config
+  const stageConfig = await getStageConfig()
+  const initialProbability = stageConfig[stage].probability
+
   try {
     const lead = await prisma.lead.create({
       data: {
@@ -182,6 +191,8 @@ export async function POST(request: NextRequest) {
           typeof body.expectedCloseDate === "string" && body.expectedCloseDate
             ? new Date(body.expectedCloseDate)
             : null,
+        probability: initialProbability,
+        probabilityIsManual: false,
       },
       include: {
         client: { select: { id: true, name: true, customerCode: true } },

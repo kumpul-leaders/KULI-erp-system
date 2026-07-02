@@ -44,6 +44,7 @@ import type {
   AEUser,
   OverallWinRate,
   RevenueByProductLine,
+  LostReasonDist,
 } from "@/app/(dashboard)/analytics/page"
 
 // ---------------------------------------------------------------------------
@@ -79,6 +80,7 @@ interface AnalyticsContentProps {
   rtYear: number
   revenueByProductLine: RevenueByProductLine[]
   pipelineValue: number
+  lostReasonDist: LostReasonDist[]
 }
 
 // ---------------------------------------------------------------------------
@@ -510,6 +512,27 @@ function formatRevenueTick(value: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Lost reason tooltip
+// ---------------------------------------------------------------------------
+
+interface LostReasonTooltipProps {
+  active?: boolean
+  payload?: Array<{ value: number; payload: { reason: string; count: number } }>
+  label?: string
+}
+
+function LostReasonTooltip({ active, payload }: LostReasonTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null
+  const { reason, count } = payload[0].payload
+  return (
+    <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
+      <p className="font-medium text-neutral-800 mb-1">{reason}</p>
+      <p className="text-neutral-500">Deals lost: <span className="text-neutral-800 font-medium">{count}</span></p>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Product line label map
 // ---------------------------------------------------------------------------
 
@@ -543,6 +566,7 @@ export function AnalyticsContent({
   rtYear,
   revenueByProductLine,
   pipelineValue,
+  lostReasonDist,
 }: AnalyticsContentProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -832,6 +856,46 @@ export function AnalyticsContent({
                   contentStyle={{ fontSize: 12 }}
                 />
                 <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Lost Reason Distribution */}
+        <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-neutral-800">Alasan Deal Hilang</h3>
+            <span className="text-xs text-neutral-400">
+              {lostReasonDist.reduce((s, r) => s + r.count, 0)} lost deals
+            </span>
+          </div>
+          {lostReasonDist.length === 0 ? (
+            <p className="text-sm text-neutral-400 py-8 text-center">Belum ada lost deal di periode ini</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(160, lostReasonDist.length * 36)}>
+              <BarChart
+                data={lostReasonDist}
+                layout="vertical"
+                margin={{ top: 0, right: 24, bottom: 0, left: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                <XAxis
+                  type="number"
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="reason"
+                  tick={{ fontSize: 11, fill: "#374151" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={160}
+                />
+                <Tooltip content={<LostReasonTooltip />} cursor={{ fill: "#f9fafb" }} />
+                <Bar dataKey="count" fill="#EF4444" radius={[0, 3, 3, 0]} maxBarSize={20} />
               </BarChart>
             </ResponsiveContainer>
           )}

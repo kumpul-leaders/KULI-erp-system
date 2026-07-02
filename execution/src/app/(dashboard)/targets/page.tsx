@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { TargetsContent } from "@/components/targets/targets-content"
 import { $Enums } from "@prisma/client"
+import { getStageConfig } from "@/lib/stage-config.server"
 
 export const metadata: Metadata = {
   title: "Targets",
@@ -32,6 +33,7 @@ export type QuarterData = {
   newClientTarget: number
   actual: number         // SUM actualRevenue from won leads in those 3 months
   forecast: number       // SUM projectedRevenue from pipeline leads in those 3 months
+  weightedPipeline: number // SUM(projectedRevenue × probability/100) for forecast-eligible stages
   status: "closed" | "active" | "future"
   months: {
     month: number        // 1-12
@@ -100,7 +102,13 @@ export default async function TargetsPage({
     return "future"
   }
 
-  const [aeOptions, quarterlyTargets, wonLeads, pipelineLeads] = await Promise.all([
+  // Fetch stage config for weighted pipeline calculation
+  const stageConfig = await getStageConfig()
+  const forecastStages = (Object.entries(stageConfig) as [string, { countsAsForecast: boolean }][])
+    .filter(([, cfg]) => cfg.countsAsForecast)
+    .map(([stage]) => stage)
+
+  const [aeOptions, quarterlyTargets, wonLeads, pipelineLeads, weightedPipelineLeads] = await Promise.all([
     // Active AEs for the selector
     prisma.user.findMany({
       where: { isActive: true, role: { in: ["account", "admin", "account_manager"] } },
@@ -136,6 +144,20 @@ export default async function TargetsPage({
       },
       select: { projectedRevenue: true, actualRevenue: true, billingPlan: true },
     }),
+
+    // Weighted pipeline: forecast stages × probability for coverage ratio
+    forecastStages.length > 0
+      ? prisma.lead.findMany({
+          where: {
+            stage: { in: forecastStages as $Enums.PipelineStage[] },
+            billingPlan: { in: allBP },
+            projectedRevenue: { not: null },
+            probability: { not: null },
+            ...(selectedAeId ? { salesId: selectedAeId } : {}),
+          },
+          select: { projectedRevenue: true, probability: true, billingPlan: true },
+        })
+      : Promise.resolve([]),
   ])
 
   // Build billing plan → actual revenue map
@@ -158,6 +180,14 @@ export default async function TargetsPage({
     bpForecastMap.set(lead.billingPlan, (bpForecastMap.get(lead.billingPlan) ?? 0) + Number(value))
   }
 
+  // Build billing plan → weighted pipeline map (projectedRevenue × probability/100)
+  const bpWeightedMap = new Map<string, number>()
+  for (const lead of weightedPipelineLeads) {
+    if (!lead.billingPlan || lead.projectedRevenue === null || lead.probability === null) continue
+    const weighted = Number(lead.projectedRevenue) * (Number(lead.probability) / 100)
+    bpWeightedMap.set(lead.billingPlan, (bpWeightedMap.get(lead.billingPlan) ?? 0) + weighted)
+  }
+
   // Build target map: quarter → Target record
   const targetByQ = new Map(quarterlyTargets.map((t) => [t.periodMonth, t]))
 
@@ -175,6 +205,10 @@ export default async function TargetsPage({
     })
     const actual = monthsData.reduce((sum, md) => sum + md.actual, 0)
     const forecast = monthsData.reduce((sum, md) => sum + md.forecast, 0)
+    const weightedPipeline = months.reduce((sum, m) => {
+      const bp = `${yearPrefix}-${String(m).padStart(2, "0")}`
+      return sum + (bpWeightedMap.get(bp) ?? 0)
+    }, 0)
     return {
       quarter,
       targetId: t?.id ?? null,
@@ -182,6 +216,7 @@ export default async function TargetsPage({
       newClientTarget: t?.newClientTarget ?? 0,
       actual,
       forecast,
+      weightedPipeline: Math.round(weightedPipeline),
       status: getQuarterStatus(quarter),
       months: monthsData,
     }

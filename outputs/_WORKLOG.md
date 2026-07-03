@@ -2,11 +2,33 @@
 
 | Project | Last Session | Status | Notes |
 |---------|-------------|--------|-------|
-| VF ERP System | 2026-06-03 | Auth flow, pipeline, analytics, client features complete | Live: https://vf-erp.vercel.app. 25 commits pending deploy. |
+| VF ERP System | 2026-07-03 | Upgrade Odoo/Lark Phase 0–3 complete + deployed | Live: https://vf-erp.vercel.app. PRD → eksekusi penuh dalam 1 sesi. Cron alerts + health aktif. |
 
 ---
 
-## LAST SESSION: 2026-06-03
+## LAST SESSION: 2026-07-03
+
+**Checkpoint:** Full cycle selesai dalam satu sesi: deep research Odoo + Lark (Riise) → audit codebase (Explore) → PRD approved (Veri QC CONDITIONAL PASS) → eksekusi Phase 0–3 semua → deployed production. 8 commits (`aab7115` … `7f12a9f`), 4 migration baru, 161 test (dari 0), semua build clean.
+**Status:** Completed (roadmap PRD Phase 0–3)
+**Outstanding:**
+- [ ] Manual QA William: auth email flow end-to-end + test dokumen signed URL (checklist di sesi log)
+- [ ] Keputusan `isVp`: implement VP pipeline filter beneran, atau hapus menyeluruh (field aktif di settings UI, bukan dead code)
+- [ ] Kalibrasi ulang stage probability dari `LeadStageHistory` setelah data funnel traversal asli terkumpul (data historis import langsung ke closed — script `calibrate-probability.mjs` sudah ada guard)
+- [ ] Health score: 271 client masih cold-start gated — graduate otomatis begitu ada activity/comment per client
+- [ ] ~10 output agent pending approval sample library (Phase 1–3)
+**Output:**
+- `outputs/PRD-erp-upgrade-odoo-lark.md` — PRD upgrade (gap analysis, roadmap, schema evolution, UI/UX direction)
+- **Phase 0** (`aab7115`): prisma migrate baseline `0_init` (db push retired), Zod validation layer (17 handler), storage bucket public→private + signed URL 5 menit, error boundaries, pagination, Vitest + Playwright harness
+- **Phase 1** (`909f7cd`): Lead.probability + stage config di SystemConfig (hybrid enum), weighted forecast dashboard, pipeline coverage ratio di targets, structured lost reason + analytics chart, smart buttons, kanban header stats
+- **Fix** (`5d52b1f`): filter-sync effect loop yang reset pagination pipeline
+- **Phase 2** (`29f5f96`): Activity model + next-activity discipline (dot kanban, stale flag, /activities), chatter RecordTimeline + @mention + followers, notification inbox (bell + /notifications), Cmd+K command palette + global search
+- **Phase 3** (`461f663`): Alert model + cron /api/cron/alerts (T-60/T-30, dedupeKey idempotent) + /api/cron/health (4 sinyal proxy, mingguan), renewal linking, calendar view, inline list editing, soft delete + archive UI, dark mode + mobile pass
+- **Fixes** (`debefd0`, `56f1531`, `7f12a9f`): health cron N+1 → 11 query konstan (0.9s, was timeout), exhaustive dark mode audit (~245 instance, root cause: neutral scale inverted → token `dark:` lama salah arah), dashboard KPI compact format + layout 2 kolom
+- `outputs/_SWARM/sample-library/` — 5 approved samples (baseline migrate, zod, pagination, storage security, test harness)
+- Production: 3x deploy, cron aktif (alerts harian 02:00 UTC, health Senin 03:00 UTC), CRON_SECRET terpasang
+---
+
+### [2026-06-03]
 
 **Checkpoint:** Auth/password flow selesai, pipeline + analytics + client enhancements selesai. 25 commits accumulated since 2026-05-25. Push + Vercel prod deploy dilakukan hari ini.
 **Status:** In Progress

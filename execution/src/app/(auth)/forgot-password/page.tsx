@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
           <h1 className="text-2xl font-bold tracking-tight text-neutral-800">vosFoyer</h1>
           <p className="mt-1 text-sm text-neutral-500">ERP System — Internal Tool</p>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-modal">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-8 shadow-modal">
           {sent ? (
             <div className="text-center space-y-3">
               <CheckCircle2 className="h-10 w-10 text-success-500 mx-auto" />

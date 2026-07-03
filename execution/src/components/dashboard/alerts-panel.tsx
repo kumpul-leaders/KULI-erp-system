@@ -109,9 +109,9 @@ export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+        <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-700">
           Alerts
         </h2>
         <button
@@ -143,9 +143,9 @@ export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
                 <Link
                   key={c.id}
                   href={`/clients/${c.id}`}
-                  className="flex items-center justify-between mb-2 last:mb-0 rounded-md bg-neutral-50 dark:bg-neutral-700/50 px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+                  className="flex items-center justify-between mb-2 last:mb-0 rounded-md bg-neutral-50 dark:bg-neutral-50/50 px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-100 transition-colors"
                 >
-                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200 truncate">
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-700 truncate">
                     {c.name}
                   </span>
                   <span className={cn(
@@ -174,7 +174,7 @@ export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
             return (
               <div
                 key={alert.id}
-                className="flex items-start gap-3 rounded-md border border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-700/40 px-3 py-2.5"
+                className="flex items-start gap-3 rounded-md border border-neutral-100 dark:border-neutral-100 bg-neutral-50 dark:bg-neutral-50/40 px-3 py-2.5"
               >
                 {/* Icon */}
                 <span className={cn("mt-0.5 flex-shrink-0", config.color)}>
@@ -190,7 +190,7 @@ export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
                     {alert.client && (
                       <Link
                         href={`/clients/${alert.client.id}`}
-                        className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 hover:text-accent-600 hover:underline truncate"
+                        className="text-sm font-semibold text-neutral-800 dark:text-neutral-700 hover:text-accent-600 hover:underline truncate"
                       >
                         {alert.client.name}
                       </Link>

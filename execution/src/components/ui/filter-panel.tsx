@@ -269,7 +269,7 @@ function FilterRow({ condition, fields, onChange, onRemove }: FilterRowProps) {
               <button
                 type="button"
                 className={cn(
-                  "flex h-8 w-full items-center justify-between rounded-md border border-neutral-200 bg-white px-3 text-sm shadow-sm transition-colors hover:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-accent-500",
+                  "flex h-8 w-full items-center justify-between rounded-md border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-card px-3 text-sm text-neutral-800 dark:text-neutral-700 shadow-sm transition-colors hover:border-neutral-300 dark:hover:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent-500",
                   arrValue.length === 0 && "text-neutral-400"
                 )}
               >
@@ -295,8 +295,8 @@ function FilterRow({ condition, fields, onChange, onRemove }: FilterRowProps) {
                       className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
                         checked
-                          ? "border-accent-600 bg-accent-600 text-white"
-                          : "border-neutral-300 bg-white"
+                          ? "border-accent-600 bg-accent-600 text-white dark:text-primary-foreground"
+                          : "border-neutral-300 dark:border-neutral-600 bg-white dark:bg-card"
                       )}
                       aria-hidden
                     >
@@ -439,7 +439,7 @@ export function FilterPanel({
           <Filter className="h-3.5 w-3.5" />
           Filters
           {conditions.length > 0 && (
-            <Badge className="bg-neutral-900 text-white text-xs h-4 px-1 rounded-sm border-0 min-w-4 inline-flex items-center justify-center ml-0.5">
+            <Badge className="bg-neutral-700 dark:bg-neutral-200 text-white dark:text-neutral-900 text-xs h-4 px-1 rounded-sm border-0 min-w-4 inline-flex items-center justify-center ml-0.5">
               {conditions.length}
             </Badge>
           )}

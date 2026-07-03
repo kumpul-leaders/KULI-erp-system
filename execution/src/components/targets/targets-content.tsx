@@ -58,7 +58,7 @@ function pct(actual: number, target: number): number {
 }
 
 function gapColor(gap: number): string {
-  return gap >= 0 ? "text-emerald-600" : "text-danger-600"
+  return gap >= 0 ? "text-success-700 dark:text-success-500" : "text-danger-600 dark:text-danger-500"
 }
 
 function makeInitialForm(year: number): EditForm {
@@ -80,9 +80,9 @@ function KpiCard({ label, value, sub, color }: {
   color?: string
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-card">
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 shadow-card">
       <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className={`text-xl font-bold tabular-nums ${color ?? "text-neutral-900"}`}>{value}</p>
+      <p className={`text-xl font-bold tabular-nums ${color ?? "text-neutral-900 dark:text-neutral-700"}`}>{value}</p>
       {sub && <p className="text-xs text-neutral-400 mt-0.5">{sub}</p>}
     </div>
   )
@@ -102,16 +102,16 @@ function PipelineCoverageRow({ weightedPipeline, actual, target }: { weightedPip
   if (remaining <= 0) {
     // Target already met — infinite coverage
     ratioDisplay = "∞x"
-    colorClass = "text-emerald-600 bg-emerald-50"
+    colorClass = "text-success-700 dark:text-success-500 bg-success-50 dark:bg-success-50/10"
   } else {
     const ratio = weightedPipeline / remaining
     ratioDisplay = `${ratio.toFixed(1)}x`
     if (ratio >= 3) {
-      colorClass = "text-emerald-600 bg-emerald-50"
+      colorClass = "text-success-700 dark:text-success-500 bg-success-50 dark:bg-success-50/10"
     } else if (ratio >= 1.5) {
-      colorClass = "text-amber-600 bg-amber-50"
+      colorClass = "text-warning-700 dark:text-warning-500 bg-warning-50 dark:bg-warning-50/10"
     } else {
-      colorClass = "text-danger-600 bg-danger-50"
+      colorClass = "text-danger-700 dark:text-danger-500 bg-danger-50 dark:bg-danger-50/10"
     }
   }
 
@@ -143,10 +143,10 @@ function ForecastBar({ actual, forecast, max }: { actual: number; forecast: numb
   const actualPct = Math.min((actual / max) * 100, 100)
   const forecastPct = Math.min((forecast / max) * 100, 100 - actualPct)
   return (
-    <div className="h-1.5 w-full rounded-full bg-neutral-100 overflow-hidden mt-1 flex">
-      <div className="h-full bg-blue-500 transition-all" style={{ width: `${actualPct}%` }} />
+    <div className="h-1.5 w-full rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden mt-1 flex">
+      <div className="h-full bg-info-500 transition-all" style={{ width: `${actualPct}%` }} />
       {forecastPct > 0 && (
-        <div className="h-full bg-amber-300 transition-all" style={{ width: `${forecastPct}%` }} />
+        <div className="h-full bg-warning-500 dark:bg-warning-700 transition-all" style={{ width: `${forecastPct}%` }} />
       )}
     </div>
   )
@@ -305,7 +305,7 @@ export function TargetsContent({
         <select
           value={selectedAeId ?? ""}
           onChange={(e) => handleAeChange(e.target.value)}
-          className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+          className="rounded-md border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-card px-3 py-1.5 text-sm text-neutral-800 dark:text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
         >
           <option value="">Company (Company-wide)</option>
           {aeOptions.map((ae) => (
@@ -318,7 +318,7 @@ export function TargetsContent({
         <select
           value={year}
           onChange={(e) => handleYearChange(e.target.value)}
-          className="text-xs border border-neutral-200 rounded px-2 py-0.5 bg-white text-neutral-600 focus:outline-none ml-auto"
+          className="text-xs border border-neutral-200 dark:border-neutral-600 rounded px-2 py-0.5 bg-white dark:bg-card text-neutral-600 dark:text-neutral-300 focus:outline-none ml-auto"
         >
           {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((y) => (
             <option key={y} value={y}>{y}</option>
@@ -342,13 +342,13 @@ export function TargetsContent({
           label="Gap"
           value={`${annualGap >= 0 ? "+" : ""}${formatIDR(annualGap)}`}
           sub="Actual − Target"
-          color={annualGap >= 0 ? "text-emerald-600" : "text-danger-600"}
+          color={annualGap >= 0 ? "text-success-700 dark:text-success-500" : "text-danger-600 dark:text-danger-500"}
         />
         <KpiCard
           label="Achievement"
           value={`${annualPct}%`}
           sub={localAnnualTarget > 0 ? `${formatIDR(annualActual)} / ${formatIDR(localAnnualTarget)}` : "No target set"}
-          color={annualPct >= 100 ? "text-emerald-600" : annualPct >= 75 ? "text-blue-600" : "text-neutral-900"}
+          color={annualPct >= 100 ? "text-success-700 dark:text-success-500" : annualPct >= 75 ? "text-info-600 dark:text-info-500" : "text-neutral-900 dark:text-neutral-700"}
         />
       </div>
 
@@ -362,7 +362,7 @@ export function TargetsContent({
             const monthlyTarget = q.revenueTarget > 0 ? q.revenueTarget / 3 : 0
 
             return (
-              <div key={q.quarter} className="rounded-lg border border-neutral-200 bg-white shadow-card overflow-hidden">
+              <div key={q.quarter} className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card shadow-card overflow-hidden">
                 {/* Quarter header row */}
                 <div className="px-4 py-3 flex items-center gap-4">
                   {/* Expand toggle */}
@@ -387,7 +387,7 @@ export function TargetsContent({
                       </span>
                     )}
                     {q.status === "active" && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                      <span className="inline-flex items-center gap-1 text-xs bg-info-50 dark:bg-info-50/10 text-info-700 dark:text-info-500 px-2 py-0.5 rounded-full font-medium">
                         Active
                       </span>
                     )}
@@ -402,7 +402,7 @@ export function TargetsContent({
                   <div className="flex-1 min-w-0">
                     {q.status === "closed" ? (
                       <div>
-                        <p className="text-base font-bold tabular-nums text-neutral-900">{formatIDR(q.actual)}</p>
+                        <p className="text-base font-bold tabular-nums text-neutral-900 dark:text-neutral-700">{formatIDR(q.actual)}</p>
                         <p className="text-xs text-neutral-400">
                           Target: {q.revenueTarget > 0 ? formatIDR(q.revenueTarget) : "—"}
                           {q.revenueTarget > 0 && (
@@ -417,14 +417,14 @@ export function TargetsContent({
                         <p className="text-base font-bold tabular-nums text-neutral-900">
                           {q.revenueTarget > 0
                             ? formatIDR(q.revenueTarget)
-                            : <span className="text-neutral-400 font-normal text-sm">No target set</span>
+                            : <span className="text-neutral-400 dark:text-neutral-500 font-normal text-sm">No target set</span>
                           }
                         </p>
                         {q.status === "active" && (
                           <p className="text-xs text-neutral-400">
                             Actual: {formatIDR(q.actual)}
                             {q.forecast > 0 && (
-                              <span className="ml-2 text-amber-600 font-medium">
+                              <span className="ml-2 text-warning-600 dark:text-warning-500 font-medium">
                                 +{formatIDR(q.forecast)} forecast
                               </span>
                             )}
@@ -436,7 +436,7 @@ export function TargetsContent({
                           </p>
                         )}
                         {q.status === "future" && q.forecast > 0 && (
-                          <p className="text-xs text-amber-600">
+                          <p className="text-xs text-warning-600 dark:text-warning-500">
                             {formatIDR(q.forecast)} in pipeline
                           </p>
                         )}
@@ -515,15 +515,15 @@ export function TargetsContent({
 
                 {/* Monthly breakdown (collapsible) */}
                 {isExpanded && (
-                  <div className="border-t border-neutral-100 bg-neutral-50 px-4 py-3 space-y-2">
+                  <div className="border-t border-neutral-100 dark:border-neutral-100 bg-neutral-50 dark:bg-card/50 px-4 py-3 space-y-2">
                     {/* Legend */}
                     <div className="flex items-center gap-3 pb-1">
                       <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                        <span className="inline-block w-3 h-1.5 rounded-full bg-blue-500" />
+                        <span className="inline-block w-3 h-1.5 rounded-full bg-info-500" />
                         Actual
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-                        <span className="inline-block w-3 h-1.5 rounded-full bg-amber-300" />
+                        <span className="inline-block w-3 h-1.5 rounded-full bg-warning-500 dark:bg-warning-700" />
                         Forecast (pipeline)
                       </div>
                     </div>
@@ -543,7 +543,7 @@ export function TargetsContent({
                               <span className="text-neutral-700">
                                 {formatIDR(mActual)}
                                 {mForecast > 0 && (
-                                  <span className="text-amber-600 ml-1">+{formatIDR(mForecast)}</span>
+                                  <span className="text-warning-600 dark:text-warning-500 ml-1">+{formatIDR(mForecast)}</span>
                                 )}
                               </span>
                               <span className="text-neutral-400">
@@ -571,11 +571,11 @@ export function TargetsContent({
         {/* Right col: Set Target form */}
         <div className="space-y-4">
           {!isAdmin ? (
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
               <p className="text-sm text-neutral-400">Hanya admin yang dapat mengatur target.</p>
             </div>
           ) : (
-            <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
               <h2 className="text-sm font-semibold text-neutral-800 mb-4">
                 {form.editingId ? "Edit Target" : "Set Target Kuartal"}
                 {selectedAeId && (
@@ -591,7 +591,7 @@ export function TargetsContent({
                     value={form.quarter}
                     onChange={(e) => setForm((f) => ({ ...f, quarter: e.target.value }))}
                     disabled={!!form.editingId}
-                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-400"
+                    className="w-full rounded-md border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-card px-3 py-2 text-sm text-neutral-800 dark:text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 disabled:bg-neutral-50 dark:disabled:bg-neutral-50 disabled:text-neutral-400"
                   >
                     <option value="1">Q1 (Jan–Mar)</option>
                     <option value="2">Q2 (Apr–Jun)</option>
@@ -609,7 +609,7 @@ export function TargetsContent({
                     onChange={(e) => setForm((f) => ({ ...f, revenueTarget: e.target.value }))}
                     placeholder="e.g. 4000000000"
                     min={0}
-                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                    className="w-full rounded-md border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-card px-3 py-2 text-sm text-neutral-800 dark:text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
                   />
                   {form.revenueTarget && !isNaN(parseFloat(form.revenueTarget)) && (
                     <p className="text-xs text-neutral-400 mt-1">
@@ -627,7 +627,7 @@ export function TargetsContent({
                     onChange={(e) => setForm((f) => ({ ...f, newClientTarget: e.target.value }))}
                     placeholder="0"
                     min={0}
-                    className="w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                    className="w-full rounded-md border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-card px-3 py-2 text-sm text-neutral-800 dark:text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
                   />
                 </div>
 
@@ -654,22 +654,22 @@ export function TargetsContent({
 
           {/* Gap context card — shown if any closed quarter has a gap */}
           {localQuarters.some((q) => q.status === "closed" && q.revenueTarget > 0) && (
-            <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
-              <p className="text-xs font-semibold text-amber-700 mb-2">Gap dari Quarter Sebelumnya</p>
+            <div className="rounded-lg border border-warning-500/20 bg-warning-50 dark:bg-warning-50/10 p-4">
+              <p className="text-xs font-semibold text-warning-700 dark:text-warning-500 mb-2">Gap dari Quarter Sebelumnya</p>
               {localQuarters
                 .filter((q) => q.status === "closed" && q.revenueTarget > 0)
                 .map((q) => {
                   const gap = q.actual - q.revenueTarget
                   return (
                     <div key={q.quarter} className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-amber-700">Q{q.quarter}</span>
+                      <span className="text-warning-700 dark:text-warning-500">Q{q.quarter}</span>
                       <span className={`font-medium ${gapColor(gap)}`}>
                         {gap >= 0 ? "+" : ""}{formatIDR(gap)}
                       </span>
                     </div>
                   )
                 })}
-              <p className="text-xs text-amber-600 mt-2 leading-relaxed">
+              <p className="text-xs text-warning-600 dark:text-warning-500 mt-2 leading-relaxed">
                 Pertimbangkan gap ini saat menyesuaikan target Q2–Q4.
               </p>
             </div>

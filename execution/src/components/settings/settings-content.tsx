@@ -79,13 +79,13 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 const ROLE_BADGE: Record<string, string> = {
-  admin: "bg-purple-100 text-purple-700",
-  commercial_director: "bg-indigo-100 text-indigo-700",
-  account_manager: "bg-violet-100 text-violet-700",
-  account: "bg-blue-100 text-blue-700",
-  operation: "bg-green-100 text-green-700",
-  hr: "bg-orange-100 text-orange-700",
-  finance: "bg-yellow-100 text-yellow-700",
+  admin: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
+  commercial_director: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300",
+  account_manager: "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300",
+  account: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+  operation: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
+  hr: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
+  finance: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300",
 }
 
 const PRODUCT_LINES: Array<{ db: string; display: string }> = [
@@ -595,7 +595,7 @@ export function SettingsContent({
   return (
     <div className="max-w-4xl space-y-6">
       {/* ── Card 1: Team Members ─────────────────────────────────────────── */}
-      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-neutral-800">Team Members</h3>
           {isAdmin && (
@@ -614,9 +614,9 @@ export function SettingsContent({
           )}
         </div>
 
-        <div className="rounded-md border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <div className="rounded-md border border-neutral-200 dark:border-neutral-100 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
+            <thead className="bg-neutral-50 dark:bg-background border-b border-neutral-200 dark:border-neutral-100">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500 w-1/4">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500 w-1/3">Email</th>
@@ -633,7 +633,7 @@ export function SettingsContent({
               {users.map((user) => (
                 <tr
                   key={user.id}
-                  className="border-b border-neutral-100 dark:border-neutral-700 last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                  className="border-b border-neutral-100 dark:border-neutral-100 last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-100 transition-colors"
                 >
                   <td className="px-4 py-3 font-medium text-neutral-800">
                     {user.name}
@@ -655,11 +655,11 @@ export function SettingsContent({
                     <span className="inline-flex items-center gap-1.5 text-xs">
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${
-                          user.isActive ? "bg-emerald-500" : "bg-neutral-400"
+                          user.isActive ? "bg-success-500" : "bg-neutral-400"
                         }`}
                       />
                       <span
-                        className={user.isActive ? "text-emerald-700" : "text-neutral-400"}
+                        className={user.isActive ? "text-success-700 dark:text-success-500" : "text-neutral-400"}
                       >
                         {user.isActive ? "Active" : "Inactive"}
                       </span>
@@ -714,7 +714,7 @@ export function SettingsContent({
                           ) : (
                             <>
                               <DropdownMenuItem
-                                className="text-emerald-600 focus:text-emerald-700"
+                                className="text-success-700 dark:text-success-500 focus:text-success-700"
                                 onClick={() => void handleActivate(user.id)}
                                 disabled={loadingUserId === user.id}
                               >
@@ -746,7 +746,7 @@ export function SettingsContent({
 
       {/* ── Card 2: Bulk Reassign Leads ──────────────────────────────────── */}
       {isAdmin && (
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
           <h3 className="text-sm font-semibold text-neutral-800 mb-1">Reassign Leads</h3>
           <p className="text-xs text-neutral-500 mb-5">
             Pindahkan semua leads dan clients dari satu Busdev/AE ke Busdev/AE lain.
@@ -829,16 +829,16 @@ export function SettingsContent({
       )}
 
       {/* ── Card 3: Pipeline Reference ───────────────────────────────────── */}
-      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
         <h3 className="text-sm font-semibold text-neutral-800 mb-4">Pipeline Reference</h3>
 
         {/* Stage Gate Requirements */}
         <p className="text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">
           Stage Gate Requirements
         </p>
-        <div className="rounded-md border border-neutral-200 dark:border-neutral-700 overflow-hidden mb-5">
+        <div className="rounded-md border border-neutral-200 dark:border-neutral-100 overflow-hidden mb-5">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
+            <thead className="bg-neutral-50 dark:bg-background border-b border-neutral-200 dark:border-neutral-100">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500">Stage</th>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500">Gate Required</th>
@@ -906,9 +906,9 @@ export function SettingsContent({
         <p className="text-xs font-medium text-neutral-500 mb-2 uppercase tracking-wide">
           Product Lines
         </p>
-        <div className="rounded-md border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <div className="rounded-md border border-neutral-200 dark:border-neutral-100 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
+            <thead className="bg-neutral-50 dark:bg-background border-b border-neutral-200 dark:border-neutral-100">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500">DB Value</th>
                 <th className="text-left px-4 py-3 font-medium text-neutral-500">Display Name</th>

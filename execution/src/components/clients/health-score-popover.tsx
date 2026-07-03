@@ -108,7 +108,7 @@ export function HealthScorePopover({ status, snapshot, className }: HealthScoreP
       <Popover>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
         <PopoverContent className="w-64 p-3 text-xs" align="start">
-          <p className="font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
+          <p className="font-semibold text-neutral-700 dark:text-neutral-700 mb-1">
             Health Score v1 (proxy)
           </p>
           <p className="text-neutral-400">
@@ -131,10 +131,10 @@ export function HealthScorePopover({ status, snapshot, className }: HealthScoreP
       <PopoverContent className="w-64 p-3" align="start">
         <div className="mb-3">
           <div className="flex items-baseline justify-between">
-            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-700">
               Health Score v1 (proxy)
             </p>
-            <span className="text-lg font-bold tabular-nums text-neutral-800 dark:text-neutral-100">
+            <span className="text-lg font-bold tabular-nums text-neutral-800 dark:text-neutral-700">
               {Math.round(snapshot.score)}
             </span>
           </div>

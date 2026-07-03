@@ -447,7 +447,7 @@ export function ClientsTable({
 
       {/* Table */}
       {filteredClients.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-center">
+        <div className="flex flex-col items-center justify-center py-20 rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card text-center">
           <p className="text-neutral-500 dark:text-neutral-400 font-medium mb-1">No clients found</p>
           <p className="text-sm text-neutral-400">
             {conditions.length > 0 || searchQuery
@@ -456,7 +456,7 @@ export function ClientsTable({
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-card overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card shadow-card overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
           <Table>
             <TableHeader>
               <TableRow className="bg-neutral-50">
@@ -589,7 +589,7 @@ export function ClientsTable({
                               (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                             )
                             return (
-                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600" : "text-amber-600")}>
+                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600 dark:text-danger-500" : "text-warning-600 dark:text-warning-500")}>
                                 Expiry {daysLeft}d
                               </span>
                             )
@@ -605,7 +605,7 @@ export function ClientsTable({
                               (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                             )
                             return (
-                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600" : "text-amber-600")}>
+                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600 dark:text-danger-500" : "text-warning-600 dark:text-warning-500")}>
                                 Expiry {daysLeft}d
                               </span>
                             )
@@ -713,10 +713,10 @@ export function ClientsTable({
           ) : archivedClients.length === 0 ? (
             <p className="text-sm text-neutral-400">Tidak ada klien yang diarsipkan.</p>
           ) : (
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-card overflow-x-auto">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card shadow-card overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-neutral-50 dark:bg-neutral-900/50">
+                  <TableRow className="bg-neutral-50 dark:bg-background/50">
                     <TableHead className="font-semibold text-neutral-600">Client Name</TableHead>
                     <TableHead className="font-semibold text-neutral-600">Industry</TableHead>
                     <TableHead className="font-semibold text-neutral-600">Code</TableHead>

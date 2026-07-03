@@ -15,8 +15,8 @@ interface TopbarProps {
  */
 export function Topbar({ title, children }: TopbarProps) {
   return (
-    <header className="flex h-14 flex-shrink-0 items-center border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 pl-14 pr-4 md:px-8 sticky top-0 z-20">
-      <h1 className="text-xl md:text-2xl font-bold tracking-tight text-neutral-800 dark:text-neutral-100 truncate">
+    <header className="flex h-14 flex-shrink-0 items-center border-b border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card pl-14 pr-4 md:px-8 sticky top-0 z-20">
+      <h1 className="text-xl md:text-2xl font-bold tracking-tight text-neutral-800 dark:text-neutral-700 truncate">
         {title}
       </h1>
       {children && (

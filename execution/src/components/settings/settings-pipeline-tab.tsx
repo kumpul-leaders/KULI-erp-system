@@ -152,7 +152,7 @@ export function SettingsPipelineTab({ isAdmin, initialStageConfig }: SettingsPip
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-sm font-semibold text-neutral-800">Pipeline Stage Config</h3>
         {isAdmin && (
@@ -184,7 +184,7 @@ export function SettingsPipelineTab({ isAdmin, initialStageConfig }: SettingsPip
           </div>
         )}
       </div>
-      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded px-3 py-2 mb-4">
+      <p className="text-xs text-warning-700 dark:text-warning-500 bg-warning-50 dark:bg-warning-50/10 border border-warning-500/20 rounded px-3 py-2 mb-4">
         Mengubah probability tidak mengubah lead yang probabilitynya sudah di-set manual.
       </p>
 
@@ -221,7 +221,7 @@ export function SettingsPipelineTab({ isAdmin, initialStageConfig }: SettingsPip
                             step={1}
                             value={row.probability}
                             onChange={(e) => updateProbability(stage, e.target.value)}
-                            className="w-20 rounded border border-neutral-200 bg-white px-2 py-1.5 text-sm text-neutral-800 tabular-nums focus:outline-none focus:ring-2 focus:ring-accent-500 disabled:bg-neutral-50"
+                            className="w-20 rounded border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-card px-2 py-1.5 text-sm text-neutral-800 dark:text-neutral-700 tabular-nums focus:outline-none focus:ring-2 focus:ring-accent-500 disabled:bg-neutral-50 dark:disabled:bg-neutral-50"
                           />
                           <span className="text-xs text-neutral-400">%</span>
                         </div>
@@ -239,7 +239,7 @@ export function SettingsPipelineTab({ isAdmin, initialStageConfig }: SettingsPip
                         aria-label={`${STAGE_LABELS[stage]} counts as forecast`}
                       />
                     ) : (
-                      <span className={`text-xs font-medium ${row.countsAsForecast ? "text-emerald-600" : "text-neutral-400"}`}>
+                      <span className={`text-xs font-medium ${row.countsAsForecast ? "text-success-700 dark:text-success-500" : "text-neutral-400"}`}>
                         {row.countsAsForecast ? "Ya" : "Tidak"}
                       </span>
                     )}

@@ -44,7 +44,7 @@ export function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
     return (
       <button
         onClick={toggle}
-        className="flex items-center gap-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+        className="flex items-center gap-2 rounded-md border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-100 transition-colors"
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
         {isDark ? (

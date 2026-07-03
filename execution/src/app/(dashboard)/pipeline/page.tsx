@@ -27,7 +27,7 @@ function KanbanSkeleton() {
               (_, ri) => (
                 <div
                   key={ri}
-                  className="rounded-lg border border-neutral-200 bg-white p-4 shadow-kanban"
+                  className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 shadow-kanban"
                 >
                   <Skeleton className="h-4 w-3/4 mb-1" />
                   <Skeleton className="h-3 w-1/3 mb-3" />

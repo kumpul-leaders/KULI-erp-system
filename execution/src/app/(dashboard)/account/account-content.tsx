@@ -72,8 +72,8 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
   return (
     <div className="max-w-xl space-y-6">
       {/* Profile card */}
-      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
-        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-4">Profile</h3>
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-700 mb-4">Profile</h3>
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between items-center">
             <dt className="text-neutral-500 dark:text-neutral-400">Name</dt>
@@ -121,7 +121,7 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
-                <dd className="font-medium text-neutral-800 dark:text-neutral-100">{nameValue}</dd>
+                <dd className="font-medium text-neutral-800 dark:text-neutral-700">{nameValue}</dd>
                 <button
                   onClick={() => setEditingName(true)}
                   className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
@@ -150,15 +150,15 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
       </div>
 
       {/* Appearance card */}
-      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
-        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-1">Appearance</h3>
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-700 mb-1">Appearance</h3>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">Toggle between light and dark mode.</p>
         <ThemeToggle variant="full" />
       </div>
 
       {/* Change password card */}
-      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
-        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 mb-1">Change Password</h3>
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
+        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-700 mb-1">Change Password</h3>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">Set a new password for your account.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -170,7 +170,7 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="new-password" className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+            <Label htmlFor="new-password" className="text-sm font-medium text-neutral-700 dark:text-neutral-700">
               New Password <span className="text-danger-500" aria-hidden>*</span>
             </Label>
             <Input
@@ -186,7 +186,7 @@ export function AccountContent({ name, email, role, division, userId }: AccountC
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="confirm-password" className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+            <Label htmlFor="confirm-password" className="text-sm font-medium text-neutral-700 dark:text-neutral-700">
               Confirm Password <span className="text-danger-500" aria-hidden>*</span>
             </Label>
             <Input

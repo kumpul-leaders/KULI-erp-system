@@ -326,8 +326,8 @@ function FilterBar({ allAEUsers, activeFrom, activeTo, activeAeIds, currentUserR
               "px-3 py-1.5 transition-colors",
               i > 0 ? "border-l border-neutral-200" : "",
               currentPreset === preset
-                ? "bg-neutral-800 text-white"
-                : "bg-white text-neutral-600 hover:bg-neutral-50",
+                ? "bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900"
+                : "bg-white dark:bg-card text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-100",
             ].join(" ")}
           >
             {PRESET_LABELS[preset]}
@@ -369,7 +369,7 @@ function FilterBar({ allAEUsers, activeFrom, activeTo, activeAeIds, currentUserR
       {allAEUsers.length > 0 && currentUserRole !== "account" && (
         <Popover open={aeOpen} onOpenChange={setAeOpen}>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50 transition-colors shrink-0">
+            <button className="flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-card px-3 py-1.5 text-xs text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-100 transition-colors shrink-0">
               {selectedAeIds.length > 0 ? (
                 <span className="text-neutral-800 font-medium">
                   Busdev/AE: {selectedAeIds.length} dipilih
@@ -391,7 +391,7 @@ function FilterBar({ allAEUsers, activeFrom, activeTo, activeAeIds, currentUserR
                     className="flex items-center justify-between rounded px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 transition-colors"
                   >
                     <span>{ae.name}</span>
-                    {selected && <Check className="h-3 w-3 text-blue-600" />}
+                    {selected && <Check className="h-3 w-3 text-info-600 dark:text-info-500" />}
                   </button>
                 )
               })}
@@ -433,11 +433,11 @@ function WinRateTooltip({ active, payload, label }: WinRateTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const data = payload[0].payload
   return (
-    <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
+    <div className="rounded-md border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{label}</p>
       <p className="text-neutral-500">Won: <span className="text-neutral-800 font-medium">{data.won}</span></p>
       <p className="text-neutral-500">Total: <span className="text-neutral-800 font-medium">{data.total}</span></p>
-      <p className="text-neutral-500">Win Rate: <span className="text-blue-600 font-medium">{data.winRate}%</span></p>
+      <p className="text-neutral-500">Win Rate: <span className="text-info-600 dark:text-info-500 font-medium">{data.winRate}%</span></p>
     </div>
   )
 }
@@ -454,13 +454,13 @@ function RevenueTooltip({ active, payload, label }: RevenueTooltipProps) {
   const active_ = payload.find((p) => p.dataKey === "active")
   const potential = payload.find((p) => p.dataKey === "potential")
   return (
-    <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
+    <div className="rounded-md border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{label}</p>
       {won && (
         <p className="text-neutral-500">Won: <span className="text-success-500 font-medium">{formatIDR(won.value)}</span></p>
       )}
       {active_ && (
-        <p className="text-neutral-500">Active Pipeline: <span className="text-blue-600 font-medium">{formatIDR(active_.value)}</span></p>
+        <p className="text-neutral-500">Active Pipeline: <span className="text-info-600 dark:text-info-500 font-medium">{formatIDR(active_.value)}</span></p>
       )}
       {potential && (
         <p className="text-neutral-500">Potential: <span className="text-neutral-500 font-medium">{formatIDR(potential.value)}</span></p>
@@ -487,11 +487,11 @@ function FunnelTooltip({ active, payload, label }: FunnelTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const data = payload[0].payload
   return (
-    <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
+    <div className="rounded-md border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{label}</p>
       <p className="text-neutral-500">Leads: <span className="text-neutral-800 font-medium">{payload[0].value}</span></p>
       {data.conversionRate !== null && data.conversionRate !== undefined && (
-        <p className="text-neutral-500">From prev: <span className="text-indigo-600 font-medium">{data.conversionRate}%</span></p>
+        <p className="text-neutral-500">From prev: <span className="text-accent-600 dark:text-accent-foreground font-medium">{data.conversionRate}%</span></p>
       )}
       {data.revenue !== undefined && data.revenue > 0 && (
         <p className="text-neutral-500">Value: <span className="text-success-500 font-medium">{formatIDR(data.revenue)}</span></p>
@@ -525,7 +525,7 @@ function LostReasonTooltip({ active, payload }: LostReasonTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const { reason, count } = payload[0].payload
   return (
-    <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 shadow-sm text-xs">
+    <div className="rounded-md border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card px-3 py-2 shadow-sm text-xs">
       <p className="font-medium text-neutral-800 mb-1">{reason}</p>
       <p className="text-neutral-500">Deals lost: <span className="text-neutral-800 font-medium">{count}</span></p>
     </div>
@@ -652,7 +652,7 @@ export function AnalyticsContent({
         <div className="grid grid-cols-2 gap-6 mb-6">
 
           {/* Win Rate card with By AE / By Industry tab */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-neutral-500">Win Rate</h3>
               <div className="flex rounded-md overflow-hidden border border-neutral-200 text-xs">
@@ -660,18 +660,18 @@ export function AnalyticsContent({
                   onClick={() => setWinRateTab("ae")}
                   className={`px-3 py-1 transition-colors ${
                     winRateTab === "ae"
-                      ? "bg-neutral-800 text-white"
-                      : "bg-white text-neutral-600 hover:bg-neutral-50"
+                      ? "bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900"
+                      : "bg-white dark:bg-card text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-100"
                   }`}
                 >
                   By AE
                 </button>
                 <button
                   onClick={() => setWinRateTab("industry")}
-                  className={`px-3 py-1 transition-colors border-l border-neutral-200 ${
+                  className={`px-3 py-1 transition-colors border-l border-neutral-200 dark:border-neutral-600 ${
                     winRateTab === "industry"
-                      ? "bg-neutral-800 text-white"
-                      : "bg-white text-neutral-600 hover:bg-neutral-50"
+                      ? "bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900"
+                      : "bg-white dark:bg-card text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-100"
                   }`}
                 >
                   By Industry
@@ -754,7 +754,7 @@ export function AnalyticsContent({
           </div>
 
           {/* Revenue Trend */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-medium text-neutral-500">Revenue Trend</h3>
@@ -765,7 +765,7 @@ export function AnalyticsContent({
                     p.set("rtYear", e.target.value)
                     router.replace(`?${p.toString()}`)
                   }}
-                  className="text-xs border border-neutral-200 rounded px-2 py-0.5 bg-white text-neutral-600 focus:outline-none"
+                  className="text-xs border border-neutral-200 dark:border-neutral-600 rounded px-2 py-0.5 bg-white dark:bg-card text-neutral-600 dark:text-neutral-300 focus:outline-none"
                 >
                   {[2024, 2025, 2026, 2027].map((y) => (
                     <option key={y} value={y}>{y}</option>
@@ -774,7 +774,7 @@ export function AnalyticsContent({
               </div>
               <div className="flex items-center gap-4 text-xs">
                 <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-success-500 rounded" />Won</span>
-                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-blue-500 rounded" />Active Pipeline</span>
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-info-500 rounded" />Active Pipeline</span>
                 <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-0.5 bg-neutral-400 rounded border-dashed" style={{borderTop: '2px dashed #9CA3AF', background: 'transparent', height: 0}} />Potential</span>
               </div>
             </div>
@@ -829,7 +829,7 @@ export function AnalyticsContent({
         </div>
 
         {/* Revenue by Product Line */}
-        <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card mb-6">
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card mb-6">
           <h3 className="text-sm font-semibold text-neutral-800 mb-4">Revenue by Product Line</h3>
           {revenueByProductLine.length === 0 ? (
             <p className="text-sm text-neutral-400 py-8 text-center">No won revenue data for this period</p>
@@ -862,7 +862,7 @@ export function AnalyticsContent({
         </div>
 
         {/* Lost Reason Distribution */}
-        <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card mb-6">
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-neutral-800">Alasan Deal Hilang</h3>
             <span className="text-xs text-neutral-400">
@@ -905,7 +905,7 @@ export function AnalyticsContent({
         <div className="grid grid-cols-5 gap-6">
 
           {/* Pipeline Funnel */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
             <h3 className="text-sm font-medium text-neutral-500 mb-4">Pipeline Funnel</h3>
             {pipelineFunnel.every((s) => s.count === 0) ? (
               <EmptyState label="No pipeline data" />
@@ -947,7 +947,7 @@ export function AnalyticsContent({
           </div>
 
           {/* Client Retention */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card flex flex-col">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card flex flex-col">
             <h3 className="text-sm font-medium text-neutral-500 mb-4">Client Retention</h3>
             <div className="flex flex-col flex-1 gap-3 py-2">
               <div className="flex items-center justify-between py-1.5 border-b border-neutral-100">
@@ -975,7 +975,7 @@ export function AnalyticsContent({
           </div>
 
           {/* AE Performance Table */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
             <h3 className="text-sm font-medium text-neutral-500 mb-4">AE Performance</h3>
             {aePerformance.length === 0 ? (
               <EmptyState label="No AE data" />
@@ -1012,8 +1012,8 @@ export function AnalyticsContent({
                               row.winRate >= 50
                                 ? "text-success-500 font-medium"
                                 : row.winRate >= 25
-                                ? "text-amber-600 font-medium"
-                                : "text-red-500 font-medium"
+                                ? "text-warning-600 dark:text-warning-500 font-medium"
+                                : "text-danger-500 dark:text-danger-500 font-medium"
                             }
                           >
                             {row.winRate}%
@@ -1031,22 +1031,22 @@ export function AnalyticsContent({
           </div>
 
           {/* Active Pipeline Value */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-card">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 shadow-card">
             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">
               Active Pipeline Value
             </p>
-            <p className="text-2xl font-bold text-neutral-900 tabular-nums">
+            <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-700 tabular-nums">
               {formatIDR(pipelineValue)}
             </p>
             <p className="text-xs text-neutral-400 mt-0.5">Leads + Pipeline + Negotiation</p>
           </div>
 
           {/* Overall Win/Loss Rate */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
             <h3 className="text-sm font-medium text-neutral-500 mb-3">Overall Win/Loss Rate</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-3xl font-bold text-neutral-900">{overallWinRate.winLossRate}%</p>
+                <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-700">{overallWinRate.winLossRate}%</p>
                 <p className="text-xs text-neutral-500 mt-1">Loss rate vs total pitched</p>
               </div>
               <div className="pt-2 border-t border-neutral-100 grid grid-cols-2 gap-2 text-xs">

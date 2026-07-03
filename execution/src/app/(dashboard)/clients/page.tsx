@@ -158,8 +158,8 @@ function ClientsTableSkeleton() {
         <Skeleton className="h-4 w-24 ml-auto" />
         <Skeleton className="h-9 w-28" />
       </div>
-      <div className="rounded-lg border border-neutral-200 bg-white shadow-card overflow-hidden">
-        <div className="border-b border-neutral-200 px-4 py-3 grid grid-cols-8 gap-4 bg-neutral-50">
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card shadow-card overflow-hidden">
+        <div className="border-b border-neutral-200 dark:border-neutral-100 px-4 py-3 grid grid-cols-8 gap-4 bg-neutral-50 dark:bg-card/50">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-3 w-full" />
           ))}

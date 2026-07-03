@@ -178,11 +178,11 @@ export function NotificationBell() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-80 p-0 shadow-dropdown bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700"
+        className="w-80 p-0 shadow-dropdown bg-white dark:bg-card border-neutral-200 dark:border-neutral-100"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700 px-4 py-3">
-          <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
+        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-100 px-4 py-3">
+          <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-700">
             Notifikasi
           </span>
           {unreadCount > 0 && (
@@ -214,7 +214,7 @@ export function NotificationBell() {
                     <button
                       onClick={() => handleItemClick(n)}
                       className={cn(
-                        "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700",
+                        "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-100",
                         isUnread && "bg-accent-50 dark:bg-accent-50/10"
                       )}
                     >
@@ -227,7 +227,7 @@ export function NotificationBell() {
                           className={cn(
                             "truncate text-sm",
                             isUnread
-                              ? "font-semibold text-neutral-800 dark:text-neutral-100"
+                              ? "font-semibold text-neutral-800 dark:text-neutral-700"
                               : "font-medium text-neutral-600 dark:text-neutral-400"
                           )}
                         >
@@ -256,7 +256,7 @@ export function NotificationBell() {
         </ScrollArea>
 
         {/* Footer */}
-        <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-2.5">
+        <div className="border-t border-neutral-200 dark:border-neutral-100 px-4 py-2.5">
           <button
             onClick={() => {
               setOpen(false)

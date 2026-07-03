@@ -252,10 +252,10 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       : null
 
     return (
-      <div className="rounded-md border border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-700/40">
+      <div className="rounded-md border border-neutral-100 dark:border-neutral-100 bg-neutral-50 dark:bg-neutral-50/40">
         <Link
           href={`/pipeline/${lead.id}`}
-          className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700/60 transition-colors group rounded-md"
+          className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-100/60 transition-colors group rounded-md"
         >
           <Badge variant="outline" className="text-xs shrink-0">{STAGE_LABELS[lead.stage] ?? lead.stage}</Badge>
           {lead.productLine && (
@@ -415,7 +415,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
             </div>
             <div className="border-l border-neutral-200 pl-6">
               <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">Opportunity Value</p>
-              <p className="text-lg font-bold text-emerald-700 tabular-nums">
+              <p className="text-lg font-bold text-success-700 dark:text-success-500 tabular-nums">
                 {opportunityValue > 0 ? formatIDR(opportunityValue) : "—"}
               </p>
               <p className="text-xs text-neutral-400">{inProgressLeads.length} open deal{inProgressLeads.length !== 1 ? "s" : ""}</p>
@@ -428,14 +428,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           {/* Left — col-span-2 */}
           <div className="col-span-2 space-y-6">
             {/* Contract Details */}
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
-              <h2 className="font-semibold text-neutral-800 dark:text-neutral-100 mb-4">Contract Details</h2>
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
+              <h2 className="font-semibold text-neutral-800 dark:text-neutral-700 mb-4">Contract Details</h2>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 <div>
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Contract Start
                   </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-200">{formatDate(client.contractStart)}</p>
+                  <p className="text-sm text-neutral-800 dark:text-neutral-700">{formatDate(client.contractStart)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
@@ -443,7 +443,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   </p>
                   <p
                     className={`text-sm font-medium ${
-                      isContractUrgent ? "text-danger-600" : "text-neutral-800 dark:text-neutral-200"
+                      isContractUrgent ? "text-danger-600" : "text-neutral-800 dark:text-neutral-700"
                     }`}
                   >
                     {formatDate(client.contractEnd)}
@@ -458,7 +458,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Monthly Value
                   </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-200 tabular-nums">
+                  <p className="text-sm text-neutral-800 dark:text-neutral-700 tabular-nums">
                     {formatIDR(monthlyValue)}
                   </p>
                 </div>
@@ -466,7 +466,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Annual Value
                   </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-200 tabular-nums">
+                  <p className="text-sm text-neutral-800 dark:text-neutral-700 tabular-nums">
                     {formatIDR(annualValue)}
                   </p>
                 </div>
@@ -474,7 +474,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                   <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                     Engagement Type
                   </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-200">
+                  <p className="text-sm text-neutral-800 dark:text-neutral-700">
                     {engagementLabel(client.engagementType)}
                   </p>
                 </div>
@@ -483,7 +483,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                       Org Size
                     </p>
-                    <p className="text-sm text-neutral-800 dark:text-neutral-200">{client.orgSize}</p>
+                    <p className="text-sm text-neutral-800 dark:text-neutral-700">{client.orgSize}</p>
                   </div>
                 )}
                 {client.industry && (
@@ -491,7 +491,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
                       Industry
                     </p>
-                    <p className="text-sm text-neutral-800 dark:text-neutral-200">{client.industry}</p>
+                    <p className="text-sm text-neutral-800 dark:text-neutral-700">{client.industry}</p>
                   </div>
                 )}
               </div>
@@ -507,8 +507,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
             {/* Linked Projects (Sprint 6.4) */}
             {serializedLeads.length > 0 && (
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
-                <h2 className="font-semibold text-neutral-800 dark:text-neutral-100 mb-4">Linked Projects</h2>
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
+                <h2 className="font-semibold text-neutral-800 dark:text-neutral-700 mb-4">Linked Projects</h2>
 
                 {/* Active — Won */}
                 {wonLeads.length > 0 && (

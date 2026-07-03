@@ -169,9 +169,9 @@ export function ContactsCard({ clientId, contacts }: ContactsCardProps) {
 
   return (
     <>
-      <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+      <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-neutral-800 dark:text-neutral-100">Contacts</h2>
+          <h2 className="font-semibold text-neutral-800 dark:text-neutral-700">Contacts</h2>
           <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={openAdd}>
             <Plus className="h-3.5 w-3.5" />
             Add Contact
@@ -197,7 +197,7 @@ export function ContactsCard({ clientId, contacts }: ContactsCardProps) {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate">
+                    <span className="text-sm font-medium text-neutral-800 dark:text-neutral-700 truncate">
                       {contact.name}
                     </span>
                     {contact.isPrimary && (

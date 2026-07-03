@@ -22,7 +22,7 @@ export default async function SetPasswordPage({ searchParams }: SetPasswordPageP
           <p className="mt-1 text-sm text-neutral-500">ERP System — Internal Tool</p>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-modal">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-8 shadow-modal">
           {!user ? (
             <div className="text-center space-y-4">
               <AlertCircle className="h-10 w-10 text-warning-500 mx-auto" />

@@ -902,7 +902,7 @@ export function PipelineListView({
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 text-xs text-blue-600"
+            className="h-7 text-xs text-info-600 dark:text-info-500"
             onClick={() => setSelectedIds(new Set())}
           >
             Batalkan
@@ -1067,7 +1067,7 @@ export function PipelineListView({
                 <Link
                   href={`/clients/${lead.client.id}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="hover:text-blue-600 hover:underline transition-colors"
+                  className="hover:text-info-600 dark:hover:text-info-500 hover:underline transition-colors"
                 >
                   {lead.client.name}
                 </Link>
@@ -1428,7 +1428,7 @@ export function PipelineListView({
           {archivedLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 rounded-md bg-neutral-100 dark:bg-neutral-800 animate-pulse" />
+                <div key={i} className="h-12 rounded-md bg-neutral-100 dark:bg-card animate-pulse" />
               ))}
             </div>
           ) : archivedLeads.length === 0 ? (
@@ -1437,7 +1437,7 @@ export function PipelineListView({
             <div className="rounded-lg border border-neutral-200 bg-card shadow-card overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-neutral-50 dark:bg-neutral-900/50">
+                  <TableRow className="bg-neutral-50 dark:bg-background/50">
                     <TableHead className="font-semibold text-neutral-600 dark:text-neutral-400">Company</TableHead>
                     <TableHead className="font-semibold text-neutral-600 dark:text-neutral-400">Stage</TableHead>
                     <TableHead className="font-semibold text-neutral-600 dark:text-neutral-400">Product Line</TableHead>

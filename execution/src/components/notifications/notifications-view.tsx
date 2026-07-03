@@ -158,7 +158,7 @@ export function NotificationsView({
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               !unreadOnly
                 ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
-                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-50"
             )}
           >
             Semua
@@ -169,7 +169,7 @@ export function NotificationsView({
               "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               unreadOnly
                 ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900"
-                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-50"
             )}
           >
             Belum dibaca
@@ -203,7 +203,7 @@ export function NotificationsView({
       </div>
 
       {/* Notification list */}
-      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-card">
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card shadow-card">
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
             <BellOff className="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
@@ -236,7 +236,7 @@ export function NotificationsView({
                     className={cn(
                       "flex w-full items-start gap-3 px-5 py-4 text-left transition-colors",
                       isUnread && "bg-accent-50 dark:bg-accent-50/10",
-                      (hasEntity || isUnread) && "hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-pointer",
+                      (hasEntity || isUnread) && "hover:bg-neutral-50 dark:hover:bg-neutral-100 cursor-pointer",
                       !hasEntity && !!n.readAt && "cursor-default"
                     )}
                   >
@@ -249,7 +249,7 @@ export function NotificationsView({
                         className={cn(
                           "text-sm",
                           isUnread
-                            ? "font-semibold text-neutral-800 dark:text-neutral-100"
+                            ? "font-semibold text-neutral-800 dark:text-neutral-700"
                             : "font-medium text-neutral-600 dark:text-neutral-400"
                         )}
                       >

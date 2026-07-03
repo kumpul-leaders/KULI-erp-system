@@ -50,8 +50,8 @@ const ALERT_BANNER_CONFIG: Record<
   stale_deal: {
     icon: <AlertTriangle className="h-4 w-4 flex-shrink-0" />,
     label: "Deal tidak aktif dalam waktu lama",
-    bg: "bg-neutral-50 dark:bg-neutral-800",
-    border: "border-neutral-200 dark:border-neutral-700",
+    bg: "bg-neutral-50 dark:bg-card",
+    border: "border-neutral-200 dark:border-neutral-100",
     text: "text-neutral-600 dark:text-neutral-400",
   },
 }

@@ -56,7 +56,7 @@ function LoginForm() {
         </div>
 
         {/* Card */}
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-modal">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-8 shadow-modal">
           <h2 className="mb-6 text-lg font-semibold text-neutral-800">
             Sign in to your account
           </h2>

@@ -167,7 +167,7 @@ function LeadDrillTable({
         <div className="overflow-x-auto -mx-1">
         <table className="w-full text-sm min-w-[400px]">
           <thead>
-            <tr className="border-b border-neutral-200 dark:border-neutral-700">
+            <tr className="border-b border-neutral-200 dark:border-neutral-100">
               <th
                 className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 select-none"
                 onClick={() => toggleSort("clientName")}
@@ -193,8 +193,8 @@ function LeadDrillTable({
           </thead>
           <tbody>
             {filtered.map((lead) => (
-              <tr key={lead.id} className="border-b border-neutral-100 dark:border-neutral-700 last:border-0">
-                <td className="py-2.5 pr-3 font-medium text-neutral-800 dark:text-neutral-100">
+              <tr key={lead.id} className="border-b border-neutral-100 dark:border-neutral-100 last:border-0">
+                <td className="py-2.5 pr-3 font-medium text-neutral-800 dark:text-neutral-700">
                   <Link
                     href={`/pipeline/${lead.id}`}
                     className="hover:text-accent-600 hover:underline"
@@ -409,7 +409,7 @@ function TrendBadge({ current, prev }: { current: number; prev: number }) {
   const pct = prev > 0 ? Math.round(((current - prev) / prev) * 100) : 0
   const up = pct >= 0
   return (
-    <span className={`text-xs font-medium ${up ? "text-emerald-600" : "text-danger-600"}`}>
+    <span className={`text-xs font-medium ${up ? "text-success-700 dark:text-success-500" : "text-danger-600 dark:text-danger-500"}`}>
       {up ? "↑" : "↓"} {Math.abs(pct)}% vs bulan lalu
     </span>
   )
@@ -507,12 +507,12 @@ export function DashboardContent({
           {/* Card 1 — Revenue Won MTD */}
           <button
             onClick={() => setActiveDrawer("revenue_won")}
-            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Revenue Won MTD
             </p>
-            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-700 mb-1">
               {formatIDR(revenueMTD)}
             </p>
             {revenueMTDPrevMonth > 0 && (
@@ -524,12 +524,12 @@ export function DashboardContent({
           {/* Card 2 — Revenue in Pipeline */}
           <button
             onClick={() => setActiveDrawer("pipeline")}
-            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Revenue in Pipeline
             </p>
-            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-700 mb-1">
               {formatIDR(revenueInPipeline)}
             </p>
             <p className="text-xs text-neutral-400">Across active stages</p>
@@ -538,12 +538,12 @@ export function DashboardContent({
           {/* Card 2b — Weighted Forecast */}
           <button
             onClick={() => setActiveDrawer("weighted_forecast")}
-            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Weighted Forecast
             </p>
-            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-700 mb-1">
               {formatIDR(weightedForecast)}
             </p>
             <p className="text-xs text-neutral-400">Pipeline × probability</p>
@@ -552,12 +552,12 @@ export function DashboardContent({
           {/* Card 3 — Healthy Clients */}
           <button
             onClick={() => setActiveDrawer("healthy")}
-            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               Healthy Clients
             </p>
-            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-700 mb-1">
               {healthyCount.toString()}
             </p>
             <p className="text-xs text-neutral-400">Health: healthy</p>
@@ -566,12 +566,12 @@ export function DashboardContent({
           {/* Card 4 — New Leads MTD */}
           <button
             onClick={() => setActiveDrawer("leads_mtd")}
-            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-4 md:p-5 shadow-card text-left w-full hover:border-accent-200 dark:hover:border-accent-200/30 hover:shadow-card-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <p className="text-xs font-medium uppercase tracking-wider text-neutral-400 mb-1">
               New Leads MTD
             </p>
-            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-100 mb-1">
+            <p className="text-2xl md:text-3xl font-bold tabular-nums text-neutral-800 dark:text-neutral-700 mb-1">
               {newLeadsCount.toString()}
             </p>
             <p className="text-xs text-neutral-400">{currentMonthLabel}</p>
@@ -583,9 +583,9 @@ export function DashboardContent({
           {/* Left col — col-span-2 */}
           <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Revenue vs Target */}
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-700">
                   Revenue vs Target
                 </h2>
                 <span className="text-xs text-neutral-400">
@@ -625,8 +625,8 @@ export function DashboardContent({
             </div>
 
             {/* Recent Pipeline Activity */}
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
+              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-700 mb-4">
                 Recent Pipeline Activity
               </h2>
               {recentActivity.length === 0 ? (
@@ -637,11 +637,11 @@ export function DashboardContent({
                 recentActivity.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-3 py-2.5 border-b border-neutral-100 dark:border-neutral-700 last:border-0"
+                    className="flex items-start gap-3 py-2.5 border-b border-neutral-100 dark:border-neutral-100 last:border-0"
                   >
                     <div className="mt-0.5 h-2 w-2 rounded-full bg-accent-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-neutral-700 dark:text-neutral-200 truncate">
+                      <p className="text-sm text-neutral-700 dark:text-neutral-700 truncate">
                         <span className="font-medium">{activity.clientName}</span>
                         {" — "}
                         {STAGE_LABELS[activity.fromStage] ?? activity.fromStage}{" "}
@@ -671,8 +671,8 @@ export function DashboardContent({
             />
 
             {/* Client Health */}
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-5 shadow-card">
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-4">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
+              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-700 mb-4">
                 Client Health
               </h2>
               <div className="flex gap-2">
@@ -718,10 +718,10 @@ export function DashboardContent({
       >
         <SheetContent
           side="right"
-          className="w-full sm:w-[600px] sm:max-w-[600px] flex flex-col p-0 bg-white dark:bg-neutral-800"
+          className="w-full sm:w-[600px] sm:max-w-[600px] flex flex-col p-0 bg-white dark:bg-card"
         >
-          <SheetHeader className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
-            <SheetTitle className="dark:text-neutral-100">{drawerMeta.title}</SheetTitle>
+          <SheetHeader className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-100">
+            <SheetTitle className="dark:text-neutral-700">{drawerMeta.title}</SheetTitle>
             <SheetDescription className="text-xs text-neutral-400">
               {drawerMeta.description}
             </SheetDescription>

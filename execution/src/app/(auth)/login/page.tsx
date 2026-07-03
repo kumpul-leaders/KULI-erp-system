@@ -50,7 +50,7 @@ function LoginForm() {
         {/* Brand */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-neutral-800">
-            vosFoyer
+            Open ERP
           </h1>
           <p className="mt-1 text-sm text-neutral-500">ERP System — Internal Tool</p>
         </div>

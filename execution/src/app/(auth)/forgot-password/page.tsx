@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-800">vosFoyer</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-800">Open ERP</h1>
           <p className="mt-1 text-sm text-neutral-500">ERP System — Internal Tool</p>
         </div>
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-8 shadow-modal">

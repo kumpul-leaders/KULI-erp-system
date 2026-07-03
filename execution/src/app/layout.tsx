@@ -12,10 +12,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | VF ERP",
-    default: "VF ERP System",
+    template: "%s | Open ERP",
+    default: "Open ERP",
   },
-  description: "vosFoyer Internal CRM + BizDev Pipeline Tool",
+  description: "Internal CRM + BizDev Pipeline",
 }
 
 export default function RootLayout({

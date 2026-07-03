@@ -1250,7 +1250,7 @@ function UserFormFields({
           type="email"
           value={form.email}
           onChange={(e) => onChange({ ...form, email: e.target.value })}
-          placeholder="e.g. andi@vosFoyer.com"
+          placeholder="e.g. name@company.com"
         />
         {isEdit && (
           <p className="text-xs text-neutral-400 mt-1">

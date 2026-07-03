@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// VF ERP System — Shared TypeScript Types
+// Open ERP — Shared TypeScript Types
 // Phase 2: CRM + BizDev Pipeline
 // ─────────────────────────────────────────────
 

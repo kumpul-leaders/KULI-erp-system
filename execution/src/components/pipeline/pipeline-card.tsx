@@ -151,7 +151,7 @@ export function PipelineCard({
         if (!isSortableDragging) router.push(`/pipeline/${lead.id}`)
       }}
       className={cn(
-        "rounded-lg border border-neutral-200 bg-white p-4 shadow-kanban",
+        "rounded-lg border border-neutral-200 bg-card p-4 shadow-kanban",
         "cursor-pointer active:cursor-grabbing select-none",
         "transition-shadow duration-150",
         isDragging && "shadow-kanban-drag"

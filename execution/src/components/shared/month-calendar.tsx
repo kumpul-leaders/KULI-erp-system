@@ -122,7 +122,7 @@ export function MonthCalendar({
         <button
           type="button"
           onClick={prevMonth}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 transition-colors"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-card text-neutral-600 hover:bg-neutral-100 transition-colors"
           aria-label="Bulan sebelumnya"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -135,7 +135,7 @@ export function MonthCalendar({
         <button
           type="button"
           onClick={nextMonth}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 transition-colors"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-card text-neutral-600 hover:bg-neutral-100 transition-colors"
           aria-label="Bulan berikutnya"
         >
           <ChevronRight className="h-4 w-4" />
@@ -144,7 +144,7 @@ export function MonthCalendar({
         <button
           type="button"
           onClick={goToday}
-          className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition-colors"
+          className="rounded-md border border-neutral-200 bg-card px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
         >
           Hari ini
         </button>
@@ -181,7 +181,7 @@ export function MonthCalendar({
           return (
             <div
               key={dateStr}
-              className="min-h-[80px] bg-white p-1.5 flex flex-col gap-1"
+              className="min-h-[80px] bg-card p-1.5 flex flex-col gap-1"
             >
               {/* Day number */}
               <span
@@ -213,11 +213,11 @@ export function MonthCalendar({
 
       {/* Undated items */}
       {undatedItems.length > 0 && (
-        <div className="rounded-lg border border-neutral-200 bg-white overflow-hidden">
+        <div className="rounded-lg border border-neutral-200 bg-card overflow-hidden">
           <button
             type="button"
             onClick={() => setUndatedOpen((o) => !o)}
-            className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-50 transition-colors"
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
           >
             {undatedOpen ? (
               <ChevronUp className="h-4 w-4 text-neutral-400" />

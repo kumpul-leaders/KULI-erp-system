@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma"
 import { createNotification, createNotifications } from "@/lib/notifications"
 import { recalcNextActivity } from "@/lib/activities"
 
+// Vercel serverless: allow up to 60 seconds for this route
+export const maxDuration = 60
+
 // ── Auth helper ───────────────────────────────────────────────────────────────
 
 function verifyCronAuth(request: NextRequest): Response | null {

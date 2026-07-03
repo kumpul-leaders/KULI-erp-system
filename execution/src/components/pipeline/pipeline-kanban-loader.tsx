@@ -293,7 +293,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
               </div>
               <div className="flex flex-col gap-2 p-2">
                 {Array.from({ length: 3 }).map((_, j) => (
-                  <div key={j} className="rounded-lg border border-neutral-200 bg-white p-4 space-y-2">
+                  <div key={j} className="rounded-lg border border-neutral-200 bg-card p-4 space-y-2">
                     <div className="h-4 w-3/4 rounded bg-neutral-100 animate-pulse" />
                     <div className="h-3 w-1/3 rounded bg-neutral-100 animate-pulse" />
                     <div className="h-5 w-24 rounded bg-neutral-100 animate-pulse" />
@@ -340,7 +340,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
         {viewMode === "kanban" && (
           <Popover>
             <PopoverTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-neutral-200 bg-white text-neutral-600 text-sm hover:bg-neutral-50 transition-colors">
+              <button className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-neutral-200 bg-card text-neutral-600 text-sm hover:bg-neutral-100 transition-colors">
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 Card Fields
               </button>
@@ -398,8 +398,8 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
             className={cn(
               "px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors",
               viewMode === "kanban"
-                ? "bg-neutral-900 text-white"
-                : "bg-white text-neutral-600 hover:bg-neutral-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-neutral-600 hover:bg-neutral-100"
             )}
             onClick={() => setViewMode("kanban")}
           >
@@ -410,8 +410,8 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
             className={cn(
               "px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-neutral-200",
               viewMode === "list"
-                ? "bg-neutral-900 text-white"
-                : "bg-white text-neutral-600 hover:bg-neutral-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-neutral-600 hover:bg-neutral-100"
             )}
             onClick={() => setViewMode("list")}
           >
@@ -422,8 +422,8 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
             className={cn(
               "px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-neutral-200",
               viewMode === "calendar"
-                ? "bg-neutral-900 text-white"
-                : "bg-white text-neutral-600 hover:bg-neutral-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-neutral-600 hover:bg-neutral-100"
             )}
             onClick={() => setViewMode("calendar")}
           >

@@ -196,7 +196,7 @@ function LostDealDialog({ onConfirm, onCancel }: LostDealDialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-modal p-6 w-full max-w-md mx-4">
+      <div className="bg-card rounded-xl shadow-modal p-6 w-full max-w-md mx-4">
         <h2 className="text-base font-semibold text-neutral-800 mb-1">
           Mark as Lost Deal
         </h2>
@@ -232,7 +232,7 @@ function LostDealDialog({ onConfirm, onCancel }: LostDealDialogProps) {
             Catatan tambahan <span className="text-neutral-400 font-normal">(opsional)</span>
           </label>
           <textarea
-            className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-800 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+            className="w-full rounded-lg border border-neutral-200 bg-background px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
             rows={2}
             placeholder="Detail tambahan..."
             value={note}
@@ -242,7 +242,7 @@ function LostDealDialog({ onConfirm, onCancel }: LostDealDialogProps) {
 
         <div className="flex justify-end gap-2">
           <button
-            className="px-4 py-2 rounded-md border border-neutral-200 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="px-4 py-2 rounded-md border border-neutral-200 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
             onClick={onCancel}
           >
             Cancel

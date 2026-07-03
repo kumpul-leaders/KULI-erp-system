@@ -158,7 +158,7 @@ function ClientCombobox({ value, onSelect, error }: ClientComboboxProps) {
         </div>
       )}
       {open && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-white shadow-dropdown overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-card shadow-dropdown overflow-hidden">
           {results.map((client) => (
             <button
               key={client.id}

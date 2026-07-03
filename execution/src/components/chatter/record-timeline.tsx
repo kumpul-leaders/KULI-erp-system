@@ -236,7 +236,7 @@ function FollowerStrip({ followers, currentUserId, leadId, clientId, onToggle }:
             <div
               key={f.id}
               title={f.user.name}
-              className="h-6 w-6 rounded-full bg-accent-100 border-2 border-white flex items-center justify-center flex-shrink-0"
+              className="h-6 w-6 rounded-full bg-accent-100 border-2 border-card flex items-center justify-center flex-shrink-0"
             >
               <span className="text-[9px] font-semibold text-accent-700 leading-none">
                 {getInitials(f.user.name)}
@@ -244,7 +244,7 @@ function FollowerStrip({ followers, currentUserId, leadId, clientId, onToggle }:
             </div>
           ))}
           {overflow > 0 && (
-            <div className="h-6 w-6 rounded-full bg-neutral-200 border-2 border-white flex items-center justify-center flex-shrink-0">
+            <div className="h-6 w-6 rounded-full bg-neutral-200 border-2 border-card flex items-center justify-center flex-shrink-0">
               <span className="text-[9px] font-semibold text-neutral-600 leading-none">+{overflow}</span>
             </div>
           )}
@@ -598,7 +598,7 @@ function CommentItem({ comment, currentUserId, onEdited, onDeleted }: CommentIte
               <div className="absolute right-2 top-2 hidden group-hover:flex gap-1">
                 <button
                   onClick={() => setEditing(true)}
-                  className="rounded p-0.5 text-neutral-400 hover:text-neutral-600 hover:bg-white/80 transition-colors"
+                  className="rounded p-0.5 text-neutral-400 hover:text-neutral-600 hover:bg-card/80 transition-colors"
                   title="Edit"
                 >
                   <Pencil className="h-3 w-3" />
@@ -606,7 +606,7 @@ function CommentItem({ comment, currentUserId, onEdited, onDeleted }: CommentIte
                 <button
                   onClick={() => void handleDelete()}
                   disabled={deleting}
-                  className="rounded p-0.5 text-neutral-400 hover:text-danger-600 hover:bg-white/80 transition-colors"
+                  className="rounded p-0.5 text-neutral-400 hover:text-danger-600 hover:bg-card/80 transition-colors"
                   title="Hapus"
                 >
                   {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
@@ -803,7 +803,7 @@ export function RecordTimeline({
   ].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-card">
+    <div className="rounded-lg border border-neutral-200 bg-card p-6 shadow-card">
       {/* Header — title + followers */}
       <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
         <h2 className="font-semibold text-neutral-800">Timeline &amp; Chatter</h2>

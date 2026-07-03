@@ -191,7 +191,7 @@ function ActivityForm({ form, onChange, assigneeOptions }: ActivityFormProps) {
           onChange={(e) => onChange({ subject: e.target.value })}
           placeholder="e.g. Follow-up proposal Q3"
           maxLength={200}
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
+          className="w-full rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
         />
       </div>
 
@@ -205,7 +205,7 @@ function ActivityForm({ form, onChange, assigneeOptions }: ActivityFormProps) {
             <button
               type="button"
               className={cn(
-                "w-full flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-left",
+                "w-full flex items-center gap-2 rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-left",
                 !form.dueDate && "text-neutral-400"
               )}
             >
@@ -540,7 +540,7 @@ export function ActivityPanel({
 
   return (
     <>
-      <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+      <div className="rounded-lg border border-neutral-200 bg-card p-5 shadow-card">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-neutral-800">Planned Activities</h2>

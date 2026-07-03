@@ -308,7 +308,7 @@ function InlineStageCell({ leadId, value, onSaved }: InlineStageCellProps) {
         <SelectTrigger
           className={cn(
             "h-7 min-w-[120px] border-transparent bg-transparent text-xs shadow-none",
-            "hover:border-neutral-300 hover:bg-neutral-50 transition-colors",
+            "hover:border-neutral-300 hover:bg-background transition-colors",
             "[&>svg]:opacity-0 group-hover:[&>svg]:opacity-100 group-focus-within:[&>svg]:opacity-100"
           )}
         >
@@ -847,7 +847,7 @@ export function PipelineListView({
 
   if (leads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 rounded-lg border border-neutral-200 bg-white text-center">
+      <div className="flex flex-col items-center justify-center py-20 rounded-lg border border-neutral-200 bg-card text-center">
         <p className="text-neutral-500 font-medium mb-1">No leads found</p>
         <p className="text-sm text-neutral-400">
           Try adjusting your filters or add a new lead.
@@ -875,12 +875,12 @@ export function PipelineListView({
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 mb-2 p-3 rounded-md bg-blue-50 border border-blue-200">
-          <span className="text-sm text-blue-700 font-medium">
+        <div className="flex items-center gap-3 mb-2 p-3 rounded-md bg-info-50 border border-info-200">
+          <span className="text-sm text-info-700 font-medium">
             {selectedIds.size} lead dipilih
           </span>
-          <span className="text-blue-300">|</span>
-          <span className="text-sm text-blue-600">Reassign ke:</span>
+          <span className="text-info-300">|</span>
+          <span className="text-sm text-info-700">Reassign ke:</span>
           <Select value={bulkSalesId} onValueChange={setBulkSalesId}>
             <SelectTrigger className="h-7 w-36 text-xs">
               <SelectValue placeholder="Pilih AE..." />
@@ -911,7 +911,7 @@ export function PipelineListView({
       )}
 
     {/* Fix 1: removed overflow-x-auto — parent wrapper in loader now handles scroll */}
-    <div className="rounded-lg border border-neutral-200 bg-white shadow-card">
+    <div className="rounded-lg border border-neutral-200 bg-card shadow-card">
       <Table>
         <TableHeader>
           <TableRow className="bg-neutral-50">
@@ -1434,7 +1434,7 @@ export function PipelineListView({
           ) : archivedLeads.length === 0 ? (
             <p className="text-sm text-neutral-400">Tidak ada lead yang diarsipkan.</p>
           ) : (
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-card overflow-x-auto">
+            <div className="rounded-lg border border-neutral-200 bg-card shadow-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-neutral-50 dark:bg-neutral-900/50">

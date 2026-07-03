@@ -175,7 +175,7 @@ function ActivityRow({ activity, onMarkDone, onRescheduled }: ActivityRowProps) 
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-md border border-neutral-100 bg-white px-4 py-3 hover:border-neutral-200 transition-colors group">
+    <div className="flex items-center gap-3 rounded-md border border-neutral-200 bg-card px-4 py-3 hover:border-neutral-300 transition-colors group">
       {/* Activity dot */}
       <ActivityDot
         nextActivityAt={activity.dueDate ? `${activity.dueDate}T00:00:00.000Z` : null}
@@ -258,7 +258,7 @@ function GroupHeader({ label, count, variant }: GroupHeaderProps) {
   return (
     <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold uppercase tracking-wide", colors[variant])}>
       {label}
-      <span className="inline-flex items-center justify-center rounded-full h-4 w-4 text-[10px] bg-white bg-opacity-60 font-bold">
+      <span className="inline-flex items-center justify-center rounded-full h-4 w-4 text-[10px] bg-black/10 dark:bg-white/20 font-bold">
         {count}
       </span>
     </div>
@@ -333,7 +333,7 @@ export function ActivitiesView({
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors",
                 showAllTeam
                   ? "bg-accent-600 text-white border-accent-600"
-                  : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50"
+                  : "bg-card text-neutral-600 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-100"
               )}
             >
               {showAllTeam ? "Semua Tim" : "Hanya Saya"}
@@ -351,8 +351,8 @@ export function ActivitiesView({
             className={cn(
               "px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors",
               viewMode === "list"
-                ? "bg-neutral-900 text-white"
-                : "bg-white text-neutral-600 hover:bg-neutral-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-neutral-600 hover:bg-neutral-100"
             )}
             onClick={() => setViewMode("list")}
           >
@@ -364,8 +364,8 @@ export function ActivitiesView({
             className={cn(
               "px-3 py-1.5 text-xs flex items-center gap-1.5 transition-colors border-l border-neutral-200",
               viewMode === "calendar"
-                ? "bg-neutral-900 text-white"
-                : "bg-white text-neutral-600 hover:bg-neutral-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-neutral-600 hover:bg-neutral-100"
             )}
             onClick={() => setViewMode("calendar")}
           >

@@ -61,10 +61,10 @@ interface SmartButtonsProps {
 // ── Shared button visual shell ────────────────────────────────────────────────
 
 const buttonBase =
-  "inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-card transition-colors hover:bg-neutral-50 hover:border-neutral-300 shrink-0 whitespace-nowrap"
+  "inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-card px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-card transition-colors hover:bg-neutral-100 hover:border-neutral-300 shrink-0 whitespace-nowrap"
 
 const badgeBase =
-  "inline-flex items-center gap-1.5 rounded-md border border-neutral-100 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 shrink-0 whitespace-nowrap cursor-default"
+  "inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600 shrink-0 whitespace-nowrap cursor-default"
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ export function SmartButtons({ buttons, className }: SmartButtonsProps) {
               </span>
             )}
             {btn.count !== undefined && (
-              <span className="font-semibold tabular-nums text-neutral-900">
+              <span className="font-semibold tabular-nums text-foreground">
                 {btn.count}
               </span>
             )}

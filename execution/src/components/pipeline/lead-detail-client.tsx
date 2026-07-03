@@ -429,7 +429,7 @@ function NotesInline({ leadId, initialNotes }: NotesInlineProps) {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+    <div className="rounded-lg border border-neutral-200 bg-card p-5 shadow-card">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-neutral-800">Notes</h2>
         {!editing && (
@@ -623,7 +623,7 @@ function ProjectedRevenueInline({ leadId, initialValue }: ProjectedRevenueInline
         onChange={(e) => setValue(e.target.value)}
         placeholder="e.g. 15000000"
         autoFocus
-        className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
+        className="w-full rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm text-foreground tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
       />
     </InlineField>
   )
@@ -690,7 +690,7 @@ function ActualRevenueInline({ leadId, initialValue }: ActualRevenueInlineProps)
         onChange={(e) => setValue(e.target.value)}
         placeholder="e.g. 15000000"
         autoFocus
-        className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
+        className="w-full rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm text-foreground tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
       />
     </InlineField>
   )
@@ -852,7 +852,7 @@ function ProjectTypeInline({ leadId, initialValue }: ProjectTypeInlineProps) {
         value={value}
         onChange={(e) => setValue(e.target.value as ProjectType)}
         autoFocus
-        className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+        className="w-full rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
       >
         <option value="one_time">One Time</option>
         <option value="retainer">Retainer</option>
@@ -923,7 +923,7 @@ function BillingPlanInline({ leadId, initialValue }: BillingPlanInlineProps) {
         placeholder="YY-MM (e.g. 26-08)"
         pattern="\d{2}-\d{2}"
         autoFocus
-        className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
+        className="w-full rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
       />
     </InlineField>
   )
@@ -1038,7 +1038,7 @@ function ProbabilityInline({ leadId, initialValue, initialIsManual }: Probabilit
         onChange={(e) => setValue(e.target.value)}
         placeholder="0–100"
         autoFocus
-        className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
+        className="w-full rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm text-foreground tabular-nums shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder:text-neutral-400"
       />
     </InlineField>
   )
@@ -1274,7 +1274,7 @@ function DocumentsCard({ leadId, initialDocuments }: DocumentsCardProps) {
     .map((d) => ({ id: d.id, type: d.type, fileUrl: d.fileUrl, fileName: d.fileName, uploadedAt: d.uploadedAt }))
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+    <div className="rounded-lg border border-neutral-200 bg-card p-5 shadow-card">
       <h2 className="font-semibold text-neutral-800 mb-4">Documents</h2>
       <div className="space-y-5">
         <DocumentUploadZone
@@ -1335,7 +1335,7 @@ function AeCard({ leadId, sales, salesOptions }: AeCardProps) {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+    <div className="rounded-lg border border-neutral-200 bg-card p-5 shadow-card">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-neutral-800">Busdev/AE</h2>
         {!editing && (
@@ -1354,7 +1354,7 @@ function AeCard({ leadId, sales, salesOptions }: AeCardProps) {
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+            className="w-full rounded-md border border-neutral-300 bg-background px-3 py-1.5 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
           >
             <option value="">Unassigned</option>
             {salesOptions.map((s) => (
@@ -1553,7 +1553,7 @@ export function LeadDetailClient({ lead, salesOptions, currentUserId, assigneeOp
         {/* Left — col-span-2 */}
         <div className="col-span-2 space-y-6">
           {/* Lead Details */}
-          <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-card">
+          <div className="rounded-lg border border-neutral-200 bg-card p-5 shadow-card">
             <h2 className="font-semibold text-neutral-800 mb-4">Lead Details</h2>
             <div className="grid grid-cols-2 gap-x-8 gap-y-4">
               <div>

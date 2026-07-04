@@ -54,12 +54,10 @@ const STAGE_OPTIONS: Array<{ value: PipelineStage; label: string }> = [
 ]
 
 const PRODUCT_LINE_OPTIONS: Array<{ value: ProductLine; label: string }> = [
-  { value: "stracomm", label: "Stracomm" },
-  { value: "smm", label: "SMM" },
-  { value: "creative_strategy", label: "Creative Strategy" },
-  { value: "media_buying", label: "Media Buying" },
-  { value: "ads_management", label: "Ads Management" },
-  { value: "production", label: "Production" },
+  { value: "brand_placement", label: "Brand Placement" },
+  { value: "speakership", label: "Speakership" },
+  { value: "community_event", label: "Community Event" },
+  { value: "commissioned_event", label: "Commissioned Event" },
   { value: "others", label: "Others" },
 ]
 

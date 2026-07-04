@@ -12,7 +12,7 @@ describe("CreateLeadSchema", () => {
   it("accepts a minimal valid payload", () => {
     const result = CreateLeadSchema.safeParse({
       clientId: "client-uuid-001",
-      productLine: "smm",
+      productLine: "brand_placement",
       projectType: "retainer",
     })
     expect(result.success).toBe(true)
@@ -30,7 +30,7 @@ describe("CreateLeadSchema", () => {
   it("rejects invalid projectType enum value", () => {
     const result = CreateLeadSchema.safeParse({
       clientId: "client-uuid-001",
-      productLine: "smm",
+      productLine: "brand_placement",
       projectType: "milestone", // not in enum
     })
     expect(result.success).toBe(false)
@@ -39,7 +39,7 @@ describe("CreateLeadSchema", () => {
   it("rejects billingPlan with wrong format", () => {
     const result = CreateLeadSchema.safeParse({
       clientId: "client-uuid-001",
-      productLine: "smm",
+      productLine: "brand_placement",
       projectType: "retainer",
       billingPlan: "2026-08", // wrong — must be YY-MM not YYYY-MM
     })
@@ -49,7 +49,7 @@ describe("CreateLeadSchema", () => {
   it("accepts billingPlan in correct YY-MM format", () => {
     const result = CreateLeadSchema.safeParse({
       clientId: "client-uuid-001",
-      productLine: "media_buying",
+      productLine: "community_event",
       projectType: "one_time",
       billingPlan: "26-08",
     })
@@ -59,7 +59,7 @@ describe("CreateLeadSchema", () => {
   it("strips unknown keys", () => {
     const result = CreateLeadSchema.safeParse({
       clientId: "client-uuid-001",
-      productLine: "ads_management",
+      productLine: "speakership",
       projectType: "one_time",
       rogue: "value",
     })
@@ -201,7 +201,7 @@ describe("CreateLeadSchema — lostReason field", () => {
   it("accepts lostReason as optional", () => {
     const result = CreateLeadSchema.safeParse({
       clientId: "client-uuid-001",
-      productLine: "smm",
+      productLine: "brand_placement",
       projectType: "retainer",
       lostReason: "timing",
     })
@@ -211,7 +211,7 @@ describe("CreateLeadSchema — lostReason field", () => {
   it("accepts without lostReason (backwards compatible)", () => {
     const result = CreateLeadSchema.safeParse({
       clientId: "client-uuid-001",
-      productLine: "smm",
+      productLine: "brand_placement",
       projectType: "retainer",
     })
     expect(result.success).toBe(true)

@@ -537,12 +537,10 @@ function LostReasonTooltip({ active, payload }: LostReasonTooltipProps) {
 // ---------------------------------------------------------------------------
 
 const PRODUCT_LINE_LABELS: Record<string, string> = {
-  stracomm: "Stracomm",
-  smm: "SMM",
-  creative_strategy: "Creative Strategy",
-  media_buying: "Media Buying",
-  ads_management: "Ads Mgmt",
-  production: "Production",
+  brand_placement: "Brand Placement",
+  speakership: "Speakership",
+  community_event: "Community Event",
+  commissioned_event: "Commissioned Event",
   others: "Others",
 }
 

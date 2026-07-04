@@ -257,12 +257,10 @@ enum ProjectType {
 }
 
 enum ProductLine {
-  stracomm
-  smm
-  creative_strategy
-  media_buying
-  ads_management
-  production
+  brand_placement
+  speakership
+  community_event
+  commissioned_event
   others
 }
 

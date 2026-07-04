@@ -23,12 +23,10 @@ export const LostReasonSchema = z.enum([
 ])
 
 export const ProductLineSchema = z.enum([
-  "stracomm",
-  "smm",
-  "creative_strategy",
-  "media_buying",
-  "ads_management",
-  "production",
+  "brand_placement",
+  "speakership",
+  "community_event",
+  "commissioned_event",
   "others",
 ])
 

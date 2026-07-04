@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// Open ERP — Shared TypeScript Types
+// KULI ERP — Shared TypeScript Types
 // Phase 2: CRM + BizDev Pipeline
 // ─────────────────────────────────────────────
 
@@ -28,12 +28,10 @@ export type PipelineStage =
 export type ProjectType = "one_time" | "retainer"
 
 export type ProductLine =
-  | "stracomm"
-  | "smm"
-  | "creative_strategy"
-  | "media_buying"
-  | "ads_management"
-  | "production"
+  | "brand_placement"
+  | "speakership"
+  | "community_event"
+  | "commissioned_event"
   | "others"
 
 export type DocumentType = "quotation" | "quotation_signed" | "contract" | "other"

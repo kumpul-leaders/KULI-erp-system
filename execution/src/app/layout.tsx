@@ -12,8 +12,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Open ERP",
-    default: "Open ERP",
+    template: "%s | KULI ERP",
+    default: "KULI ERP",
   },
   description: "Internal CRM + BizDev Pipeline",
 }

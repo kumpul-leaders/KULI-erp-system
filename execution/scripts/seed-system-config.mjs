@@ -29,12 +29,10 @@ const STAGE_GATES = [
 ]
 
 const PRODUCT_LINE_LABELS = {
-  smm: "Social Media Management",
-  stracomm: "Stracomm",
-  creative_strategy: "Creative Strategy",
-  media_buying: "Media Buying",
-  ads_management: "Ads Management",
-  production: "Production",
+  brand_placement: "Brand Placement",
+  speakership: "Speakership",
+  community_event: "Community Event",
+  commissioned_event: "Commissioned Event",
   others: "Others",
 }
 

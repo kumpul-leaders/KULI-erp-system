@@ -100,10 +100,7 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
           <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-100 px-4 py-3">
             <div className="flex items-center">
               <span className="text-lg font-bold tracking-tight text-neutral-800 dark:text-neutral-700">
-                Open ERP
-              </span>
-              <span className="ml-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
-                ERP
+                KULI ERP
               </span>
             </div>
             <button

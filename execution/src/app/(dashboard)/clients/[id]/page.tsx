@@ -244,8 +244,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       lost_deal: "Lost Deal", no_response: "No Response",
     }
     const PRODUCT_LABELS: Record<string, string> = {
-      stracomm: "Stracomm", smm: "SMM", creative_strategy: "Creative Strategy",
-      media_buying: "Media Buying", ads_management: "Ads Mgmt", production: "Production", others: "Others",
+      brand_placement: "Brand Placement", speakership: "Speakership",
+      community_event: "Community Event", commissioned_event: "Commissioned Event", others: "Others",
     }
     const quarter = lead.billingPlan
       ? `Q${Math.ceil(parseInt(lead.billingPlan.split("-")[1]) / 3)} '${lead.billingPlan.split("-")[0]}`

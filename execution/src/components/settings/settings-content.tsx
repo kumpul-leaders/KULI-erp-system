@@ -89,12 +89,10 @@ const ROLE_BADGE: Record<string, string> = {
 }
 
 const PRODUCT_LINES: Array<{ db: string; display: string }> = [
-  { db: "smm", display: "Social Media Management" },
-  { db: "stracomm", display: "Stracomm" },
-  { db: "creative_strategy", display: "Creative Strategy" },
-  { db: "media_buying", display: "Media Buying" },
-  { db: "ads_management", display: "Ads Management" },
-  { db: "production", display: "Production" },
+  { db: "brand_placement", display: "Brand Placement" },
+  { db: "speakership", display: "Speakership" },
+  { db: "community_event", display: "Community Event" },
+  { db: "commissioned_event", display: "Commissioned Event" },
   { db: "others", display: "Others" },
 ]
 

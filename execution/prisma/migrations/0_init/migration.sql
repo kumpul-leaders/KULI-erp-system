@@ -23,7 +23,7 @@ CREATE TYPE "PipelineStage" AS ENUM ('leads', 'pipeline', 'negotiation', 'closed
 CREATE TYPE "ProjectType" AS ENUM ('one_time', 'retainer');
 
 -- CreateEnum
-CREATE TYPE "ProductLine" AS ENUM ('stracomm', 'smm', 'creative_strategy', 'media_buying', 'ads_management', 'production', 'others');
+CREATE TYPE "ProductLine" AS ENUM ('brand_placement', 'speakership', 'community_event', 'commissioned_event', 'others');
 
 -- CreateEnum
 CREATE TYPE "DocumentType" AS ENUM ('quotation', 'quotation_signed', 'contract', 'other');

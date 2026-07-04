@@ -155,6 +155,24 @@ function ClientCombobox({ value, onSelect, error }: ClientComboboxProps) {
           Searching...
         </div>
       )}
+      {open && query.length < 2 && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-card shadow-dropdown px-3 py-2.5">
+          <p className="text-xs text-neutral-400">Ketik minimal 2 karakter untuk mencari client</p>
+        </div>
+      )}
+      {open && query.length >= 2 && !loading && results.length === 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-card shadow-dropdown px-3 py-3">
+          <p className="text-sm text-neutral-600">
+            Tidak ditemukan client &ldquo;{query}&rdquo;.
+          </p>
+          <a
+            href="/clients"
+            className="mt-1 inline-block text-xs font-medium text-accent-600 hover:text-accent-700"
+          >
+            Daftarkan client baru →
+          </a>
+        </div>
+      )}
       {open && results.length > 0 && (
         <div className="absolute z-50 mt-1 w-full rounded-lg border border-neutral-200 bg-card shadow-dropdown overflow-hidden">
           {results.map((client) => (

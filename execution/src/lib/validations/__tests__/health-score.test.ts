@@ -49,32 +49,8 @@ describe("computeSignalActivity", () => {
 // ── computeSignalRenewal ──────────────────────────────────────────────────────
 
 describe("computeSignalRenewal", () => {
-  it("returns 50 when no contract (null)", () => {
+  it("always returns 50 (neutral) — contract tracking removed", () => {
     expect(computeSignalRenewal(null)).toBe(50)
-  })
-
-  it("returns 100 when > 180 days remaining", () => {
-    expect(computeSignalRenewal(181)).toBe(100)
-  })
-
-  it("returns 75 at 91 days", () => {
-    expect(computeSignalRenewal(91)).toBe(75)
-  })
-
-  it("returns 50 at 61 days", () => {
-    expect(computeSignalRenewal(61)).toBe(50)
-  })
-
-  it("returns 25 at 31 days", () => {
-    expect(computeSignalRenewal(31)).toBe(25)
-  })
-
-  it("returns 0 at exactly 30 days", () => {
-    expect(computeSignalRenewal(30)).toBe(0)
-  })
-
-  it("returns 0 when already expired (negative)", () => {
-    expect(computeSignalRenewal(-5)).toBe(0)
   })
 })
 
@@ -153,7 +129,7 @@ describe("computeHealthSignals", () => {
   it("returns healthy band for a well-engaged client", () => {
     const result = computeHealthSignals({
       lastActivityDaysAgo: 3,
-      contractDaysRemaining: 200,
+      contractDaysRemaining: null,
       hasRecentWonLead: true,
       hasOpenPipeline: true,
       hasRecentUpsellWon: false,
@@ -169,7 +145,7 @@ describe("computeHealthSignals", () => {
   it("returns at_risk for a stale client", () => {
     const result = computeHealthSignals({
       lastActivityDaysAgo: 90,
-      contractDaysRemaining: 20,
+      contractDaysRemaining: null,
       hasRecentWonLead: false,
       hasOpenPipeline: false,
       hasRecentUpsellWon: false,
@@ -185,7 +161,7 @@ describe("computeHealthSignals", () => {
   it("unacknowledged alert forces engagement to 0", () => {
     const result = computeHealthSignals({
       lastActivityDaysAgo: 1,
-      contractDaysRemaining: 300,
+      contractDaysRemaining: null,
       hasRecentWonLead: true,
       hasOpenPipeline: true,
       hasRecentUpsellWon: true,
@@ -235,7 +211,7 @@ describe("cold-start scenario", () => {
   it("client with no activity at all scores at_risk with signalActivity=0", () => {
     const result = computeHealthSignals({
       lastActivityDaysAgo: null,     // no activity or comment ever
-      contractDaysRemaining: 365,    // contract fine
+      contractDaysRemaining: null,    // contract fine
       hasRecentWonLead: true,        // strong revenue signal
       hasOpenPipeline: true,
       hasRecentUpsellWon: false,
@@ -253,7 +229,7 @@ describe("cold-start scenario", () => {
   it("same client with one recent activity scores healthy — guard allows apply", () => {
     const result = computeHealthSignals({
       lastActivityDaysAgo: 3,        // active this week
-      contractDaysRemaining: 365,
+      contractDaysRemaining: null,
       hasRecentWonLead: true,
       hasOpenPipeline: true,
       hasRecentUpsellWon: false,

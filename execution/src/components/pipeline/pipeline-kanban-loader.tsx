@@ -10,7 +10,9 @@ import {
   CalendarDays,
   SlidersHorizontal,
   ArrowUpDown,
+  AlertTriangle,
 } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -103,6 +105,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
   const [leads, setLeads] = useState<SerializedLead[]>([])
   const [salesOptions, setSalesOptions] = useState<SalesOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasClients, setHasClients] = useState<boolean | null>(null)
   const [sheetOpen, setSheetOpen] = useState(searchParams.get("new") === "1")
 
   // View + filter state
@@ -152,9 +155,10 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
     async function load() {
       setLoading(true)
       try {
-        const [leadsRes, usersRes] = await Promise.all([
+        const [leadsRes, usersRes, clientsRes] = await Promise.all([
           fetch("/api/leads"),
           fetch("/api/users"),
+          fetch("/api/clients?limit=1"),
         ])
 
         if (!cancelled) {
@@ -162,6 +166,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
           const usersData = (await usersRes.json()) as {
             users: Array<{ id: string; name: string; role: string }>
           }
+          const clientsData = (await clientsRes.json()) as { clients: unknown[] }
 
           const salesUsers = usersData.users.filter(
             (u) => u.role === "account" || u.role === "admin" || u.role === "account_manager"
@@ -169,6 +174,7 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
 
           setLeads(leadsData.leads ?? [])
           setSalesOptions(salesUsers)
+          setHasClients((clientsData.clients ?? []).length > 0)
         }
       } catch (err) {
         console.error("[PipelineKanbanLoader]", err)
@@ -431,11 +437,36 @@ export function PipelineKanbanLoader({ filterParam }: PipelineKanbanLoaderProps)
         </div>
 
         {/* Add Lead */}
-        <Button size="sm" className="gap-1.5" onClick={() => setSheetOpen(true)}>
+        <Button
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setSheetOpen(true)}
+          disabled={hasClients === false}
+          title={hasClients === false ? "Daftarkan client terlebih dahulu" : undefined}
+        >
           <Plus className="h-4 w-4" />
           Add Lead
         </Button>
       </div>
+
+      {/* No-client guard banner */}
+      {hasClients === false && (
+        <div className="mx-4 mt-3 flex items-start gap-3 rounded-lg border border-warning-500 bg-warning-50 px-4 py-3 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-warning-700" />
+          <div className="flex-1">
+            <p className="font-medium text-warning-700">Belum ada client terdaftar</p>
+            <p className="text-warning-700/80 mt-0.5">
+              Daftarkan client terlebih dahulu sebelum membuat lead.
+            </p>
+          </div>
+          <Link
+            href="/clients"
+            className="flex-shrink-0 rounded-md bg-warning-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-warning-700 transition-colors"
+          >
+            Tambah Client →
+          </Link>
+        </div>
+      )}
 
       {/* Board / List / Calendar */}
       <div

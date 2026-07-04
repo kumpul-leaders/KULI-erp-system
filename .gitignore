@@ -1,19 +1,34 @@
 # OS
 .DS_Store
 
-# Raw business data — contains client PII, do not commit
+# Env — contains secrets, never commit
+.env*
+
+# Dependencies & build
+node_modules/
+.next/
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Raw business data — contains client PII
 Data/
 
 # Temp files
 .tmp/
 
-# Google OAuth (if ever added)
+# Google OAuth
 credentials.json
 token.json
 
-# Vercel local config
+# Vercel
 .vercel/
 
-# Playwright artifacts
-execution/test-results/
-execution/playwright-report/
+# Playwright
+test-results/
+playwright-report/
+
+# Helper scripts (local only)
+fix-alias.sh
+check-logs.sh
+verify-build.sh
+ship.sh

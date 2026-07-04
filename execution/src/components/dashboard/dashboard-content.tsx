@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { formatIDR, formatIDRCompact, daysUntil, contractUrgency } from "@/lib/utils"
+import { formatIDR, formatIDRCompact } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import {
   Sheet,
@@ -43,8 +43,6 @@ type SerializedClient = {
   name: string
   industry: string | null
   aeName: string | null
-  annualValue: number | null
-  contractEnd: string | null // ISO string
 }
 
 // ---------------------------------------------------------------------------
@@ -225,23 +223,14 @@ function LeadDrillTable({
 
 function ClientDrillTable({ clients }: { clients: SerializedClient[] }) {
   const [search, setSearch] = useState("")
-  const [sort, setSort] = useState<{ col: "name" | "annualValue"; dir: "asc" | "desc" }>({ col: "name", dir: "asc" })
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
 
   const filtered = clients
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      const dir = sort.dir === "asc" ? 1 : -1
-      if (sort.col === "name") return a.name.localeCompare(b.name) * dir
-      return ((a.annualValue ?? 0) - (b.annualValue ?? 0)) * dir
-    })
+    .sort((a, b) => a.name.localeCompare(b.name) * (sortDir === "asc" ? 1 : -1))
 
-  function toggleSort(col: typeof sort.col) {
-    setSort((prev) => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" })
-  }
-
-  function sortIndicator(col: typeof sort.col) {
-    if (sort.col !== col) return null
-    return sort.dir === "asc" ? " ↑" : " ↓"
+  function toggleSort() {
+    setSortDir((prev) => prev === "asc" ? "desc" : "asc")
   }
 
   return (
@@ -260,21 +249,15 @@ function ClientDrillTable({ clients }: { clients: SerializedClient[] }) {
             <tr className="border-b border-neutral-200">
               <th
                 className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3 cursor-pointer hover:text-neutral-600 select-none"
-                onClick={() => toggleSort("name")}
+                onClick={toggleSort}
               >
-                Client{sortIndicator("name")}
+                Client {sortDir === "asc" ? "↑" : "↓"}
               </th>
               <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
                 Industry
               </th>
-              <th className="text-left text-xs font-medium text-neutral-400 pb-2 pr-3">
+              <th className="text-left text-xs font-medium text-neutral-400 pb-2">
                 Busdev/AE
-              </th>
-              <th
-                className="text-right text-xs font-medium text-neutral-400 pb-2 cursor-pointer hover:text-neutral-600 select-none"
-                onClick={() => toggleSort("annualValue")}
-              >
-                Annual Value{sortIndicator("annualValue")}
               </th>
             </tr>
           </thead>
@@ -295,11 +278,8 @@ function ClientDrillTable({ clients }: { clients: SerializedClient[] }) {
                 <td className="py-2.5 pr-3 text-xs text-neutral-500">
                   {client.industry ?? "—"}
                 </td>
-                <td className="py-2.5 pr-3 text-xs text-neutral-500">
+                <td className="py-2.5 text-xs text-neutral-500">
                   {client.aeName ?? "—"}
-                </td>
-                <td className="py-2.5 text-right tabular-nums text-neutral-700">
-                  {formatIDR(client.annualValue)}
                 </td>
               </tr>
             ))}
@@ -425,8 +405,6 @@ interface DashboardContentProps {
   revenueTarget: number
   progressPct: number
   currentMonthLabel: string
-  /** Kept for AlertsPanel fallback when no open alerts exist */
-  expiringContracts: { id: string; name: string; contractEnd: string | null; monthlyValue: number | null; annualValue: number | null }[]
   atRiskCount: number
   churnedCount: number
   recentActivity: {
@@ -461,7 +439,6 @@ export function DashboardContent({
   revenueTarget,
   progressPct,
   currentMonthLabel,
-  expiringContracts,
   atRiskCount,
   churnedCount,
   recentActivity,
@@ -692,14 +669,8 @@ export function DashboardContent({
 
           {/* Right col */}
           <div className="space-y-4 md:space-y-6">
-            {/* Alerts — live from /api/alerts?status=open; falls back to expiring contracts */}
-            <AlertsPanel
-              expiringContracts={expiringContracts.map((c) => ({
-                id: c.id,
-                name: c.name,
-                contractEnd: c.contractEnd,
-              }))}
-            />
+            {/* Alerts — live from /api/alerts?status=open */}
+            <AlertsPanel />
 
             {/* Client Health */}
             <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
@@ -737,62 +708,6 @@ export function DashboardContent({
               </div>
             </div>
 
-            {/* Expiring Contracts — 90 days, data already in props */}
-            {expiringContracts.length > 0 && (
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-700">
-                    Kontrak Berakhir 90 Hari
-                  </h2>
-                  <span className="text-xs text-neutral-400">{expiringContracts.length} klien</span>
-                </div>
-                <div className="space-y-2">
-                  {expiringContracts.map((c) => {
-                    const days = c.contractEnd ? daysUntil(c.contractEnd) : null
-                    const urgency = days !== null ? contractUrgency(days) : "none"
-                    const urgencyColor =
-                      urgency === "critical"
-                        ? "text-danger-700 dark:text-danger-500"
-                        : urgency === "warning"
-                        ? "text-warning-700 dark:text-warning-500"
-                        : "text-neutral-500 dark:text-neutral-400"
-                    const dotColor =
-                      urgency === "critical"
-                        ? "bg-danger-500"
-                        : urgency === "warning"
-                        ? "bg-warning-500"
-                        : "bg-neutral-300 dark:bg-neutral-500"
-                    return (
-                      <div
-                        key={c.id}
-                        className="flex items-center gap-3 py-2 border-b border-neutral-100 dark:border-neutral-100 last:border-0"
-                      >
-                        <div className={`h-2 w-2 rounded-full flex-shrink-0 ${dotColor}`} />
-                        <div className="flex-1 min-w-0">
-                          <Link
-                            href={`/clients/${c.id}`}
-                            className="text-sm font-medium text-neutral-700 dark:text-neutral-700 truncate block hover:text-accent-600 hover:underline"
-                          >
-                            {c.name}
-                          </Link>
-                          {c.annualValue !== null && (
-                            <p className="text-[11px] tabular-nums text-neutral-400">
-                              {formatIDRCompact(c.annualValue)}/tahun
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className={`text-xs font-medium tabular-nums ${urgencyColor}`}>
-                            {days !== null ? `${days}h` : "—"}
-                          </p>
-                          <p className="text-[10px] text-neutral-400">lagi</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </main>

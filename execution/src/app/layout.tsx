@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter_Tight } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/shared/theme-provider"
 import "./globals.css"
 
-const inter = Inter({
+const interTight = Inter_Tight({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-sans",
   display: "swap",
 })
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${inter.variable} h-full`}
+      className={`${interTight.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="h-full bg-background antialiased">

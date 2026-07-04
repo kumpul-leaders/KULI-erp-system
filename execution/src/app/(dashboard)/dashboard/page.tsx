@@ -25,8 +25,6 @@ type SerializedClient = {
   name: string
   industry: string | null
   aeName: string | null
-  annualValue: number | null
-  contractEnd: string | null // ISO string
 }
 
 function toBillingPlan(year: number, month: number): string {
@@ -36,9 +34,6 @@ function toBillingPlan(year: number, month: number): string {
 export default async function DashboardPage() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-
-  const in90Days = new Date()
-  in90Days.setDate(in90Days.getDate() + 90)
 
   const currentBillingPlan = toBillingPlan(now.getFullYear(), now.getMonth() + 1)
 
@@ -58,7 +53,6 @@ export default async function DashboardPage() {
     healthyCount,
     newLeadsCount,
     currentTarget,
-    expiringContracts,
     atRiskCount,
     churnedCount,
     recentActivity,
@@ -106,22 +100,6 @@ export default async function DashboardPage() {
         periodYear: now.getFullYear(),
         type: "monthly",
       },
-    }),
-    prisma.client.findMany({
-      where: {
-        deletedAt: null,
-        contractEnd: { gte: now, lte: in90Days },
-      },
-      select: {
-        id: true,
-        name: true,
-        contractEnd: true,
-        primaryAe: true,
-        monthlyValue: true,
-        annualValue: true,
-      },
-      orderBy: { contractEnd: "asc" },
-      take: 8,
     }),
     prisma.client.count({ where: { deletedAt: null, healthStatus: "at_risk" } }),
     prisma.client.count({ where: { deletedAt: null, healthStatus: "churned" } }),
@@ -175,8 +153,6 @@ export default async function DashboardPage() {
         id: true,
         name: true,
         industry: true,
-        annualValue: true,
-        contractEnd: true,
         ae: { select: { name: true } },
       },
       orderBy: { name: "asc" },
@@ -200,8 +176,6 @@ export default async function DashboardPage() {
         id: true,
         name: true,
         industry: true,
-        annualValue: true,
-        contractEnd: true,
         ae: { select: { name: true } },
       },
       orderBy: { name: "asc" },
@@ -213,8 +187,6 @@ export default async function DashboardPage() {
         id: true,
         name: true,
         industry: true,
-        annualValue: true,
-        contractEnd: true,
         ae: { select: { name: true } },
       },
       orderBy: { name: "asc" },
@@ -311,8 +283,6 @@ export default async function DashboardPage() {
     name: c.name,
     industry: c.industry,
     aeName: c.ae?.name ?? null,
-    annualValue: c.annualValue !== null ? Number(c.annualValue) : null,
-    contractEnd: c.contractEnd?.toISOString() ?? null,
   }))
 
   const newLeadsDrillDown: SerializedLead[] = drillNewLeads.map((l) => ({
@@ -332,8 +302,6 @@ export default async function DashboardPage() {
     name: c.name,
     industry: c.industry,
     aeName: c.ae?.name ?? null,
-    annualValue: c.annualValue !== null ? Number(c.annualValue) : null,
-    contractEnd: c.contractEnd?.toISOString() ?? null,
   }))
 
   const churnedDrillDown: SerializedClient[] = drillChurnedClients.map((c) => ({
@@ -341,8 +309,6 @@ export default async function DashboardPage() {
     name: c.name,
     industry: c.industry,
     aeName: c.ae?.name ?? null,
-    annualValue: c.annualValue !== null ? Number(c.annualValue) : null,
-    contractEnd: c.contractEnd?.toISOString() ?? null,
   }))
 
   return (
@@ -358,13 +324,6 @@ export default async function DashboardPage() {
         revenueTarget={revenueTarget}
         progressPct={progressPct}
         currentMonthLabel={currentMonthLabel}
-        expiringContracts={expiringContracts.map((c) => ({
-          id: c.id,
-          name: c.name,
-          contractEnd: c.contractEnd?.toISOString() ?? null,
-          monthlyValue: c.monthlyValue !== null ? Number(c.monthlyValue) : null,
-          annualValue: c.annualValue !== null ? Number(c.annualValue) : null,
-        }))}
         atRiskCount={atRiskCount}
         churnedCount={churnedCount}
         recentActivity={recentActivity.map((a) => ({

@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Trash2 } from "lucide-react"
-import type { EngagementType, HealthStatus, ClientStatus } from "@/types"
+import type { ClientStatus } from "@/types"
 
 interface AeOption {
   id: string
@@ -35,12 +35,7 @@ interface ClientForEdit {
   customerCode?: string | null
   industry?: string | null
   orgSize?: string | null
-  engagementType: EngagementType
-  contractStart?: Date | string | null
-  contractEnd?: Date | string | null
-  monthlyValue?: number | null
-  annualValue?: number | null
-  healthStatus: HealthStatus
+  officeAddress?: string | null
   clientStatus?: ClientStatus | null
   primaryAe?: string | null
   notes?: string | null
@@ -72,12 +67,6 @@ const INDUSTRY_OPTIONS = [
 
 const ORG_SIZE_OPTIONS = ["1-10", "11-50", "51-200", "201-1000", "1000+"]
 
-function toDateInput(val: Date | string | null | undefined): string {
-  if (!val) return ""
-  const d = typeof val === "string" ? new Date(val) : val
-  return d.toISOString().split("T")[0]
-}
-
 export function EditClientSheet({
   open,
   onOpenChange,
@@ -90,12 +79,7 @@ export function EditClientSheet({
     name: client.name,
     industry: client.industry ?? "",
     orgSize: client.orgSize ?? "",
-    engagementType: client.engagementType as EngagementType | "",
-    contractStart: toDateInput(client.contractStart),
-    contractEnd: toDateInput(client.contractEnd),
-    monthlyValue: client.monthlyValue?.toString() ?? "",
-    annualValue: client.annualValue?.toString() ?? "",
-    healthStatus: client.healthStatus as HealthStatus,
+    officeAddress: client.officeAddress ?? "",
     clientStatus: (client.clientStatus ?? "") as ClientStatus | "",
     primaryAe: client.primaryAe ?? "",
     notes: client.notes ?? "",
@@ -110,12 +94,7 @@ export function EditClientSheet({
       name: client.name,
       industry: client.industry ?? "",
       orgSize: client.orgSize ?? "",
-      engagementType: client.engagementType,
-      contractStart: toDateInput(client.contractStart),
-      contractEnd: toDateInput(client.contractEnd),
-      monthlyValue: client.monthlyValue?.toString() ?? "",
-      annualValue: client.annualValue?.toString() ?? "",
-      healthStatus: client.healthStatus,
+      officeAddress: client.officeAddress ?? "",
       clientStatus: (client.clientStatus ?? "") as ClientStatus | "",
       primaryAe: client.primaryAe ?? "",
       notes: client.notes ?? "",
@@ -130,12 +109,6 @@ export function EditClientSheet({
   function validate(): boolean {
     const newErrors: Partial<Record<string, string>> = {}
     if (!form.name.trim()) newErrors.name = "Client name is required"
-    if (!form.engagementType) newErrors.engagementType = "Engagement type is required"
-    if (form.contractStart && form.contractEnd) {
-      if (new Date(form.contractEnd) <= new Date(form.contractStart)) {
-        newErrors.contractEnd = "Contract end must be after contract start"
-      }
-    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -153,13 +126,8 @@ export function EditClientSheet({
           name: form.name.trim(),
           industry: form.industry || null,
           orgSize: form.orgSize || null,
-          engagementType: form.engagementType,
-          contractStart: form.contractStart || null,
-          contractEnd: form.contractEnd || null,
-          monthlyValue: form.monthlyValue ? Number(form.monthlyValue) : null,
-          annualValue: form.annualValue ? Number(form.annualValue) : null,
-          healthStatus: form.healthStatus,
-          clientStatus: form.clientStatus,
+          officeAddress: form.officeAddress.trim() || null,
+          clientStatus: form.clientStatus || null,
           primaryAe: form.primaryAe && form.primaryAe !== "none" ? form.primaryAe : null,
           notes: form.notes || null,
         }),
@@ -271,94 +239,6 @@ export function EditClientSheet({
             </Select>
           </div>
 
-          {/* Engagement Type */}
-          <div className="space-y-1.5">
-            <Label>Engagement Type <span className="text-danger-500">*</span></Label>
-            <Select
-              value={form.engagementType}
-              onValueChange={(v) => handleField("engagementType", v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="retainer">Retainer</SelectItem>
-                <SelectItem value="project">Project</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.engagementType && (
-              <p className="text-xs text-danger-500">{errors.engagementType}</p>
-            )}
-          </div>
-
-          {/* Contract Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-start">Contract Start</Label>
-              <Input
-                id="edit-start"
-                type="date"
-                value={form.contractStart}
-                onChange={(e) => handleField("contractStart", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-end">Contract End</Label>
-              <Input
-                id="edit-end"
-                type="date"
-                value={form.contractEnd}
-                onChange={(e) => handleField("contractEnd", e.target.value)}
-              />
-              {errors.contractEnd && (
-                <p className="text-xs text-danger-500">{errors.contractEnd}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Contract Values */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-monthly">Monthly Value (IDR)</Label>
-              <Input
-                id="edit-monthly"
-                type="number"
-                value={form.monthlyValue}
-                onChange={(e) => handleField("monthlyValue", e.target.value)}
-                min={0}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-annual">Annual Value (IDR)</Label>
-              <Input
-                id="edit-annual"
-                type="number"
-                value={form.annualValue}
-                onChange={(e) => handleField("annualValue", e.target.value)}
-                min={0}
-              />
-            </div>
-          </div>
-
-          {/* Health Status */}
-          <div className="space-y-1.5">
-            <Label>Health Status</Label>
-            <Select
-              value={form.healthStatus}
-              onValueChange={(v) => handleField("healthStatus", v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="healthy">Healthy</SelectItem>
-                <SelectItem value="at_risk">At Risk</SelectItem>
-                <SelectItem value="churned">Churned</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Primary Busdev/AE */}
           <div className="space-y-1.5">
             <Label>Primary Busdev/AE</Label>
@@ -378,6 +258,17 @@ export function EditClientSheet({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Office Address */}
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-office-address">Office Address</Label>
+            <Input
+              id="edit-office-address"
+              value={form.officeAddress}
+              onChange={(e) => handleField("officeAddress", e.target.value)}
+              placeholder="Full office address"
+            />
           </div>
 
           {/* Notes */}

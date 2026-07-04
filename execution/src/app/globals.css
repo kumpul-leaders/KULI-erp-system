@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────
@@ -8,101 +7,103 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ─────────────────────────────────────────────
-   TAILWIND V4 CSS-FIRST THEME CONFIG
-   Maps design system tokens from spec.
+   KULI ERP — KUMPUL LEADERS BRAND THEME
+   Accent: Forest Green / Green (#154F3D, #1A6947)
+   Highlight: Orange (#E36A16)
+   Surfaces: Cream (#F4E6CE), White (#EEEEEE), Black (#1C1C1C)
 ───────────────────────────────────────────── */
 @theme {
   /* Fonts */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter Tight", system-ui, -apple-system, sans-serif;
 
-  /* ── Neutral / Slate scale ── */
-  --color-neutral-0: #ffffff;
-  --color-neutral-50: #f8fafc;
-  --color-neutral-100: #f1f5f9;
-  --color-neutral-200: #e2e8f0;
-  --color-neutral-300: #cbd5e1;
-  --color-neutral-400: #94a3b8;
-  --color-neutral-500: #64748b;
-  --color-neutral-600: #475569;
-  --color-neutral-700: #334155;
-  --color-neutral-800: #1e293b;
-  --color-neutral-900: #0f172a;
+  /* ── Neutral / Warm scale (Cream-tinted) ── */
+  --color-neutral-0:   #ffffff;
+  --color-neutral-50:  #F9F5EF;
+  --color-neutral-100: #F4E6CE;
+  --color-neutral-200: #E8D5B5;
+  --color-neutral-300: #CCBA97;
+  --color-neutral-400: #A89272;
+  --color-neutral-500: #7A6A54;
+  --color-neutral-600: #5A4D3C;
+  --color-neutral-700: #3D3328;
+  --color-neutral-800: #282018;
+  --color-neutral-900: #1C1C1C;
 
-  /* ── Accent / Indigo ── */
-  --color-accent-50: #eef2ff;
-  --color-accent-100: #e0e7ff;
-  --color-accent-200: #c7d2fe;
-  --color-accent-500: #6366f1;
-  --color-accent-600: #4f46e5;
-  --color-accent-700: #4338ca;
+  /* ── Accent / KL Green ── */
+  --color-accent-50:  #EAF5EF;
+  --color-accent-100: #C6E8D4;
+  --color-accent-200: #8FCFB0;
+  --color-accent-500: #1A6947;
+  --color-accent-600: #154F3D;
+  --color-accent-700: #0F3A2D;
   --color-accent-foreground: #ffffff;
 
   /* ── Semantic status ── */
-  --color-success-50: #f0fdf4;
+  --color-success-50:  #f0fdf4;
   --color-success-500: #22c55e;
   --color-success-700: #15803d;
-  --color-warning-50: #fffbeb;
-  --color-warning-500: #f59e0b;
-  --color-warning-700: #b45309;
-  --color-danger-50: #fff1f2;
-  --color-danger-500: #ef4444;
-  --color-danger-700: #b91c1c;
-  --color-info-50: #eff6ff;
-  --color-info-500: #3b82f6;
-  --color-info-700: #1d4ed8;
+  --color-warning-50:  #FEF3E8;
+  --color-warning-500: #E36A16;
+  --color-warning-700: #B55212;
+  --color-danger-50:   #fff1f2;
+  --color-danger-500:  #ef4444;
+  --color-danger-700:  #b91c1c;
+  --color-info-50:     #eff6ff;
+  --color-info-500:    #3b82f6;
+  --color-info-700:    #1d4ed8;
 
-  /* ── shadcn/ui CSS variable aliases (Tailwind v4 inline) ── */
-  --color-background: #ffffff;
-  --color-foreground: #1e293b;
-  --color-card: #ffffff;
-  --color-card-foreground: #1e293b;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #1e293b;
-  --color-primary: #6366f1;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #1e293b;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-accent: #eef2ff;
-  --color-accent-foreground: #4338ca;
-  --color-destructive: #ef4444;
+  /* ── shadcn/ui CSS variable aliases ── */
+  --color-background:          #FAFAF8;
+  --color-foreground:          #1C1C1C;
+  --color-card:                #ffffff;
+  --color-card-foreground:     #1C1C1C;
+  --color-popover:             #ffffff;
+  --color-popover-foreground:  #1C1C1C;
+  --color-primary:             #154F3D;
+  --color-primary-foreground:  #ffffff;
+  --color-secondary:           #F4E6CE;
+  --color-secondary-foreground:#1C1C1C;
+  --color-muted:               #F4E6CE;
+  --color-muted-foreground:    #7A6A54;
+  --color-accent:              #EAF5EF;
+  --color-accent-foreground:   #154F3D;
+  --color-destructive:         #ef4444;
   --color-destructive-foreground: #ffffff;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #6366f1;
+  --color-border:              #E8D5B5;
+  --color-input:               #E8D5B5;
+  --color-ring:                #1A6947;
 
   /* ── Border radius ── */
-  --radius-sm: 0.25rem;   /* 4px — badge, chip */
-  --radius-md: 0.375rem;  /* 6px — button */
-  --radius-lg: 0.5rem;    /* 8px — card, input, dropdown, kanban */
-  --radius-xl: 0.75rem;   /* 12px — modal / sheet */
+  --radius-sm:   0.25rem;   /* 4px — badge, chip */
+  --radius-md:   0.375rem;  /* 6px — button */
+  --radius-lg:   0.5rem;    /* 8px — card, input, dropdown, kanban */
+  --radius-xl:   0.75rem;   /* 12px — modal / sheet */
   --radius-full: 9999px;
 
   /* ── Shadows ── */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
-  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
-  --shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 0.10), 0 8px 10px -6px rgb(0 0 0 / 0.10);
-  --shadow-dropdown: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-kanban: 0 1px 3px 0 rgb(0 0 0 / 0.08);
+  --shadow-card:        0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+  --shadow-card-hover:  0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+  --shadow-modal:       0 20px 25px -5px rgb(0 0 0 / 0.10), 0 8px 10px -6px rgb(0 0 0 / 0.10);
+  --shadow-dropdown:    0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-kanban:      0 1px 3px 0 rgb(0 0 0 / 0.08);
   --shadow-kanban-drag: 0 10px 15px -3px rgb(0 0 0 / 0.10), 0 4px 6px -4px rgb(0 0 0 / 0.10);
 
   /* ── Animations ── */
   --animate-shimmer: shimmer 1.5s infinite;
 
   @keyframes shimmer {
-    0% { background-position: -200% 0; }
+    0%   { background-position: -200% 0; }
     100% { background-position: 200% 0; }
   }
 
   @keyframes accordion-down {
     from { height: 0; }
-    to { height: var(--radix-accordion-content-height); }
+    to   { height: var(--radix-accordion-content-height); }
   }
 
   @keyframes accordion-up {
     from { height: var(--radix-accordion-content-height); }
-    to { height: 0; }
+    to   { height: 0; }
   }
 }
 
@@ -125,82 +126,82 @@
   }
 
   /* ── Dark mode token overrides ─────────────────
-     Flip the neutral scale. Surface = slate-800/900.
-     Status 50 backgrounds darkened; vivid colors stay.
-     shadcn semantic vars remapped for dark.
+     Background: KL Black (#1C1C1C)
+     Surfaces: warm dark
+     Accent: lighter greens for dark visibility
   ─────────────────────────────────────────────── */
   .dark {
     /* Page background & default foreground */
-    --color-background: #0f172a;       /* neutral-900 */
-    --color-foreground: #e2e8f0;       /* neutral-200 */
+    --color-background: #1C1C1C;
+    --color-foreground: #EEEEEE;
 
     /* Card / surface */
-    --color-card: #1e293b;             /* neutral-800 */
-    --color-card-foreground: #e2e8f0;
+    --color-card:             #252320;
+    --color-card-foreground:  #EEEEEE;
 
     /* Popover / dropdown */
-    --color-popover: #1e293b;
-    --color-popover-foreground: #e2e8f0;
+    --color-popover:             #252320;
+    --color-popover-foreground:  #EEEEEE;
 
-    /* Primary (indigo) — stays the same, lighter variant */
-    --color-primary: #818cf8;          /* indigo-400 — more visible on dark */
-    --color-primary-foreground: #0f172a;
+    /* Primary (green) — lighter variant for dark */
+    --color-primary:             #3DB87A;
+    --color-primary-foreground:  #1C1C1C;
 
     /* Secondary surface */
-    --color-secondary: #334155;        /* neutral-700 */
-    --color-secondary-foreground: #e2e8f0;
+    --color-secondary:             #2E2B27;
+    --color-secondary-foreground:  #EEEEEE;
 
     /* Muted */
-    --color-muted: #1e293b;
-    --color-muted-foreground: #94a3b8; /* neutral-400 */
+    --color-muted:             #252320;
+    --color-muted-foreground:  #9E9588;
 
-    /* Accent tint — dark surface version */
-    --color-accent: #1e1b4b;           /* deep indigo dark */
-    --color-accent-foreground: #a5b4fc; /* indigo-300 */
+    /* Accent tint — dark green surface */
+    --color-accent:             #162A22;
+    --color-accent-foreground:  #7AC8A0;
 
     /* Destructive */
-    --color-destructive: #f87171;
-    --color-destructive-foreground: #0f172a;
+    --color-destructive:             #f87171;
+    --color-destructive-foreground:  #1C1C1C;
 
     /* Borders & inputs */
-    --color-border: #334155;           /* neutral-700 */
-    --color-input: #334155;
-    --color-ring: #818cf8;
+    --color-border: #3D3832;
+    --color-input:  #3D3832;
+    --color-ring:   #2A9460;
 
-    /* Neutral scale flip for dark */
-    --color-neutral-50: #1e293b;
-    --color-neutral-100: #334155;
-    --color-neutral-200: #475569;
-    --color-neutral-300: #64748b;
-    --color-neutral-400: #94a3b8;
-    --color-neutral-500: #94a3b8;
-    --color-neutral-600: #cbd5e1;
-    --color-neutral-700: #e2e8f0;
-    --color-neutral-800: #f1f5f9;
-    --color-neutral-900: #f8fafc;
+    /* Neutral scale flip for dark (warm) */
+    --color-neutral-50:  #252320;
+    --color-neutral-100: #2E2B27;
+    --color-neutral-200: #3D3832;
+    --color-neutral-300: #54504A;
+    --color-neutral-400: #7A7268;
+    --color-neutral-500: #9E9588;
+    --color-neutral-600: #C4B9A8;
+    --color-neutral-700: #DDD5C5;
+    --color-neutral-800: #EEE6D6;
+    --color-neutral-900: #F7F3EE;
 
-    /* Accent scale dark */
-    --color-accent-50: #1e1b4b;
-    --color-accent-100: #312e81;
-    --color-accent-200: #3730a3;
-    --color-accent-500: #818cf8;
-    --color-accent-600: #a5b4fc;
-    --color-accent-700: #c7d2fe;
+    /* Accent scale dark (lighter greens) */
+    --color-accent-50:  #162A22;
+    --color-accent-100: #1D3A2E;
+    --color-accent-200: #245239;
+    --color-accent-500: #3DB87A;
+    --color-accent-600: #2A9460;
+    --color-accent-700: #1A6947;
 
-    /* Status bg dark: use dark surface + vivid foreground stays readable */
-    --color-success-50: #052e16;
+    /* Status bg dark */
+    --color-success-50:  #052e16;
     --color-success-500: #4ade80;
     --color-success-700: #86efac;
 
-    --color-warning-50: #1c1400;
-    --color-warning-500: #fbbf24;
-    --color-warning-700: #fcd34d;
+    --color-warning-50:  #2A1500;
+    --color-warning-500: #F08C46;
+    --color-warning-700: #F7B07A;
 
-    --color-danger-50: #1f0a0a;
+    --color-danger-50:  #1f0a0a;
     --color-danger-500: #f87171;
     --color-danger-700: #fca5a5;
 
-    --color-info-50: #0c1a33;
+    --color-info-50:  #0c1a33;
     --color-info-500: #60a5fa;
     --color-info-700: #93c5fd;
   }
@@ -210,13 +211,13 @@
    UTILITIES
 ───────────────────────────────────────────── */
 @layer utilities {
-  /* Shimmer loading effect */
+  /* Shimmer loading effect — cream-based light, warm dark */
   .shimmer {
     background: linear-gradient(
       90deg,
-      #f1f5f9 25%,
-      #e2e8f0 50%,
-      #f1f5f9 75%
+      #F4E6CE 25%,
+      #E8D5B5 50%,
+      #F4E6CE 75%
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
@@ -225,9 +226,9 @@
   .dark .shimmer {
     background: linear-gradient(
       90deg,
-      #1e293b 25%,
-      #334155 50%,
-      #1e293b 75%
+      #252320 25%,
+      #3D3832 50%,
+      #252320 75%
     );
     background-size: 200% 100%;
   }

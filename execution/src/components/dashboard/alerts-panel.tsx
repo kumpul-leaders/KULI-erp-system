@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Bell, AlertTriangle, HeartPulse, Clock, RefreshCw } from "lucide-react"
+import { HeartPulse, Bell, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type AlertType = "renewal_t60" | "renewal_t30" | "health_drop" | "stale_deal"
+type AlertType = "health_drop" | "stale_deal"
 type AlertStatus = "open" | "acknowledged" | "resolved"
 
 interface Alert {
@@ -35,16 +35,6 @@ function relativeAge(isoString: string): string {
 }
 
 const ALERT_CONFIG: Record<AlertType, { icon: React.ReactNode; label: string; color: string }> = {
-  renewal_t60: {
-    icon: <Clock className="h-4 w-4" />,
-    label: "Renewal T-60",
-    color: "text-warning-600",
-  },
-  renewal_t30: {
-    icon: <AlertTriangle className="h-4 w-4" />,
-    label: "Renewal T-30",
-    color: "text-danger-600",
-  },
   health_drop: {
     icon: <HeartPulse className="h-4 w-4" />,
     label: "Health Drop",
@@ -59,12 +49,7 @@ const ALERT_CONFIG: Record<AlertType, { icon: React.ReactNode; label: string; co
 
 // ── AlertsPanel ───────────────────────────────────────────────────────────────
 
-interface AlertsPanelProps {
-  /** Passed from server: contracts expiring in 90d — shown as fallback when 0 open alerts */
-  expiringContracts: { id: string; name: string; contractEnd: string | null }[]
-}
-
-export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
+export function AlertsPanel() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
   const [actioning, setActioning] = useState<string | null>(null)
@@ -99,7 +84,6 @@ export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
         throw new Error(data.error ?? "Failed to update alert")
       }
       toast.success(action === "acknowledge" ? "Alert acknowledged" : "Alert resolved")
-      // Remove from list optimistically
       setAlerts((prev) => prev.filter((a) => a.id !== alertId))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong")
@@ -130,43 +114,9 @@ export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
           ))}
         </div>
       ) : alerts.length === 0 ? (
-        // Empty state — fall back to expiring contracts if any, else clean empty
-        expiringContracts.length > 0 ? (
-          <div>
-            <p className="text-xs text-neutral-400 mb-3">Tidak ada alert aktif. Kontrak mendekati expiry:</p>
-            {expiringContracts.slice(0, 5).map((c) => {
-              if (!c.contractEnd) return null
-              const days = Math.ceil(
-                (new Date(c.contractEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-              )
-              return (
-                <Link
-                  key={c.id}
-                  href={`/clients/${c.id}`}
-                  className="flex items-center justify-between mb-2 last:mb-0 rounded-md bg-neutral-50 dark:bg-neutral-50/50 px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-100 transition-colors"
-                >
-                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-700 truncate">
-                    {c.name}
-                  </span>
-                  <span className={cn(
-                    "text-xs font-medium flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-sm",
-                    days <= 30
-                      ? "bg-danger-50 text-danger-700"
-                      : days <= 60
-                        ? "bg-warning-50 text-warning-700"
-                        : "bg-info-50 text-info-700"
-                  )}>
-                    {days}d
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-neutral-400 py-2">
-            Tidak ada alert aktif dan tidak ada kontrak yang akan berakhir dalam 90 hari.
-          </p>
-        )
+        <p className="text-sm text-neutral-400 py-2">
+          Tidak ada alert aktif.
+        </p>
       ) : (
         <div className="space-y-2">
           {alerts.map((alert) => {
@@ -213,7 +163,7 @@ export function AlertsPanel({ expiringContracts }: AlertsPanelProps) {
                   >
                     Ack
                   </Button>
-                  {alert.type.startsWith("renewal") && alert.client && (
+                  {alert.client && (
                     <Button
                       size="sm"
                       variant="ghost"

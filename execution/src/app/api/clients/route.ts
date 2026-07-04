@@ -63,10 +63,6 @@ export async function GET(request: NextRequest) {
 
     const normalized = clients.map((c) => ({
       ...c,
-      monthlyValue: c.monthlyValue ? Number(c.monthlyValue) : null,
-      annualValue: c.annualValue ? Number(c.annualValue) : null,
-      contractStart: c.contractStart?.toISOString() ?? null,
-      contractEnd: c.contractEnd?.toISOString() ?? null,
       createdAt: c.createdAt.toISOString(),
       updatedAt: c.updatedAt.toISOString(),
       _contactCount: c.contacts.length,
@@ -93,33 +89,14 @@ export async function POST(request: NextRequest) {
 
   const body = parsed.data
 
-  // Validate contract dates
-  if (body.contractStart && body.contractEnd) {
-    if (new Date(body.contractEnd) <= new Date(body.contractStart)) {
-      return NextResponse.json(
-        { error: "Contract end must be after contract start" },
-        { status: 400 }
-      )
-    }
-  }
-
   try {
     const client = await prisma.client.create({
       data: {
         name: body.name.trim(),
         industry: body.industry || null,
         orgSize: body.orgSize || null,
-        engagementType: body.engagementType,
-        contractStart:
-          typeof body.contractStart === "string" && body.contractStart
-            ? new Date(body.contractStart)
-            : null,
-        contractEnd:
-          typeof body.contractEnd === "string" && body.contractEnd
-            ? new Date(body.contractEnd)
-            : null,
-        monthlyValue: typeof body.monthlyValue === "number" ? body.monthlyValue : null,
-        annualValue: typeof body.annualValue === "number" ? body.annualValue : null,
+        engagementType: body.engagementType ?? "project",
+        officeAddress: body.officeAddress || null,
         healthStatus: body.healthStatus ?? "healthy",
         clientStatus: body.clientStatus ?? "lead",
         primaryAe: body.primaryAe || null,
@@ -134,12 +111,23 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // If initialContact provided, create it as the primary contact
+    if (body.initialContact) {
+      const { name, role, email, phone } = body.initialContact
+      await prisma.contact.create({
+        data: {
+          clientId: client.id,
+          name,
+          role,
+          email,
+          phone: phone ?? null,
+          isPrimary: true,
+        },
+      })
+    }
+
     const normalized = {
       ...client,
-      monthlyValue: client.monthlyValue ? Number(client.monthlyValue) : null,
-      annualValue: client.annualValue ? Number(client.annualValue) : null,
-      contractStart: client.contractStart?.toISOString() ?? null,
-      contractEnd: client.contractEnd?.toISOString() ?? null,
       createdAt: client.createdAt.toISOString(),
       updatedAt: client.updatedAt.toISOString(),
     }

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { EngagementType, HealthStatus, ClientStatus } from "@/types"
+import type { ClientStatus } from "@/types"
 
 interface AeOption {
   id: string
@@ -35,18 +35,19 @@ interface AddClientSheetProps {
 }
 
 interface FormState {
+  // Client fields
   name: string
+  clientStatus: ClientStatus
   industry: string
   orgSize: string
-  engagementType: EngagementType | ""
-  contractStart: string
-  contractEnd: string
-  monthlyValue: string
-  annualValue: string
-  healthStatus: HealthStatus | ""
-  clientStatus: ClientStatus
   primaryAe: string
+  officeAddress: string
   notes: string
+  // Primary contact fields
+  contactName: string
+  contactRole: string
+  contactEmail: string
+  contactPhone: string
 }
 
 const INDUSTRY_OPTIONS = [
@@ -68,17 +69,16 @@ const ORG_SIZE_OPTIONS = ["1-10", "11-50", "51-200", "201-1000", "1000+"]
 
 const initialForm: FormState = {
   name: "",
+  clientStatus: "lead",
   industry: "",
   orgSize: "",
-  engagementType: "",
-  contractStart: "",
-  contractEnd: "",
-  monthlyValue: "",
-  annualValue: "",
-  healthStatus: "",
-  clientStatus: "lead",
   primaryAe: "",
+  officeAddress: "",
   notes: "",
+  contactName: "",
+  contactRole: "",
+  contactEmail: "",
+  contactPhone: "",
 }
 
 export function AddClientSheet({
@@ -99,11 +99,14 @@ export function AddClientSheet({
   function validate(): boolean {
     const newErrors: Partial<Record<keyof FormState, string>> = {}
     if (!form.name.trim()) newErrors.name = "Client name is required"
-    if (!form.engagementType) newErrors.engagementType = "Engagement type is required"
-    if (form.contractStart && form.contractEnd) {
-      if (new Date(form.contractEnd) <= new Date(form.contractStart)) {
-        newErrors.contractEnd = "Contract end must be after contract start"
-      }
+    if (!form.clientStatus) newErrors.clientStatus = "Client status is required"
+    if (!form.officeAddress.trim()) newErrors.officeAddress = "Office address is required"
+    if (!form.contactName.trim()) newErrors.contactName = "Contact name is required"
+    if (!form.contactRole.trim()) newErrors.contactRole = "Contact role is required"
+    if (!form.contactEmail.trim()) {
+      newErrors.contactEmail = "Contact email is required"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail.trim())) {
+      newErrors.contactEmail = "Invalid email address"
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -120,17 +123,18 @@ export function AddClientSheet({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          industry: form.industry || undefined,
-          orgSize: form.orgSize || null,
-          engagementType: form.engagementType,
-          contractStart: form.contractStart || null,
-          contractEnd: form.contractEnd || null,
-          monthlyValue: form.monthlyValue ? Number(form.monthlyValue) : null,
-          annualValue: form.annualValue ? Number(form.annualValue) : null,
-          healthStatus: form.healthStatus || null,
           clientStatus: form.clientStatus,
+          industry: form.industry || null,
+          orgSize: form.orgSize || null,
           primaryAe: form.primaryAe || null,
+          officeAddress: form.officeAddress.trim(),
           notes: form.notes.trim() || null,
+          initialContact: {
+            name: form.contactName.trim(),
+            role: form.contactRole.trim(),
+            email: form.contactEmail.trim(),
+            phone: form.contactPhone.trim() || null,
+          },
         }),
       })
 
@@ -175,7 +179,7 @@ export function AddClientSheet({
             )}
           </div>
 
-          {/* Client Status + Org Size */}
+          {/* Client Status + Industry */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>
@@ -194,7 +198,33 @@ export function AddClientSheet({
                   <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.clientStatus && (
+                <p className="text-xs text-danger-500">{errors.clientStatus}</p>
+              )}
             </div>
+            <div className="space-y-1.5">
+              <Label>Industry</Label>
+              <Select
+                value={form.industry || "none"}
+                onValueChange={(v) => handleField("industry", v === "none" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not specified</SelectItem>
+                  {INDUSTRY_OPTIONS.map((ind) => (
+                    <SelectItem key={ind} value={ind}>
+                      {ind}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Org Size + Primary AE */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Org Size</Label>
               <Select
@@ -214,141 +244,41 @@ export function AddClientSheet({
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Primary Busdev/AE</Label>
+              <Select
+                value={form.primaryAe || "none"}
+                onValueChange={(v) => handleField("primaryAe", v === "none" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select AE" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No AE assigned</SelectItem>
+                  {aeOptions.map((ae) => (
+                    <SelectItem key={ae.id} value={ae.id}>
+                      {ae.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Industry */}
+          {/* Office Address */}
           <div className="space-y-1.5">
-            <Label>Industry</Label>
-            <Select
-              value={form.industry || "none"}
-              onValueChange={(v) => handleField("industry", v === "none" ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select industry" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                {INDUSTRY_OPTIONS.map((ind) => (
-                  <SelectItem key={ind} value={ind}>
-                    {ind}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Engagement Type */}
-          <div className="space-y-1.5">
-            <Label>
-              Engagement Type <span className="text-danger-500">*</span>
+            <Label htmlFor="officeAddress">
+              Office Address <span className="text-danger-500">*</span>
             </Label>
-            <Select
-              value={form.engagementType}
-              onValueChange={(v) => handleField("engagementType", v as EngagementType)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="retainer">Retainer</SelectItem>
-                <SelectItem value="project">Project</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.engagementType && (
-              <p className="text-xs text-danger-500">{errors.engagementType}</p>
+            <Input
+              id="officeAddress"
+              value={form.officeAddress}
+              onChange={(e) => handleField("officeAddress", e.target.value)}
+              placeholder="Full office address"
+            />
+            {errors.officeAddress && (
+              <p className="text-xs text-danger-500">{errors.officeAddress}</p>
             )}
-          </div>
-
-          {/* Contract Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="contractStart">Contract Start</Label>
-              <Input
-                id="contractStart"
-                type="date"
-                value={form.contractStart}
-                onChange={(e) => handleField("contractStart", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="contractEnd">Contract End</Label>
-              <Input
-                id="contractEnd"
-                type="date"
-                value={form.contractEnd}
-                onChange={(e) => handleField("contractEnd", e.target.value)}
-              />
-              {errors.contractEnd && (
-                <p className="text-xs text-danger-500">{errors.contractEnd}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Contract Values */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="monthlyValue">Monthly Value (IDR)</Label>
-              <Input
-                id="monthlyValue"
-                type="number"
-                value={form.monthlyValue}
-                onChange={(e) => handleField("monthlyValue", e.target.value)}
-                placeholder="0"
-                min={0}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="annualValue">Annual Value (IDR)</Label>
-              <Input
-                id="annualValue"
-                type="number"
-                value={form.annualValue}
-                onChange={(e) => handleField("annualValue", e.target.value)}
-                placeholder="0"
-                min={0}
-              />
-            </div>
-          </div>
-
-          {/* Health Status */}
-          <div className="space-y-1.5">
-            <Label>Health Status</Label>
-            <Select
-              value={form.healthStatus || "none"}
-              onValueChange={(v) => handleField("healthStatus", v === "none" ? "" : v as HealthStatus)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Not set" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not set</SelectItem>
-                <SelectItem value="healthy">Healthy</SelectItem>
-                <SelectItem value="at_risk">At Risk</SelectItem>
-                <SelectItem value="churned">Churned</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Primary Busdev/AE */}
-          <div className="space-y-1.5">
-            <Label>Primary Busdev/AE</Label>
-            <Select
-              value={form.primaryAe || "none"}
-              onValueChange={(v) => handleField("primaryAe", v === "none" ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select AE" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No AE assigned</SelectItem>
-                {aeOptions.map((ae) => (
-                  <SelectItem key={ae.id} value={ae.id}>
-                    {ae.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Notes */}
@@ -362,6 +292,75 @@ export function AddClientSheet({
               rows={3}
               className="resize-none"
             />
+          </div>
+
+          {/* Primary Contact section */}
+          <div className="pt-2">
+            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3 pb-2 border-b border-neutral-100 dark:border-neutral-700">
+              Primary Contact
+            </p>
+
+            <div className="space-y-4">
+              {/* Contact Name */}
+              <div className="space-y-1.5">
+                <Label htmlFor="contactName">
+                  Contact Name <span className="text-danger-500">*</span>
+                </Label>
+                <Input
+                  id="contactName"
+                  value={form.contactName}
+                  onChange={(e) => handleField("contactName", e.target.value)}
+                  placeholder="Full name"
+                />
+                {errors.contactName && (
+                  <p className="text-xs text-danger-500">{errors.contactName}</p>
+                )}
+              </div>
+
+              {/* Role / Title */}
+              <div className="space-y-1.5">
+                <Label htmlFor="contactRole">
+                  Role / Title <span className="text-danger-500">*</span>
+                </Label>
+                <Input
+                  id="contactRole"
+                  value={form.contactRole}
+                  onChange={(e) => handleField("contactRole", e.target.value)}
+                  placeholder="e.g. Marketing Manager"
+                />
+                {errors.contactRole && (
+                  <p className="text-xs text-danger-500">{errors.contactRole}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <Label htmlFor="contactEmail">
+                  Email <span className="text-danger-500">*</span>
+                </Label>
+                <Input
+                  id="contactEmail"
+                  type="email"
+                  value={form.contactEmail}
+                  onChange={(e) => handleField("contactEmail", e.target.value)}
+                  placeholder="contact@company.com"
+                />
+                {errors.contactEmail && (
+                  <p className="text-xs text-danger-500">{errors.contactEmail}</p>
+                )}
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-1.5">
+                <Label htmlFor="contactPhone">Phone</Label>
+                <Input
+                  id="contactPhone"
+                  value={form.contactPhone}
+                  onChange={(e) => handleField("contactPhone", e.target.value)}
+                  placeholder="e.g. 08123456789"
+                />
+              </div>
+            </div>
           </div>
 
           <SheetFooter className="pt-4">

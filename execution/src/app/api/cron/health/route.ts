@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   // ── Q1: Active clients ────────────────────────────────────────────────────
   const clients = await prisma.client.findMany({
     where: { deletedAt: null, clientStatus: { not: "inactive" } },
-    select: { id: true, name: true, primaryAe: true, contractEnd: true, healthStatus: true },
+    select: { id: true, name: true, primaryAe: true, healthStatus: true },
   })
 
   if (clients.length === 0) {
@@ -243,13 +243,9 @@ export async function GET(request: NextRequest) {
 
     const hasEngagementData = touchMs !== undefined
 
-    const contractDaysRemaining = client.contractEnd
-      ? Math.floor((client.contractEnd.getTime() - today.getTime()) / 86400000)
-      : null
-
     const result = computeHealthSignals({
       lastActivityDaysAgo,
-      contractDaysRemaining,
+      contractDaysRemaining: null,
       hasRecentWonLead: hasWonLeadSet.has(client.id),
       hasOpenPipeline: hasOpenPipelineSet.has(client.id),
       hasRecentUpsellWon: hasUpsellWonSet.has(client.id),

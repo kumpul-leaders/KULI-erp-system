@@ -47,7 +47,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { formatIDR, cn } from "@/lib/utils"
-import type { HealthStatus, EngagementType, ClientStatus } from "@/types"
+import type { HealthStatus, ClientStatus } from "@/types"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,11 +62,7 @@ interface ClientRow {
   customerCode: string | null
   industry: string | null
   orgSize: string | null
-  engagementType: EngagementType
-  contractStart: string | null
-  contractEnd: string | null
-  monthlyValue: number | null
-  annualValue: number | null
+  officeAddress: string | null
   healthStatus: HealthStatus
   clientStatus: ClientStatus | null
   primaryAe: string | null
@@ -94,14 +90,6 @@ interface ClientsTableProps {
 const PAGE_SIZE = 25
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function getContractUrgency(contractEnd: string | null): "critical" | "warning" | null {
-  if (!contractEnd) return null
-  const daysLeft = Math.ceil((new Date(contractEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  if (daysLeft <= 30) return "critical"
-  if (daysLeft <= 60) return "warning"
-  return null
-}
 
 function createDebounced(fn: (val: string) => void, delay: number) {
   let timer: ReturnType<typeof setTimeout>
@@ -195,8 +183,6 @@ export function ClientsTable({
       setArchivedClients(
         (data.clients ?? []).map((c) => ({
           ...c,
-          monthlyValue: c.monthlyValue !== null ? Number(c.monthlyValue) : null,
-          annualValue: c.annualValue !== null ? Number(c.annualValue) : null,
           cumulativeValue: c.cumulativeValue ?? 0,
           opportunityValue: c.opportunityValue ?? 0,
         }))
@@ -343,15 +329,8 @@ export function ClientsTable({
         { value: "Large",      label: "Large" },
         { value: "Enterprise", label: "Enterprise" },
       ] },
-    { key: "engagementType", label: "Engagement Type",   type: "enum",
-      options: [
-        { value: "retainer", label: "Retainer" },
-        { value: "project",  label: "Project" },
-        { value: "both",     label: "Both" },
-      ] },
     { key: "primaryAe",      label: "Busdev/AE", type: "enum",
       options: aeOptions.map((a) => ({ value: a.id, label: a.name })) },
-    { key: "monthlyValue",     label: "Monthly Value",     type: "numeric" },
     { key: "cumulativeValue",  label: "Cumulative Value",  type: "numeric" },
     { key: "opportunityValue", label: "Opportunity Value", type: "numeric" },
   ], [aeOptions])
@@ -579,39 +558,7 @@ export function ClientsTable({
                       )}
                     </TableCell>
                     <TableCell className="tabular-nums text-neutral-700">
-                      {client.cumulativeValue > 0 ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span>{formatIDR(client.cumulativeValue)}</span>
-                          {(() => {
-                            const urgency = getContractUrgency(client.contractEnd)
-                            if (!urgency) return null
-                            const daysLeft = Math.ceil(
-                              (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                            )
-                            return (
-                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600 dark:text-danger-500" : "text-warning-600 dark:text-warning-500")}>
-                                Expiry {daysLeft}d
-                              </span>
-                            )
-                          })()}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-neutral-400">—</span>
-                          {(() => {
-                            const urgency = getContractUrgency(client.contractEnd)
-                            if (!urgency) return null
-                            const daysLeft = Math.ceil(
-                              (new Date(client.contractEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                            )
-                            return (
-                              <span className={cn("text-xs font-medium", urgency === "critical" ? "text-danger-600 dark:text-danger-500" : "text-warning-600 dark:text-warning-500")}>
-                                Expiry {daysLeft}d
-                              </span>
-                            )
-                          })()}
-                        </div>
-                      )}
+                      {client.cumulativeValue > 0 ? formatIDR(client.cumulativeValue) : <span className="text-neutral-400">—</span>}
                     </TableCell>
                     <TableCell className="tabular-nums text-neutral-700">
                       {client.opportunityValue > 0 ? formatIDR(client.opportunityValue) : <span className="text-neutral-400">—</span>}

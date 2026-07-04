@@ -34,10 +34,6 @@ export async function GET(
 
     const normalized = {
       ...client,
-      monthlyValue: client.monthlyValue ? Number(client.monthlyValue) : null,
-      annualValue: client.annualValue ? Number(client.annualValue) : null,
-      contractStart: client.contractStart?.toISOString() ?? null,
-      contractEnd: client.contractEnd?.toISOString() ?? null,
       createdAt: client.createdAt.toISOString(),
       updatedAt: client.updatedAt.toISOString(),
       contacts: client.contacts.map((c) => ({
@@ -134,38 +130,12 @@ export async function PATCH(
   }
   if ("industry" in body) updateData.industry = body.industry ?? null
   if ("orgSize" in body) updateData.orgSize = body.orgSize ?? null
+  if ("officeAddress" in body) updateData.officeAddress = body.officeAddress ?? null
   if ("engagementType" in body) updateData.engagementType = body.engagementType
   if ("healthStatus" in body) updateData.healthStatus = body.healthStatus
   if ("clientStatus" in body) updateData.clientStatus = body.clientStatus
   if ("primaryAe" in body) updateData.primaryAe = body.primaryAe ?? null
   if ("notes" in body) updateData.notes = body.notes ?? null
-  if ("monthlyValue" in body) updateData.monthlyValue = body.monthlyValue ?? null
-  if ("annualValue" in body) updateData.annualValue = body.annualValue ?? null
-  if ("contractStart" in body) {
-    updateData.contractStart =
-      typeof body.contractStart === "string" && body.contractStart
-        ? new Date(body.contractStart)
-        : null
-  }
-  if ("contractEnd" in body) {
-    updateData.contractEnd =
-      typeof body.contractEnd === "string" && body.contractEnd
-        ? new Date(body.contractEnd)
-        : null
-  }
-
-  // Validate contract date order if both present in update
-  if (updateData.contractStart && updateData.contractEnd) {
-    if (
-      new Date(updateData.contractEnd as string) <=
-      new Date(updateData.contractStart as string)
-    ) {
-      return NextResponse.json(
-        { error: "Contract end must be after contract start" },
-        { status: 400 }
-      )
-    }
-  }
 
   try {
     const existing = await prisma.client.findUnique({ where: { id, deletedAt: null } })
@@ -187,17 +157,12 @@ export async function PATCH(
       customerCode: (v) => (v as string | null) ?? null,
       industry: (v) => (v as string | null) ?? null,
       orgSize: (v) => (v as string | null) ?? null,
+      officeAddress: (v) => (v as string | null) ?? null,
       engagementType: (v) => (v as string | null) ?? null,
       healthStatus: (v) => (v as string | null) ?? null,
       clientStatus: (v) => (v as string | null) ?? null,
       primaryAe: (v) => (v as string | null) ?? null,
       notes: (v) => (v as string | null) ?? null,
-      monthlyValue: (v) => (v != null ? String(Number(v)) : null),
-      annualValue: (v) => (v != null ? String(Number(v)) : null),
-      contractStart: (v) =>
-        v instanceof Date ? v.toISOString().split("T")[0] : ((v as string | null) ?? null),
-      contractEnd: (v) =>
-        v instanceof Date ? v.toISOString().split("T")[0] : ((v as string | null) ?? null),
     }
 
     for (const [field, serializer] of Object.entries(TRACKED)) {
@@ -223,10 +188,6 @@ export async function PATCH(
 
     const normalized = {
       ...client,
-      monthlyValue: client.monthlyValue ? Number(client.monthlyValue) : null,
-      annualValue: client.annualValue ? Number(client.annualValue) : null,
-      contractStart: client.contractStart?.toISOString() ?? null,
-      contractEnd: client.contractEnd?.toISOString() ?? null,
       createdAt: client.createdAt.toISOString(),
       updatedAt: client.updatedAt.toISOString(),
     }

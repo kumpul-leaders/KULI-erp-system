@@ -15,8 +15,8 @@ import type { HealthStatus } from "@prisma/client"
 export interface HealthSignalInput {
   /** Days since the most recent Activity or Comment on the client or its leads. null = never. */
   lastActivityDaysAgo: number | null
-  /** Days until contractEnd. null = no contract set. negative = already expired. */
-  contractDaysRemaining: number | null
+  /** Reserved — always pass null. Contract renewal signal is now neutral (50). */
+  contractDaysRemaining: null
   /** Whether there is at least one won lead in the last 6 months. */
   hasRecentWonLead: boolean
   /** Whether there is at least one open lead in pipeline (not lost/invoiced). */
@@ -51,16 +51,12 @@ export function computeSignalActivity(lastActivityDaysAgo: number | null): numbe
 }
 
 // ── Signal: Renewal proximity (30%) ──────────────────────────────────────────
-// Scores based on how far the contractEnd is in the future.
-// No contract = neutral 50.
+// Contract tracking removed from Client model. Signal always returns neutral 50.
+// The weight still exists in the composite formula to preserve backward
+// compatibility with existing snapshots; it simply contributes a neutral score.
 
-export function computeSignalRenewal(contractDaysRemaining: number | null): number {
-  if (contractDaysRemaining === null) return 50 // neutral — no contract
-  if (contractDaysRemaining > 180) return 100
-  if (contractDaysRemaining > 90) return 75
-  if (contractDaysRemaining > 60) return 50
-  if (contractDaysRemaining > 30) return 25
-  return 0 // expired or ≤30 days
+export function computeSignalRenewal(_contractDaysRemaining: null): number {
+  return 50 // always neutral — no contract tracking on clients
 }
 
 // ── Signal: Revenue (20%) ─────────────────────────────────────────────────────

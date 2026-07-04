@@ -28,8 +28,6 @@ function buildOrderBy(
       return { industry: d }
     case "orgSize":
       return { orgSize: d }
-    case "annualValue":
-      return { annualValue: d }
     case "ae":
       return { ae: { name: d } }
     case "cumulativeValue":
@@ -54,7 +52,7 @@ async function fetchClients(search: string, sort: string, dir: string) {
     : {}
 
   // Computed sort columns are handled in-JS after merging; use name fallback for DB query
-  const dbSort = sort === "cumulativeValue" || sort === "opportunityValue" ? "name" : sort
+  const dbSort = (sort === "cumulativeValue" || sort === "opportunityValue") ? "name" : sort
   const orderBy = buildOrderBy(dbSort, dir)
 
   const clients = await prisma.client.findMany({
@@ -100,10 +98,6 @@ async function fetchClients(search: string, sort: string, dir: string) {
 
   let serialized = clients.map((c) => ({
     ...c,
-    monthlyValue: c.monthlyValue ? Number(c.monthlyValue) : null,
-    annualValue: c.annualValue ? Number(c.annualValue) : null,
-    contractStart: c.contractStart?.toISOString() ?? null,
-    contractEnd: c.contractEnd?.toISOString() ?? null,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
     _contactCount: c.contacts.length,

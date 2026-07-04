@@ -46,7 +46,7 @@ export type LostReason =
 
 export type TargetType = "monthly" | "quarterly"
 
-export type ContractUrgency = "critical" | "warning" | "notice" | "none"
+export type AlertType = "health_drop" | "stale_deal"
 
 // ── Domain Models ────────────────────────────────
 
@@ -69,10 +69,7 @@ export interface Client {
   industry?: string | null
   orgSize?: string | null
   engagementType: EngagementType
-  contractStart?: Date | null
-  contractEnd?: Date | null
-  monthlyValue?: number | null
-  annualValue?: number | null
+  officeAddress?: string | null
   healthStatus: HealthStatus
   clientStatus?: ClientStatus | null
   primaryAe?: string | null

@@ -105,7 +105,7 @@ function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@vosfoyerid.com"
+                placeholder="you@kumpul-leaders.com"
                 disabled={loading}
               />
             </div>

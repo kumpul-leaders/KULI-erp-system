@@ -37,11 +37,8 @@ model Client {
   id                  String               @id @default(uuid())
   name                String
   industry            String?
-  engagementType      EngagementType       @map("engagement_type")
-  contractStart       DateTime?            @map("contract_start") @db.Date
-  contractEnd         DateTime?            @map("contract_end") @db.Date
-  monthlyValue        Decimal?             @map("monthly_value") @db.Decimal(15, 2)
-  annualValue         Decimal?             @map("annual_value") @db.Decimal(15, 2)
+  engagementType      EngagementType       @default(project) @map("engagement_type")
+  officeAddress       String?              @map("office_address")
   healthStatus        HealthStatus         @default(healthy) @map("health_status")
   primaryAe           String?              @map("primary_ae")
   notes               String?
@@ -367,8 +364,6 @@ model Follower {
 }
 
 enum AlertType {
-  renewal_t60
-  renewal_t30
   health_drop
   stale_deal
 }

@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { HealthScorePopover, type HealthSnapshot } from "@/components/clients/health-score-popover"
 import { ClientStatusBadge } from "@/components/clients/client-status-badge"
 import { ClientAlertsBanner } from "@/components/clients/client-alerts-banner"
-import { CreateRenewalButton } from "@/components/pipeline/create-renewal-button"
 import { ContactsCard } from "@/components/clients/contacts-card"
 import { UpsellsCard } from "@/components/clients/upsells-card"
 import { NotesCard } from "@/components/clients/notes-card"
@@ -19,7 +18,7 @@ import { ActivityPanel } from "@/components/activities/activity-panel"
 import { RecordTimeline } from "@/components/chatter/record-timeline"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
-import { formatIDR, daysUntil, contractUrgency } from "@/lib/utils"
+import { formatIDR } from "@/lib/utils"
 import { Layers, Users, TrendingUp, DollarSign, ClipboardList, MessageSquare } from "lucide-react"
 // ── Metadata ─────────────────────────────────────────────────────────────────
 
@@ -63,15 +62,6 @@ async function fetchAeOptions() {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(val: Date | null | undefined): string {
-  if (!val) return "—"
-  return new Date(val).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })
-}
 
 function engagementLabel(type: string): string {
   const labels: Record<string, string> = {
@@ -127,15 +117,6 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
   if (!client) notFound()
 
-  // Normalize Decimal for serialization to client components
-  const monthlyValue = client.monthlyValue ? Number(client.monthlyValue) : null
-  const annualValue = client.annualValue ? Number(client.annualValue) : null
-
-  // Contract urgency
-  const contractDays = client.contractEnd ? daysUntil(client.contractEnd) : null
-  const urgency = contractDays !== null ? contractUrgency(contractDays) : "none"
-  const isContractUrgent = urgency === "critical" || urgency === "warning"
-
   // Normalized contacts for client component (serialize Date → string)
   const contacts = client.contacts.map((c) => ({
     ...c,
@@ -176,7 +157,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   // Serialize open alerts for banner
   const serializedAlerts = openAlerts.map((a) => ({
     id: a.id,
-    type: a.type as "renewal_t60" | "renewal_t30" | "health_drop" | "stale_deal",
+    type: a.type as "health_drop" | "stale_deal",
     triggeredAt: a.triggeredAt.toISOString(),
   }))
 
@@ -219,19 +200,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
   const cumulativeValue = wonLeads.reduce((sum, l) => sum + (l.actualRevenue ?? 0), 0)
   const opportunityValue = inProgressLeads.reduce((sum, l) => sum + (l.projectedRevenue ?? 0), 0)
 
-  // Client data for edit sheet (serialize dates, include new fields)
+  // Client data for edit sheet
   const clientForEdit = {
     id: client.id,
     name: client.name,
     customerCode: client.customerCode,
     industry: client.industry,
     orgSize: client.orgSize,
-    engagementType: client.engagementType,
-    contractStart: client.contractStart?.toISOString() ?? null,
-    contractEnd: client.contractEnd?.toISOString() ?? null,
-    monthlyValue,
-    annualValue,
-    healthStatus: client.healthStatus,
+    officeAddress: client.officeAddress,
     clientStatus: client.clientStatus,
     primaryAe: client.primaryAe,
     notes: client.notes,
@@ -299,17 +275,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
         {/* Alert banner — only when open alerts exist */}
         {serializedAlerts.length > 0 && (
-          <div className="mb-6 space-y-2">
+          <div className="mb-6">
             <ClientAlertsBanner alerts={serializedAlerts} />
-            {serializedAlerts.some((a) => a.type === "renewal_t60" || a.type === "renewal_t30") && (
-              <div className="flex justify-end">
-                <CreateRenewalButton
-                  clientId={client.id}
-                  clientName={client.name}
-                  salesOptions={aeOptions}
-                />
-              </div>
-            )}
           </div>
         )}
 
@@ -427,57 +394,18 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         <div className="grid grid-cols-3 gap-6">
           {/* Left — col-span-2 */}
           <div className="col-span-2 space-y-6">
-            {/* Contract Details */}
+            {/* Client Info */}
             <div className="rounded-lg border border-neutral-200 dark:border-neutral-100 bg-white dark:bg-card p-5 shadow-card">
-              <h2 className="font-semibold text-neutral-800 dark:text-neutral-700 mb-4">Contract Details</h2>
+              <h2 className="font-semibold text-neutral-800 dark:text-neutral-700 mb-4">Client Info</h2>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Contract Start
-                  </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-700">{formatDate(client.contractStart)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Contract End
-                  </p>
-                  <p
-                    className={`text-sm font-medium ${
-                      isContractUrgent ? "text-danger-600" : "text-neutral-800 dark:text-neutral-700"
-                    }`}
-                  >
-                    {formatDate(client.contractEnd)}
-                    {isContractUrgent && contractDays !== null && (
-                      <span className="ml-2 text-xs font-normal text-danger-500">
-                        ({contractDays}d remaining)
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Monthly Value
-                  </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-700 tabular-nums">
-                    {formatIDR(monthlyValue)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Annual Value
-                  </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-700 tabular-nums">
-                    {formatIDR(annualValue)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
-                    Engagement Type
-                  </p>
-                  <p className="text-sm text-neutral-800 dark:text-neutral-700">
-                    {engagementLabel(client.engagementType)}
-                  </p>
-                </div>
+                {client.officeAddress && (
+                  <div className="col-span-2">
+                    <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">
+                      Office Address
+                    </p>
+                    <p className="text-sm text-neutral-800 dark:text-neutral-700">{client.officeAddress}</p>
+                  </div>
+                )}
                 {client.orgSize && (
                   <div>
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">

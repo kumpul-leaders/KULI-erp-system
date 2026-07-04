@@ -2,10 +2,9 @@ import { describe, it, expect } from "vitest"
 import { CreateClientSchema, UpdateClientSchema } from "@/lib/validations/client"
 
 describe("CreateClientSchema", () => {
-  it("accepts a minimal valid payload (name + engagementType only)", () => {
+  it("accepts a minimal valid payload (name only)", () => {
     const result = CreateClientSchema.safeParse({
       name: "PT Maju Bersama",
-      engagementType: "retainer",
     })
     expect(result.success).toBe(true)
   })
@@ -16,10 +15,7 @@ describe("CreateClientSchema", () => {
       engagementType: "project",
       industry: "Tech",
       orgSize: "50-200",
-      contractStart: "2026-01-01",
-      contractEnd: "2026-12-31",
-      monthlyValue: 15_000_000,
-      annualValue: 180_000_000,
+      officeAddress: "Jl. Sudirman No. 1, Jakarta",
       healthStatus: "healthy",
       clientStatus: "active",
       primaryAe: "user-uuid-123",
@@ -27,6 +23,32 @@ describe("CreateClientSchema", () => {
       notes: "Key account",
     })
     expect(result.success).toBe(true)
+  })
+
+  it("accepts a payload with initialContact", () => {
+    const result = CreateClientSchema.safeParse({
+      name: "PT Baru",
+      officeAddress: "Jl. Thamrin 10",
+      initialContact: {
+        name: "Budi Santoso",
+        role: "CEO",
+        email: "budi@ptnew.com",
+        phone: "081234567890",
+      },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects initialContact with invalid email", () => {
+    const result = CreateClientSchema.safeParse({
+      name: "PT Baru",
+      initialContact: {
+        name: "Budi",
+        role: "CEO",
+        email: "not-an-email",
+      },
+    })
+    expect(result.success).toBe(false)
   })
 
   it("rejects when name is missing", () => {
@@ -45,7 +67,6 @@ describe("CreateClientSchema", () => {
   it("rejects invalid healthStatus enum value", () => {
     const result = CreateClientSchema.safeParse({
       name: "PT Test",
-      engagementType: "both",
       healthStatus: "excellent", // not in enum
     })
     expect(result.success).toBe(false)
@@ -54,7 +75,6 @@ describe("CreateClientSchema", () => {
   it("strips unknown keys (Zod default strip mode)", () => {
     const result = CreateClientSchema.safeParse({
       name: "PT Test",
-      engagementType: "both",
       unknownField: "should be stripped",
     })
     expect(result.success).toBe(true)
@@ -66,12 +86,12 @@ describe("CreateClientSchema", () => {
   it("allows optional fields to be absent", () => {
     const result = CreateClientSchema.safeParse({
       name: "PT Minimal",
-      engagementType: "project",
     })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.industry).toBeUndefined()
       expect(result.data.notes).toBeUndefined()
+      expect(result.data.officeAddress).toBeUndefined()
     }
   })
 })
@@ -89,6 +109,13 @@ describe("UpdateClientSchema", () => {
 
   it("accepts clientStatus null (explicit clear)", () => {
     const result = UpdateClientSchema.safeParse({ clientStatus: null })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts officeAddress update", () => {
+    const result = UpdateClientSchema.safeParse({
+      officeAddress: "Jl. Gatot Subroto No. 5",
+    })
     expect(result.success).toBe(true)
   })
 })

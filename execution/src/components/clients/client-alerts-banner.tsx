@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { AlertTriangle, HeartPulse, Clock, X } from "lucide-react"
+import { AlertTriangle, HeartPulse, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type AlertType = "renewal_t60" | "renewal_t30" | "health_drop" | "stale_deal"
+type AlertType = "health_drop" | "stale_deal"
 
 interface ClientAlert {
   id: string
@@ -26,20 +26,6 @@ const ALERT_BANNER_CONFIG: Record<
   AlertType,
   { icon: React.ReactNode; label: string; bg: string; border: string; text: string }
 > = {
-  renewal_t60: {
-    icon: <Clock className="h-4 w-4 flex-shrink-0" />,
-    label: "Kontrak akan berakhir dalam 60 hari",
-    bg: "bg-warning-50 dark:bg-[#1c1400]",
-    border: "border-warning-200 dark:border-warning-700/50",
-    text: "text-warning-700 dark:text-warning-500",
-  },
-  renewal_t30: {
-    icon: <AlertTriangle className="h-4 w-4 flex-shrink-0" />,
-    label: "Kontrak akan berakhir dalam 30 hari",
-    bg: "bg-danger-50 dark:bg-[#1f0a0a]",
-    border: "border-danger-200 dark:border-danger-700/50",
-    text: "text-danger-700 dark:text-danger-500",
-  },
   health_drop: {
     icon: <HeartPulse className="h-4 w-4 flex-shrink-0" />,
     label: "Health score turun — perlu perhatian",

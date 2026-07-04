@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { EditClientSheet } from "@/components/clients/edit-client-sheet"
-import type { EngagementType, HealthStatus, ClientStatus } from "@/types"
+import type { ClientStatus } from "@/types"
 
 interface AeOption {
   id: string
@@ -30,12 +30,7 @@ interface ClientForEdit {
   customerCode?: string | null
   industry?: string | null
   orgSize?: string | null
-  engagementType: EngagementType
-  contractStart?: string | null
-  contractEnd?: string | null
-  monthlyValue?: number | null
-  annualValue?: number | null
-  healthStatus: HealthStatus
+  officeAddress?: string | null
   clientStatus?: ClientStatus | null
   primaryAe?: string | null
   notes?: string | null
